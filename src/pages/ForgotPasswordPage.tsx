@@ -35,7 +35,7 @@ export function ForgotPasswordPage() {
         <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 text-center shadow-sm">
           <h1 className="text-xl font-semibold text-ink">Check your email</h1>
           <p className="mt-3 text-sm text-ink/70">
-            If an account exists for that address, we sent a link to reset your password.
+            If an account exists for this email, we've sent a reset link. Check your inbox and spam folder.
           </p>
           <Link to="/login" className="mt-6 inline-block font-medium text-button underline">
             Back to sign in

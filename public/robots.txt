@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /super-admin
+Disallow: /convenor
+Disallow: /author
+Disallow: /reviewer
+Disallow: /staff
+Disallow: /manager
+Disallow: /profile

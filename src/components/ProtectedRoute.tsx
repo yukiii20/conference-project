@@ -29,7 +29,7 @@ export function ProtectedRoute(props: Props) {
       if (props.kind === 'convenor') {
         const { data } = await supabase.rpc('get_my_roles')
         const roles = (data ?? []) as MyRoleRow[]
-        const ok = roles.some((r) => r.role_code === 'convenor' || r.role_code === 'admin')
+        const ok = roles.some((r) => r.role_code === 'convenor')
         if (!cancelled) setState(ok ? 'ok' : 'denied')
         return
       }

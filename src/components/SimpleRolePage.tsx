@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getRoleDefinition } from '../lib/roles'
 import type { MyRoleRequestRow } from '../lib/types'
+import { PortalHeader } from './PortalHeader'
 
 type ConferenceInfo = {
   name: string
@@ -19,7 +20,9 @@ type ConferenceInfo = {
 }
 
 export function SimpleRolePage({ role }: { role: string }) {
-  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const preselectedSlug = searchParams.get('conference')?.trim() || null
+
   const [userName, setUserName] = useState('')
   const [conference, setConference] = useState<ConferenceInfo | null>(null)
   const [conferenceError, setConferenceError] = useState<string | null>(null)
@@ -41,7 +44,17 @@ export function SimpleRolePage({ role }: { role: string }) {
       setUserName(profile?.full_name ?? userData.user.email ?? '')
 
       const requests = (requestsData ?? []) as MyRoleRequestRow[]
-      const match = requests.find((r) => r.role_code === role && r.status === 'approved')
+      const approved = requests.filter((r) => r.role_code === role && r.status === 'approved')
+
+      let match = approved[0]
+      if (preselectedSlug && approved.length > 1) {
+        const { data: slugRows } = await supabase
+          .from('conferences')
+          .select('id, slug')
+          .in('id', approved.map((r) => r.conference_id))
+        const preselectedId = (slugRows ?? []).find((c) => c.slug === preselectedSlug)?.id
+        match = approved.find((r) => r.conference_id === preselectedId) ?? match
+      }
 
       if (!match?.conference_id) return
 
@@ -66,29 +79,11 @@ export function SimpleRolePage({ role }: { role: string }) {
     return () => {
       cancelled = true
     }
-  }, [role])
-
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    navigate('/login')
-  }
+  }, [role, preselectedSlug])
 
   return (
     <div className="min-h-screen bg-background text-ink">
-      <header className="flex flex-wrap items-center justify-between gap-3 bg-button px-4 py-3 text-white">
-        <span className="font-semibold">Conference management system</span>
-        <div className="flex items-center gap-3 text-sm">
-          <span>{userName}</span>
-          <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{roleDef?.label ?? role}</span>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="rounded border border-white/40 px-3 py-1 hover:bg-white/10"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <PortalHeader roleLabel={roleDef?.label ?? role} />
       <main className="mx-auto max-w-2xl px-4 py-10">
         <h1 className="text-2xl font-semibold">Welcome, {userName || 'there'}</h1>
 

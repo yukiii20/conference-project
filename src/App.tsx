@@ -1,13 +1,23 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { SuperAdminRoute } from './components/SuperAdminRoute'
+import { HomePage } from './pages/HomePage'
+import { PrivacyPage } from './pages/PrivacyPage'
+import { TermsPage } from './pages/TermsPage'
+import { NotFoundPage } from './pages/NotFoundPage'
+import { ConferencePage } from './pages/ConferencePage'
 import { SignupPage } from './pages/SignupPage'
 import { LoginPage } from './pages/LoginPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { ChangePasswordPage } from './pages/ChangePasswordPage'
+import { SetPasswordPage } from './pages/SetPasswordPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage'
+import { SuperAdminPage } from './pages/SuperAdminPage'
 import { ConvenorPage } from './pages/ConvenorPage'
 import { AuthorPage } from './pages/AuthorPage'
 import { ReviewerPage } from './pages/ReviewerPage'
-import { ChairPage } from './pages/ChairPage'
 import { StaffPage } from './pages/StaffPage'
 import { ManagerPage } from './pages/ManagerPage'
 
@@ -15,11 +25,26 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/c/:slug" element={<ConferencePage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
+        <Route
+          path="/super-admin"
+          element={
+            <SuperAdminRoute>
+              <SuperAdminPage />
+            </SuperAdminRoute>
+          }
+        />
         <Route
           path="/convenor"
           element={
@@ -45,14 +70,6 @@ export default function App() {
           }
         />
         <Route
-          path="/chair"
-          element={
-            <ProtectedRoute kind="role" role="session_chair">
-              <ChairPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/staff"
           element={
             <ProtectedRoute kind="role" role="staff">
@@ -68,7 +85,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

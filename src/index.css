@@ -5,6 +5,23 @@
   --color-background: #f3f5f8;
   --color-line: #d9dee7;
   --color-button: #2747a0;
+  --color-accent: #e3a21a;
+
+  /* Landing page (/, /privacy, /terms) only — never used by the portal, the
+     conference pages, or login. Keep the two palettes separate. */
+  --color-landing-navy-900: #0a1a33;
+  --color-landing-navy-800: #12284c;
+  --color-landing-navy-600: #1f3f73;
+  --color-landing-navy-100: #e6ecf5;
+  --color-landing-bg: #f7f9fc;
+  --color-landing-text: #0f172a;
+  --color-landing-muted: #475569;
+  --color-landing-border: #e2e8f0;
+  --color-landing-gold: #c9a227;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -17,4 +34,269 @@ body {
   outline: 2px solid var(--color-button);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+@keyframes conf-panel-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.conf-panel-enter {
+  animation: conf-panel-fade 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conf-panel-enter {
+    animation: none;
+  }
+}
+
+/* Super admin login — plain institutional design. Scoped to this page only. */
+.sa-login {
+  min-height: 100vh;
+  background: #f6f7f9;
+  display: flex;
+  flex-direction: column;
+}
+
+.sa-login__topbar {
+  height: 4px;
+  background: #0a1a33;
+  flex-shrink: 0;
+}
+
+.sa-login__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+}
+
+.sa-login__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.sa-login__logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.sa-login__brand-name {
+  font-family: 'Source Serif 4', serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #0a1a33;
+}
+
+.sa-login__divider {
+  width: 1px;
+  height: 16px;
+  background: #cbd5e1;
+}
+
+.sa-login__brand-sub {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #475569;
+}
+
+.sa-login__main {
+  flex: 1 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.sa-login__form-col {
+  width: 360px;
+  max-width: 100%;
+  padding-top: 22vh;
+  padding-bottom: 48px;
+}
+
+.sa-login__heading {
+  font-family: 'Source Serif 4', serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: #0a1a33;
+  margin: 0;
+}
+
+.sa-login__subheading {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #475569;
+  margin: 8px 0 0;
+}
+
+.sa-login__notices {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sa-login__notice {
+  border-left: 3px solid #b42318;
+  background: #fef3f2;
+  padding: 12px 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #0f172a;
+}
+
+.sa-login__fields {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sa-login__field-label {
+  display: block;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.sa-login__input {
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  padding: 0 12px;
+  color: #0f172a;
+}
+
+.sa-login__input:focus {
+  outline: none;
+  border-color: #1f3f73;
+  box-shadow: 0 0 0 2px rgba(31, 63, 115, 0.25);
+}
+
+.sa-login__input[aria-invalid='true'] {
+  border-color: #b42318;
+}
+
+.sa-login__input--password {
+  padding-right: 56px;
+}
+
+.sa-login__field-error {
+  margin: 8px 0 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #b42318;
+}
+
+.sa-login__field-hint {
+  margin: 8px 0 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #475569;
+}
+
+.sa-login__password-wrap {
+  position: relative;
+}
+
+.sa-login__toggle {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f3f73;
+  cursor: pointer;
+}
+
+.sa-login__toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.sa-login__submit {
+  width: 100%;
+  height: 44px;
+  border: none;
+  border-radius: 4px;
+  background: #1f3f73;
+  color: #ffffff;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sa-login__submit:hover:not(:disabled) {
+  background: #12284c;
+}
+
+.sa-login__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.sa-login__forgot {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #1f3f73;
+  text-decoration: underline;
+}
+
+.sa-login__footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 24px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #475569;
+  gap: 8px;
+}
+
+@media (max-width: 639px) {
+  .sa-login__main {
+    padding: 0 20px;
+  }
+
+  .sa-login__form-col {
+    width: 100%;
+    padding-top: 12vh;
+  }
+
+  .sa-login__footer {
+    flex-direction: column;
+  }
 }
