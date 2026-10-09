@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api, ApiError } from '../lib/api'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
 
 export function ChangePasswordPage() {
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -15,14 +16,14 @@ export function ChangePasswordPage() {
 
   useEffect(() => {
     let cancelled = false
-    supabase.auth.getUser().then(({ data }) => {
-      if (cancelled) return
-      if (!data.user) {
-        navigate('/login')
-        return
-      }
-      setChecking(false)
-    })
+    api
+      .get('/auth/me')
+      .then(() => {
+        if (!cancelled) setChecking(false)
+      })
+      .catch(() => {
+        if (!cancelled) navigate('/login')
+      })
     return () => {
       cancelled = true
     }
@@ -33,6 +34,11 @@ export function ChangePasswordPage() {
     setError(null)
     setSuccess(false)
 
+    if (!currentPassword) {
+      setError('Enter your current password.')
+      return
+    }
+
     const parsed = resetPasswordSchema.safeParse({ password, confirm_password: confirmPassword })
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Enter a valid password.')
@@ -40,16 +46,20 @@ export function ChangePasswordPage() {
     }
 
     setSubmitting(true)
-    const { error: updateError } = await supabase.auth.updateUser({ password: parsed.data.password })
-    setSubmitting(false)
-
-    if (updateError) {
-      setError(updateError.message)
-      return
+    try {
+      await api.post('/auth/change-password', {
+        current_password: currentPassword,
+        new_password: parsed.data.password,
+      })
+      setCurrentPassword('')
+      setPassword('')
+      setConfirmPassword('')
+      setSuccess(true)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'We could not update your password.')
+    } finally {
+      setSubmitting(false)
     }
-    setPassword('')
-    setConfirmPassword('')
-    setSuccess(true)
   }
 
   if (checking) {
@@ -78,6 +88,19 @@ export function ChangePasswordPage() {
         ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="current_password" className="block text-sm font-medium text-ink">
+              Current password
+            </label>
+            <input
+              id="current_password"
+              type={showPassword ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            />
+          </div>
+
           <div>
             <div className="flex items-center justify-between">
               <label htmlFor="password" className="block text-sm font-medium text-ink">

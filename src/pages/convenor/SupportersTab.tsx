@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { imageExtension } from '../../lib/storage'
+import { api, ApiError } from '../../lib/api'
 import { SUPPORTER_TIERS, supporterSchema, type SupporterTier } from '../../lib/validation'
 import { ImageUpload } from '../../components/ImageUpload'
 
@@ -45,24 +44,16 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data, error: loadError } = await supabase
-      .from('conference_supporters')
-      .select('id, name, tier, logo_path, website_url, display_order, is_active')
-      .eq('conference_id', conferenceId)
-      .order('tier', { ascending: true })
-      .order('display_order', { ascending: true })
-
-    if (loadError) {
-      setError(loadError.message)
+    try {
+      const data = await api.get<{ supporters: Supporter[] }>(`/conferences/${conferenceId}/supporters`)
+      setSupporters(data.supporters)
+      setEdits(Object.fromEntries(data.supporters.map((s) => [s.id, toEditState(s)])))
+      setError(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load supporters.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    const list = (data ?? []) as Supporter[]
-    setSupporters(list)
-    setEdits(Object.fromEntries(list.map((s) => [s.id, toEditState(s)])))
-    setError(null)
-    setLoading(false)
   }, [conferenceId])
 
   useEffect(() => {
@@ -86,30 +77,38 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
     }
     setRowErrors((prev) => ({ ...prev, [supporter.id]: '' }))
     setBusyId(supporter.id)
-    const { error: saveError } = await supabase
-      .from('conference_supporters')
-      .update({ name: parsed.data.name, tier: parsed.data.tier, website_url: parsed.data.website_url })
-      .eq('id', supporter.id)
-    setBusyId(null)
-    if (saveError) {
-      setRowErrors((prev) => ({ ...prev, [supporter.id]: saveError.message }))
-      return
+    try {
+      await api.patch(`/conferences/${conferenceId}/supporters/${supporter.id}`, {
+        name: parsed.data.name,
+        tier: parsed.data.tier,
+        website_url: parsed.data.website_url,
+      })
+      await load()
+    } catch (err) {
+      setRowErrors((prev) => ({
+        ...prev,
+        [supporter.id]: err instanceof ApiError ? err.message : 'Could not save this.',
+      }))
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   async function handleToggleActive(supporter: Supporter) {
     setBusyId(supporter.id)
-    const { error: toggleError } = await supabase
-      .from('conference_supporters')
-      .update({ is_active: !supporter.is_active })
-      .eq('id', supporter.id)
-    setBusyId(null)
-    if (toggleError) {
-      setRowErrors((prev) => ({ ...prev, [supporter.id]: toggleError.message }))
-      return
+    try {
+      await api.patch(`/conferences/${conferenceId}/supporters/${supporter.id}/active`, {
+        is_active: !supporter.is_active,
+      })
+      await load()
+    } catch (err) {
+      setRowErrors((prev) => ({
+        ...prev,
+        [supporter.id]: err instanceof ApiError ? err.message : 'Could not update this.',
+      }))
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   async function handleMove(supporter: Supporter, direction: 'up' | 'down') {
@@ -119,34 +118,40 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
     const index = group.findIndex((s) => s.id === supporter.id)
     const swapIndex = direction === 'up' ? index - 1 : index + 1
     if (swapIndex < 0 || swapIndex >= group.length) return
-    const other = group[swapIndex]
+
+    const reordered = [...group]
+    const tmp = reordered[index]!
+    reordered[index] = reordered[swapIndex]!
+    reordered[swapIndex] = tmp
 
     setBusyId(supporter.id)
-    const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from('conference_supporters').update({ display_order: other.display_order }).eq('id', supporter.id),
-      supabase.from('conference_supporters').update({ display_order: supporter.display_order }).eq('id', other.id),
-    ])
-    setBusyId(null)
-    if (e1 || e2) {
-      setError((e1 ?? e2)?.message ?? 'Could not reorder supporters.')
-      return
+    try {
+      await api.post(`/conferences/${conferenceId}/supporters/reorder`, {
+        tier: supporter.tier,
+        supporter_ids: reordered.map((s) => s.id),
+      })
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reorder supporters.')
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   async function handleRemove(supporter: Supporter) {
     if (!window.confirm(`Delete ${supporter.name}? This also removes its logo.`)) return
     setBusyId(supporter.id)
-    const { error: deleteError } = await supabase.from('conference_supporters').delete().eq('id', supporter.id)
-    setBusyId(null)
-    if (deleteError) {
-      setRowErrors((prev) => ({ ...prev, [supporter.id]: deleteError.message }))
-      return
+    try {
+      await api.del(`/conferences/${conferenceId}/supporters/${supporter.id}`)
+      await load()
+    } catch (err) {
+      setRowErrors((prev) => ({
+        ...prev,
+        [supporter.id]: err instanceof ApiError ? err.message : 'Could not delete this.',
+      }))
+    } finally {
+      setBusyId(null)
     }
-    if (supporter.logo_path) {
-      await supabase.storage.from('public-assets').remove([supporter.logo_path])
-    }
-    await load()
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -158,22 +163,19 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
       return
     }
     setCreating(true)
-    const siblingOrders = supporters.filter((s) => s.tier === parsed.data.tier).map((s) => s.display_order)
-    const nextOrder = siblingOrders.length === 0 ? 0 : Math.max(...siblingOrders) + 1
-    const { error: createError } = await supabase.from('conference_supporters').insert({
-      conference_id: conferenceId,
-      name: parsed.data.name,
-      tier: parsed.data.tier,
-      website_url: parsed.data.website_url,
-      display_order: nextOrder,
-    })
-    setCreating(false)
-    if (createError) {
-      setNewError(createError.message)
-      return
+    try {
+      await api.post(`/conferences/${conferenceId}/supporters`, {
+        name: parsed.data.name,
+        tier: parsed.data.tier,
+        website_url: parsed.data.website_url,
+      })
+      setNewSupporter(EMPTY_NEW)
+      await load()
+    } catch (err) {
+      setNewError(err instanceof ApiError ? err.message : 'Could not create this supporter.')
+    } finally {
+      setCreating(false)
     }
-    setNewSupporter(EMPTY_NEW)
-    await load()
   }
 
   if (loading) {
@@ -216,27 +218,10 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
                           maxSizeMB={MAX_MB}
                           aspect="square"
                           size="sm"
-                          buildPath={(file) =>
-                            `conferences/${conferenceId}/supporters/${crypto.randomUUID()}.${imageExtension(file.type)}`
-                          }
-                          onSaved={async (path) => {
-                            const { error } = await supabase
-                              .from('conference_supporters')
-                              .update({ logo_path: path })
-                              .eq('id', supporter.id)
-                            if (error) return error.message
-                            await load()
-                            return null
-                          }}
-                          onRemoved={async () => {
-                            const { error } = await supabase
-                              .from('conference_supporters')
-                              .update({ logo_path: null })
-                              .eq('id', supporter.id)
-                            if (error) return error.message
-                            await load()
-                            return null
-                          }}
+                          uploadUrl={`/api/conferences/${conferenceId}/supporters/${supporter.id}/logo`}
+                          removeUrl={`/api/conferences/${conferenceId}/supporters/${supporter.id}/logo`}
+                          onSaved={() => load()}
+                          onRemoved={() => load()}
                         />
                         <div className="min-w-[220px] flex-1 space-y-2">
                           <input

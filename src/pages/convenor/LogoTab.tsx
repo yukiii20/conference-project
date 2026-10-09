@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { imageExtension } from '../../lib/storage'
+import { api, ApiError } from '../../lib/api'
 import { ImageUpload } from '../../components/ImageUpload'
 
 const MAX_MB = 2
@@ -15,14 +14,17 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
 
     async function load() {
       setLoading(true)
-      const { data, error } = await supabase.from('conferences').select('logo_path').eq('id', conferenceId).single()
-      if (cancelled) return
-      if (error) {
-        setLoadError(error.message)
-      } else {
-        setLogoPath(data?.logo_path ?? null)
+      try {
+        const data = await api.get<{ conference: { logo_path: string | null } }>(`/conferences/${conferenceId}/details`)
+        if (cancelled) return
+        setLogoPath(data.conference.logo_path)
+        setLoadError(null)
+      } catch (err) {
+        if (cancelled) return
+        setLoadError(err instanceof ApiError ? err.message : 'Could not load the logo.')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-      setLoading(false)
     }
 
     load()
@@ -46,19 +48,10 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
         currentPath={logoPath}
         maxSizeMB={MAX_MB}
         aspect="square"
-        buildPath={(file) => `conferences/${conferenceId}/logo-${crypto.randomUUID()}.${imageExtension(file.type)}`}
-        onSaved={async (path) => {
-          const { error } = await supabase.from('conferences').update({ logo_path: path }).eq('id', conferenceId)
-          if (error) return error.message
-          setLogoPath(path)
-          return null
-        }}
-        onRemoved={async () => {
-          const { error } = await supabase.from('conferences').update({ logo_path: null }).eq('id', conferenceId)
-          if (error) return error.message
-          setLogoPath(null)
-          return null
-        }}
+        uploadUrl={`/api/conferences/${conferenceId}/logo`}
+        removeUrl={`/api/conferences/${conferenceId}/logo`}
+        onSaved={setLogoPath}
+        onRemoved={() => setLogoPath(null)}
       />
     </div>
   )

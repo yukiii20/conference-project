@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 import { fromKathmanduInputValue, toKathmanduInputValue } from '../../lib/datetime'
 
-type DeadlineType = { code: string; name: string; is_window: boolean; sort_order: number }
+type DeadlineRow = {
+  code: string
+  name: string
+  is_window: boolean
+  sort_order: number
+  opens_at: string | null
+  closes_at: string | null
+  is_public: boolean | null
+}
 
 type RowState = {
   opens_at: string
@@ -13,7 +21,7 @@ type RowState = {
 const EMPTY_ROW: RowState = { opens_at: '', closes_at: '', is_public: true }
 
 export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
-  const [types, setTypes] = useState<DeadlineType[]>([])
+  const [deadlineRows, setDeadlineRows] = useState<DeadlineRow[]>([])
   const [rows, setRows] = useState<Record<string, RowState>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -25,39 +33,29 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
 
     async function load() {
       setLoading(true)
-      const [{ data: typesData, error: typesError }, { data: deadlinesData, error: deadlinesError }] =
-        await Promise.all([
-          supabase.from('deadline_types').select('code, name, is_window, sort_order').order('sort_order'),
-          supabase
-            .from('conference_deadlines')
-            .select('deadline_type, opens_at, closes_at, is_public')
-            .eq('conference_id', conferenceId),
-        ])
+      try {
+        const data = await api.get<{ deadlines: DeadlineRow[] }>(`/conferences/${conferenceId}/deadlines`)
+        if (cancelled) return
 
-      if (cancelled) return
-
-      if (typesError || deadlinesError) {
-        setError((typesError ?? deadlinesError)?.message ?? 'Could not load key dates.')
-        setLoading(false)
-        return
-      }
-
-      const typesList = (typesData ?? []) as DeadlineType[]
-      setTypes(typesList)
-
-      const nextRows: Record<string, RowState> = {}
-      for (const t of typesList) {
-        nextRows[t.code] = { ...EMPTY_ROW }
-      }
-      for (const d of deadlinesData ?? []) {
-        nextRows[d.deadline_type] = {
-          opens_at: toKathmanduInputValue(d.opens_at),
-          closes_at: toKathmanduInputValue(d.closes_at),
-          is_public: d.is_public,
+        setDeadlineRows(data.deadlines)
+        const nextRows: Record<string, RowState> = {}
+        for (const d of data.deadlines) {
+          nextRows[d.code] = d.opens_at
+            ? {
+                opens_at: toKathmanduInputValue(d.opens_at),
+                closes_at: d.closes_at ? toKathmanduInputValue(d.closes_at) : '',
+                is_public: d.is_public ?? true,
+              }
+            : { ...EMPTY_ROW }
         }
+        setRows(nextRows)
+        setError(null)
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : 'Could not load key dates.')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-      setRows(nextRows)
-      setLoading(false)
     }
 
     load()
@@ -76,14 +74,13 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
     setSaved(false)
 
     const payload: Array<{
-      conference_id: string
       deadline_type: string
       opens_at: string
       closes_at: string | null
       is_public: boolean
     }> = []
 
-    for (const t of types) {
+    for (const t of deadlineRows) {
       const row = rows[t.code]
       if (!row) continue
 
@@ -96,12 +93,12 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
           setError(`${t.name}: the closing date must be on or after the opening date.`)
           return
         }
-        payload.push({ conference_id: conferenceId, deadline_type: t.code, opens_at: opensIso, closes_at: closesIso, is_public: row.is_public })
+        payload.push({ deadline_type: t.code, opens_at: opensIso, closes_at: closesIso, is_public: row.is_public })
       } else {
         if (!row.closes_at) continue
         const iso = fromKathmanduInputValue(row.closes_at)
         if (!iso) continue
-        payload.push({ conference_id: conferenceId, deadline_type: t.code, opens_at: iso, closes_at: iso, is_public: row.is_public })
+        payload.push({ deadline_type: t.code, opens_at: iso, closes_at: iso, is_public: row.is_public })
       }
     }
 
@@ -111,16 +108,14 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
     }
 
     setSaving(true)
-    const { error: saveError } = await supabase
-      .from('conference_deadlines')
-      .upsert(payload, { onConflict: 'conference_id,deadline_type' })
-    setSaving(false)
-
-    if (saveError) {
-      setError(saveError.message)
-      return
+    try {
+      await api.put(`/conferences/${conferenceId}/deadlines`, { deadlines: payload })
+      setSaved(true)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save key dates.')
+    } finally {
+      setSaving(false)
     }
-    setSaved(true)
   }
 
   if (loading) {
@@ -141,7 +136,7 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
       <p className="mb-4 text-sm text-ink/60">Times are shown and saved in Asia/Kathmandu time.</p>
 
       <div className="space-y-4">
-        {types.map((t) => {
+        {deadlineRows.map((t) => {
           const row = rows[t.code] ?? EMPTY_ROW
           return (
             <div key={t.code} className="rounded-lg border border-line bg-white p-4">

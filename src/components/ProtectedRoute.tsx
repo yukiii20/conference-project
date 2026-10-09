@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import type { MyRoleRow, MyRoleRequestRow } from '../lib/types'
+import { useAuth } from '../lib/authContext'
 
 type Props =
   | { kind: 'convenor'; children: React.ReactNode }
@@ -11,42 +10,30 @@ type Props =
  * Re-checks access every time this route is mounted (i.e. on every
  * navigation to it), not just once at login — a pending/rejected/removed
  * role never grants access, and an approval takes effect on the next visit.
+ * Identity comes only from useAuth()'s refresh(), i.e. GET /api/auth/me —
+ * never from a Supabase session.
  */
 export function ProtectedRoute(props: Props) {
+  const { refresh } = useAuth()
   const [state, setState] = useState<'checking' | 'ok' | 'denied'>('checking')
-  const roleKey = props.kind === 'role' ? props.role : null
+  const roleKey = props.kind === 'role' ? props.role : 'convenor'
 
   useEffect(() => {
     let cancelled = false
 
     async function check() {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        if (!cancelled) setState('denied')
-        return
-      }
-
-      if (props.kind === 'convenor') {
-        const { data } = await supabase.rpc('get_my_roles')
-        const roles = (data ?? []) as MyRoleRow[]
-        const ok = roles.some((r) => r.role_code === 'convenor')
-        if (!cancelled) setState(ok ? 'ok' : 'denied')
-        return
-      }
-
-      const { data } = await supabase.rpc('get_my_role_requests')
-      const requests = (data ?? []) as MyRoleRequestRow[]
-      const ok = requests.some((r) => r.role_code === roleKey && r.status === 'approved')
-      if (!cancelled) setState(ok ? 'ok' : 'denied')
+      setState('checking')
+      const data = await refresh()
+      if (cancelled) return
+      const ok = data?.roles.some((r) => r.role_code === roleKey) ?? false
+      setState(ok ? 'ok' : 'denied')
     }
 
-    setState('checking')
     check()
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.kind, roleKey])
+  }, [roleKey, refresh])
 
   if (state === 'checking') {
     return (

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import type { MyRoleRow } from '../lib/types'
+import { api } from '../lib/api'
+import { useAuth } from '../lib/authContext'
 import { PortalHeader } from '../components/PortalHeader'
 import { RoleRequestsTab } from './convenor/RoleRequestsTab'
 import { ConferenceDetailsTab } from './convenor/ConferenceDetailsTab'
@@ -41,6 +41,7 @@ type ConvenorConference = { id: string; name: string; slug: string }
 export function ConvenorPage() {
   const [searchParams] = useSearchParams()
   const preselectedSlug = searchParams.get('conference')?.trim() || null
+  const { roles } = useAuth()
 
   const [myConferences, setMyConferences] = useState<ConvenorConference[]>([])
   const [conferenceId, setConferenceId] = useState<string | null>(null)
@@ -48,42 +49,20 @@ export function ConvenorPage() {
   const [loading, setLoading] = useState(true)
   const [missingAbstractDates, setMissingAbstractDates] = useState(false)
 
+  // The conference selector comes only from GET /api/auth/me (via the shared
+  // auth context) — never from a Supabase session/RPC, which is exactly
+  // what let a stale Supabase user/conference show up here before.
   useEffect(() => {
-    let cancelled = false
+    const options: ConvenorConference[] = roles
+      .filter((r) => r.role_code === 'convenor' && r.conference_id)
+      .map((r) => ({ id: r.conference_id as string, name: r.conference_name ?? '', slug: r.conference_slug ?? '' }))
 
-    async function init() {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) return
+    setMyConferences(options)
 
-      const { data: rolesData } = await supabase.rpc('get_my_roles')
-
-      if (cancelled) return
-
-      const roles = (rolesData ?? []) as MyRoleRow[]
-      const confIds = roles.filter((r) => r.role_code === 'convenor' && r.conference_id).map((r) => r.conference_id as string)
-
-      if (confIds.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      const { data: confData } = await supabase.from('conferences').select('id, name, slug').in('id', confIds)
-      if (cancelled) return
-
-      const options = (confData ?? []) as ConvenorConference[]
-      setMyConferences(options)
-
-      const preselected = preselectedSlug ? options.find((c) => c.slug === preselectedSlug) : null
-      setConferenceId((preselected ?? options[0])?.id ?? null)
-      setLoading(false)
-    }
-
-    init()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    const preselected = preselectedSlug ? options.find((c) => c.slug === preselectedSlug) : null
+    setConferenceId((preselected ?? options[0])?.id ?? null)
+    setLoading(false)
+  }, [roles, preselectedSlug])
 
   const conferenceName = myConferences.find((c) => c.id === conferenceId)?.name ?? ''
 
@@ -92,14 +71,17 @@ export function ConvenorPage() {
     let cancelled = false
 
     async function checkAbstractDates() {
-      const { data } = await supabase
-        .from('conference_deadlines')
-        .select('id')
-        .eq('conference_id', conferenceId as string)
-        .eq('deadline_type', 'abstract_submission')
-        .maybeSingle()
-      if (cancelled) return
-      setMissingAbstractDates(!data)
+      try {
+        const data = await api.get<{ deadlines: Array<{ code: string; opens_at: string | null }> }>(
+          `/conferences/${conferenceId}/deadlines`,
+        )
+        if (cancelled) return
+        const row = data.deadlines.find((d) => d.code === 'abstract_submission')
+        setMissingAbstractDates(!row?.opens_at)
+      } catch {
+        if (cancelled) return
+        setMissingAbstractDates(false)
+      }
     }
 
     checkAbstractDates()

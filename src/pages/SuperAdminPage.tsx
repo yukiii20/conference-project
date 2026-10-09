@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { api, ApiError } from '../lib/api'
 import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } from '../lib/validation'
 import { useNoIndex } from '../lib/noindex'
 import { PortalHeader } from '../components/PortalHeader'
@@ -15,6 +15,12 @@ type ConferenceRow = {
   start_date: string
   end_date: string
   status: string
+}
+
+type AdminConferenceRow = ConferenceRow & {
+  convenor_id: string | null
+  convenor_name: string | null
+  convenor_email: string | null
 }
 
 type ConvenorInfo = {
@@ -64,44 +70,23 @@ export function SuperAdminPage() {
 
   const loadConferences = useCallback(async () => {
     setLoading(true)
-    const [{ data: confData, error: confError }, { data: memberData, error: memberError }] = await Promise.all([
-      supabase
-        .from('conferences')
-        .select('id, name, code, slug, short_name, start_date, end_date, status')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('conference_members')
-        .select('conference_id, profiles!conference_members_user_id_fkey(full_name, email)')
-        .eq('role_code', 'convenor')
-        .eq('status', 'active'),
-    ])
+    try {
+      const data = await api.get<{ conferences: AdminConferenceRow[] }>('/admin/conferences')
+      setConferences(data.conferences)
 
-    if (confError) {
-      setLoadError(confError.message)
-      setConferences([])
-      setLoading(false)
-      return
-    }
-
-    setConferences((confData ?? []) as ConferenceRow[])
-
-    if (memberError) {
-      setLoadError(memberError.message)
-      setConvenorByConference({})
-    } else {
       const map: Record<string, ConvenorInfo> = {}
-      for (const row of (memberData ?? []) as Array<{
-        conference_id: string
-        profiles: ConvenorInfo | ConvenorInfo[] | null
-      }>) {
-        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
-        if (profile) map[row.conference_id] = profile
+      for (const row of data.conferences) {
+        if (row.convenor_id) map[row.id] = { full_name: row.convenor_name, email: row.convenor_email }
       }
       setConvenorByConference(map)
       setLoadError(null)
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Could not load conferences.')
+      setConferences([])
+      setConvenorByConference({})
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -175,13 +160,14 @@ function ConferencesTab({
   async function handlePublish(id: string) {
     setPublishBusyId(id)
     setPublishError(null)
-    const { error } = await supabase.from('conferences').update({ status: 'submission_open' }).eq('id', id)
-    setPublishBusyId(null)
-    if (error) {
-      setPublishError(error.message)
-      return
+    try {
+      await api.post(`/admin/conferences/${id}/publish`)
+      await onReload()
+    } catch (err) {
+      setPublishError(err instanceof ApiError ? err.message : 'Could not publish this conference.')
+    } finally {
+      setPublishBusyId(null)
     }
-    await onReload()
   }
 
   return (
@@ -303,15 +289,6 @@ const EMPTY_NEW_CONFERENCE = {
   timezone: 'Asia/Kathmandu',
 }
 
-/** Default key-dates window applied to every new conference: deadline_type -> days from now the window closes. */
-const DEFAULT_DEADLINE_OFFSETS: Array<{ deadline_type: string; closes_in_days: number }> = [
-  { deadline_type: 'registration', closes_in_days: 60 },
-  { deadline_type: 'abstract_submission', closes_in_days: 30 },
-  { deadline_type: 'review', closes_in_days: 45 },
-  { deadline_type: 'full_paper', closes_in_days: 55 },
-  { deadline_type: 'final_paper', closes_in_days: 58 },
-]
-
 function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise<void> }) {
   const [form, setForm] = useState(EMPTY_NEW_CONFERENCE)
   const [slugTouched, setSlugTouched] = useState(false)
@@ -348,11 +325,8 @@ function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise
     setErrors({})
     setSubmitting(true)
 
-    const { data: userData } = await supabase.auth.getUser()
-
-    const { data: inserted, error } = await supabase
-      .from('conferences')
-      .insert({
+    try {
+      await api.post('/admin/conferences', {
         name: parsed.data.name,
         short_name: parsed.data.short_name,
         code: parsed.data.code,
@@ -362,37 +336,15 @@ function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise
         city: parsed.data.city,
         country: parsed.data.country,
         timezone: parsed.data.timezone,
-        status: 'draft',
-        social_links: {},
-        created_by: userData.user?.id ?? null,
       })
-      .select('id')
-      .single()
-
-    if (error || !inserted) {
+      setForm(EMPTY_NEW_CONFERENCE)
+      setSlugTouched(false)
+      await onCreated('Conference created with default key dates; the convenor can change them in Key dates.')
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not create the conference.')
+    } finally {
       setSubmitting(false)
-      setFormError(error?.message ?? 'Could not create the conference.')
-      return
     }
-
-    const now = new Date()
-    const deadlineRows = DEFAULT_DEADLINE_OFFSETS.map((d) => ({
-      conference_id: inserted.id,
-      deadline_type: d.deadline_type,
-      opens_at: now.toISOString(),
-      closes_at: new Date(now.getTime() + d.closes_in_days * 24 * 60 * 60 * 1000).toISOString(),
-    }))
-    const { error: deadlinesError } = await supabase.from('conference_deadlines').insert(deadlineRows)
-
-    setSubmitting(false)
-    setForm(EMPTY_NEW_CONFERENCE)
-    setSlugTouched(false)
-
-    await onCreated(
-      deadlinesError
-        ? `Conference created. Could not create default key dates (${deadlinesError.message}) — set them in Key dates.`
-        : 'Default key dates created; the convenor can change them in Key dates.',
-    )
   }
 
   return (
@@ -549,19 +501,6 @@ const EMPTY_INVITE_CONVENOR = {
 
 type InviteConvenorResult = { invited: boolean; appointed: boolean }
 
-async function readFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
-  const context = (error as { context?: Response }).context
-  if (context) {
-    try {
-      const body = await context.json()
-      if (body && typeof body.error === 'string') return body.error
-    } catch {
-      // fall through to fallback
-    }
-  }
-  return (error as { message?: string }).message ?? fallback
-}
-
 function CreateConvenorTab({
   conferences,
   convenorByConference,
@@ -608,33 +547,31 @@ function CreateConvenorTab({
 
     setSubmitting(true)
 
-    const { data, error } = await supabase.functions.invoke('invite-convenor', {
-      body: {
-        conference_id: parsed.data.conference_id,
-        full_name: parsed.data.full_name,
-        email: parsed.data.email,
-        phone: parsed.data.phone,
-      },
-    })
+    try {
+      const result = await api.post<InviteConvenorResult>(
+        `/admin/conferences/${parsed.data.conference_id}/convenor-invite`,
+        {
+          full_name: parsed.data.full_name,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+        },
+      )
 
-    setSubmitting(false)
+      const conference = conferences.find((c) => c.id === parsed.data.conference_id)
+      const conferenceName = conference?.name ?? 'the conference'
 
-    if (error) {
-      setFormError(await readFunctionErrorMessage(error, 'Could not invite this convenor.'))
-      return
+      setSuccess(
+        result.invited
+          ? `Invitation sent to ${parsed.data.email}. They will set their own password from the email.`
+          : `${parsed.data.full_name} already has an account and is now the convenor of ${conferenceName}.`,
+      )
+      setForm(EMPTY_INVITE_CONVENOR)
+      await onReload()
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not invite this convenor.')
+    } finally {
+      setSubmitting(false)
     }
-
-    const result = data as InviteConvenorResult
-    const conference = conferences.find((c) => c.id === parsed.data.conference_id)
-    const conferenceName = conference?.name ?? 'the conference'
-
-    setSuccess(
-      result.invited
-        ? `Invitation sent to ${parsed.data.email}. They will set their own password from the email.`
-        : `${parsed.data.full_name} already has an account and is now the convenor of ${conferenceName}.`,
-    )
-    setForm(EMPTY_INVITE_CONVENOR)
-    await onReload()
   }
 
   return (
@@ -749,19 +686,16 @@ function AppointConvenorTab({
     let cancelled = false
     setSearching(true)
     const handle = setTimeout(async () => {
-      const safe = term.replace(/[,()%]/g, '')
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, phone, created_at')
-        .or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`)
-        .limit(20)
-      if (cancelled) return
-      setSearching(false)
-      if (error) {
-        setSearchError(error.message)
-      } else {
-        setResults((data ?? []) as ProfileRow[])
+      try {
+        const data = await api.get<{ users: ProfileRow[] }>('/admin/users', { query: term })
+        if (cancelled) return
+        setResults(data.users)
         setSearchError(null)
+      } catch (err) {
+        if (cancelled) return
+        setSearchError(err instanceof ApiError ? err.message : 'Could not search.')
+      } finally {
+        if (!cancelled) setSearching(false)
       }
     }, 300)
 
@@ -793,20 +727,16 @@ function AppointConvenorTab({
     }
 
     setBusyId(profile.id)
-    const { error } = await supabase.rpc('appoint_convenor', {
-      p_conference_id: conferenceId,
-      p_email: profile.email,
-    })
-    setBusyId(null)
-
-    if (error) {
-      setActionError(error.message)
-      return
+    try {
+      await api.post(`/admin/conferences/${conferenceId}/convenor`, { email: profile.email })
+      const conference = conferences.find((c) => c.id === conferenceId)
+      setSuccess(`${profile.full_name ?? profile.email} is now the convenor of ${conference?.name ?? 'the conference'}.`)
+      await onReload()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Could not appoint this convenor.')
+    } finally {
+      setBusyId(null)
     }
-
-    const conference = conferences.find((c) => c.id === conferenceId)
-    setSuccess(`${profile.full_name ?? profile.email} is now the convenor of ${conference?.name ?? 'the conference'}.`)
-    await onReload()
   }
 
   return (
@@ -891,20 +821,16 @@ function UsersTab() {
     let cancelled = false
     setLoading(true)
     const handle = setTimeout(async () => {
-      const term = query.trim().replace(/[,()%]/g, '')
-      const base = supabase
-        .from('profiles')
-        .select('id, full_name, email, phone, created_at')
-        .order('created_at', { ascending: false })
-        .limit(50)
-      const { data, error: err } = term ? await base.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`) : await base
-      if (cancelled) return
-      setLoading(false)
-      if (err) {
-        setError(err.message)
-      } else {
-        setResults((data ?? []) as ProfileRow[])
+      try {
+        const data = await api.get<{ users: ProfileRow[] }>('/admin/users', { query: query.trim() || undefined })
+        if (cancelled) return
+        setResults(data.users)
         setError(null)
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : 'Could not load users.')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
     }, 300)
 

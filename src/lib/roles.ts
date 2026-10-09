@@ -1,30 +1,31 @@
-export type RoleCode = 'author' | 'reviewer' | 'staff' | 'manager' | 'convenor' | 'admin'
+export type RoleCode = 'author' | 'reviewer' | 'session_chair' | 'staff' | 'manager' | 'convenor' | 'admin'
 
 export type RoleDefinition = {
   code: RoleCode
   label: string
-  path: string
+  // null for roles with no dashboard yet (nothing to navigate to after login).
+  path: string | null
 }
 
 export const ROLE_CATALOGUE: readonly RoleDefinition[] = [
   { code: 'admin', label: 'Administrator', path: '/super-admin' },
   { code: 'author', label: 'Author', path: '/author' },
   { code: 'reviewer', label: 'Reviewer', path: '/reviewer' },
+  { code: 'session_chair', label: 'Session Chair', path: null },
   { code: 'staff', label: 'Staff', path: '/staff' },
   { code: 'manager', label: 'Manager', path: '/manager' },
   { code: 'convenor', label: 'Convenor', path: '/convenor' },
 ] as const
 
-// Selectable at signup. Convenor goes through the same pending-approval flow
-// as every other role; approving it just requires a platform admin or an
-// existing convenor of that conference. Administrator is not here: there is
-// no self-service signup for it, accounts are appointed by an admin.
+// Selectable at signup. role_requests.role_code in the database only allows
+// author/reviewer/session_chair/staff/manager — convenor is never
+// self-signed-up, it's appointed directly by a platform admin.
 export const SIGNUP_ROLE_CODES = [
   'author',
   'reviewer',
+  'session_chair',
   'staff',
   'manager',
-  'convenor',
 ] as const
 export type SignupRoleCode = (typeof SIGNUP_ROLE_CODES)[number]
 

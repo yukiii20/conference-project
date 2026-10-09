@@ -1,8 +1,24 @@
+/** The `user` object returned by GET /api/auth/me. */
+export type MeUser = {
+  id: string
+  email: string
+  full_name: string
+  phone: string | null
+  institution: string | null
+  department: string | null
+  position: string | null
+  bio: string | null
+  country: string | null
+  orcid: string | null
+  photo_path: string | null
+}
+
 export type MyRoleRow = {
   role_code: string
   conference_id: string | null
   conference_code: string | null
   conference_name: string | null
+  conference_slug: string | null
   conference_status: string | null
 }
 

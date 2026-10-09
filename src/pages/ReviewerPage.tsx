@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/authContext'
 import { getRoleDefinition } from '../lib/roles'
-import type { MyRoleRow } from '../lib/types'
 import { PortalHeader } from '../components/PortalHeader'
 import { AssignmentsList } from './reviewer/AssignmentsList'
 import { ReviewForm } from './reviewer/ReviewForm'
@@ -12,6 +11,7 @@ type ReviewerConference = { id: string; name: string; slug: string }
 export function ReviewerPage() {
   const [searchParams] = useSearchParams()
   const preselectedSlug = searchParams.get('conference')?.trim() || null
+  const { roles } = useAuth()
 
   const [myConferences, setMyConferences] = useState<ReviewerConference[]>([])
   const [conferenceId, setConferenceId] = useState<string | null>(null)
@@ -19,38 +19,18 @@ export function ReviewerPage() {
   const [open, setOpen] = useState<{ assignmentId: string; submissionId: string } | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  // The conference selector comes only from GET /api/auth/me (via the
+  // shared auth context) — never from a Supabase session/RPC.
   useEffect(() => {
-    let cancelled = false
-    async function init() {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) return
+    const options: ReviewerConference[] = roles
+      .filter((r) => r.role_code === 'reviewer' && r.conference_id)
+      .map((r) => ({ id: r.conference_id as string, name: r.conference_name ?? '', slug: r.conference_slug ?? '' }))
 
-      const { data: rolesData } = await supabase.rpc('get_my_roles')
-      if (cancelled) return
-
-      const roles = (rolesData ?? []) as MyRoleRow[]
-      const confIds = roles.filter((r) => r.role_code === 'reviewer' && r.conference_id).map((r) => r.conference_id as string)
-
-      if (confIds.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      const { data: confData } = await supabase.from('conferences').select('id, name, slug').in('id', confIds)
-      if (cancelled) return
-
-      const options = (confData ?? []) as ReviewerConference[]
-      setMyConferences(options)
-      const preselected = preselectedSlug ? options.find((c) => c.slug === preselectedSlug) : null
-      setConferenceId((preselected ?? options[0])?.id ?? null)
-      setLoading(false)
-    }
-    init()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    setMyConferences(options)
+    const preselected = preselectedSlug ? options.find((c) => c.slug === preselectedSlug) : null
+    setConferenceId((preselected ?? options[0])?.id ?? null)
+    setLoading(false)
+  }, [roles, preselectedSlug])
 
   function handleSwitchConference(id: string) {
     setConferenceId(id)

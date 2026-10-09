@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api, ApiError } from '../lib/api'
 import { publicImageUrl } from '../lib/storage'
 import { formatDateRange, formatKathmandu, formatKathmanduTime, kathmanduDateKey } from '../lib/datetime'
 import { DEFAULT_CONFERENCE_COLOR, getAccessibleTextColor } from '../lib/color'
@@ -68,54 +68,35 @@ export function ConferencePage() {
 
     async function load() {
       setLoading(true)
-      const { data: conf, error: confError } = await supabase
-        .from('conferences')
-        .select(
-          'id, slug, code, name, tagline, theme, description, start_date, end_date, city, country, logo_path, banner_path, primary_color, venue_name, address, location_map_url, contact_email, contact_phone, website_url',
-        )
-        .eq('slug', slug ?? '')
-        .neq('status', 'draft')
-        .is('deleted_at', null)
-        .maybeSingle()
 
-      if (cancelled) return
-
-      if (confError) {
-        setError(confError.message)
+      let result: { conference: Conference; tracks: Track[]; deadlines: Deadline[]; supporters: Supporter[] } | null =
+        null
+      try {
+        result = await api.get(`/conferences/${slug ?? ''}`)
+      } catch (err) {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 404) {
+          setConference(null)
+          setLoading(false)
+          return
+        }
+        setError(err instanceof ApiError ? err.message : 'Could not load this conference.')
         setLoading(false)
         return
       }
-      if (!conf) {
-        setConference(null)
-        setLoading(false)
-        return
-      }
-      setConference(conf as Conference)
 
-      const [{ data: tracksData }, { data: supportersData }, { data: deadlinesData }, { data: scheduleData }] =
-        await Promise.all([
-          supabase.from('conference_tracks').select('id, name, description').eq('conference_id', conf.id).eq('is_active', true).order('display_order'),
-          supabase
-            .from('conference_supporters')
-            .select('id, name, tier, logo_path, website_url')
-            .eq('conference_id', conf.id)
-            .eq('is_active', true)
-            .order('display_order'),
-          supabase
-            .from('conference_deadlines')
-            .select('deadline_type, opens_at, closes_at')
-            .eq('conference_id', conf.id)
-            .eq('is_public', true),
-          supabase.rpc('get_public_schedule', { p_conference_id: conf.id }),
-        ])
+      if (cancelled || !result) return
+      setConference(result.conference)
+      setTracks(result.tracks)
+      setSupporters(result.supporters)
+      setDeadlines(result.deadlines)
 
+      const scheduleData = await api
+        .get<{ schedule: ScheduleRow[] }>(`/conferences/${result.conference.id}/sessions/public`)
+        .catch(() => ({ schedule: [] as ScheduleRow[] }))
       if (cancelled) return
 
-      setTracks((tracksData ?? []) as Track[])
-      setSupporters((supportersData ?? []) as Supporter[])
-      setDeadlines((deadlinesData ?? []) as Deadline[])
-
-      const rows = (scheduleData ?? []) as ScheduleRow[]
+      const rows = scheduleData.schedule
       const bySession = new Map<string, ScheduleRow>()
       for (const row of rows) {
         if (!bySession.has(row.session_id)) bySession.set(row.session_id, row)

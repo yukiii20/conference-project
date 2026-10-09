@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/authContext'
 import { getRoleDefinition } from '../../lib/roles'
-import type { MyRoleRow } from '../../lib/types'
 import { SignInForm } from './SignInForm'
 import { SignUpForm } from './SignUpForm'
 
@@ -12,57 +11,38 @@ type SignedInInfo = {
   roles: { code: string; label: string; path: string }[]
 }
 
+/**
+ * Identity comes only from the shared auth context (GET /api/auth/me) —
+ * never from a Supabase session, RPC, or supabase.auth.signOut().
+ */
 export function AuthCard({ conference }: { conference: { id: string; slug: string; name: string } }) {
+  const { user, roles, loading, refresh, signOut } = useAuth()
   const [tab, setTab] = useState<Tab>('signin')
-  const [checking, setChecking] = useState(true)
-  const [signedIn, setSignedIn] = useState<SignedInInfo | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-
-    async function check() {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        if (!cancelled) {
-          setSignedIn(null)
-          setChecking(false)
-        }
-        return
-      }
-
-      const [{ data: profile }, { data: rolesData }] = await Promise.all([
-        supabase.from('profiles').select('full_name').eq('id', userData.user.id).single(),
-        supabase.rpc('get_my_roles'),
-      ])
-      if (cancelled) return
-
-      const roles = (rolesData ?? []) as MyRoleRow[]
-      const hereRoles = roles
-        .filter((r) => r.conference_id === conference.id && r.role_code !== 'admin')
-        .map((r) => {
-          const def = getRoleDefinition(r.role_code)
-          return { code: r.role_code, label: def?.label ?? r.role_code, path: def?.path ?? '/' }
-        })
-
-      setSignedIn({ name: profile?.full_name ?? userData.user.email ?? 'there', roles: hereRoles })
-      setChecking(false)
-    }
-
-    check()
-    return () => {
-      cancelled = true
-    }
-  }, [conference.id])
+    refresh()
+  }, [refresh])
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
-    setSignedIn(null)
+    await signOut()
     setTab('signin')
   }
 
-  if (checking) {
+  if (loading) {
     return <div className="rounded-xl border border-line bg-white p-6 shadow-sm">&nbsp;</div>
   }
+
+  const signedIn: SignedInInfo | null = user
+    ? {
+        name: user.full_name || user.email,
+        roles: roles
+          .filter((r) => r.conference_id === conference.id && r.role_code !== 'admin')
+          .map((r) => {
+            const def = getRoleDefinition(r.role_code)
+            return { code: r.role_code, label: def?.label ?? r.role_code, path: def?.path ?? '/' }
+          }),
+      }
+    : null
 
   if (signedIn) {
     return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api, ApiError } from '../lib/api'
+import { useAuth } from '../lib/authContext'
 import { profileSchema, type ProfileInput } from '../lib/validation'
 import { cropToSquareJpeg } from '../lib/imageCrop'
 import { ImageUpload } from '../components/ImageUpload'
@@ -30,10 +31,10 @@ const EMPTY_FORM: FormState = {
   bio: '',
 }
 
+/** Identity (and the data this form edits) comes only from GET/PATCH /api/me/profile — never Supabase. */
 export function ProfilePage() {
   const navigate = useNavigate()
-  const [userId, setUserId] = useState<string | null>(null)
-  const [email, setEmail] = useState('')
+  const { user, refresh } = useAuth()
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [photoPath, setPhotoPath] = useState<string | null>(null)
   const [checking, setChecking] = useState(true)
@@ -46,38 +47,23 @@ export function ProfilePage() {
     let cancelled = false
 
     async function load() {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
+      const data = await refresh()
+      if (cancelled) return
+      if (!data) {
         navigate('/login')
         return
       }
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('full_name, email, phone, institution, department, position, country, orcid, bio, photo_path')
-        .eq('id', userData.user.id)
-        .single()
-
-      if (cancelled) return
-
-      setUserId(userData.user.id)
-      setEmail(userData.user.email ?? '')
-
-      if (error) {
-        setFormError(error.message)
-      } else if (profile) {
-        setForm({
-          full_name: profile.full_name ?? '',
-          phone: profile.phone ?? '',
-          institution: profile.institution ?? '',
-          department: profile.department ?? '',
-          position: profile.position ?? '',
-          country: profile.country ?? 'NP',
-          orcid: profile.orcid ?? '',
-          bio: profile.bio ?? '',
-        })
-        setPhotoPath(profile.photo_path)
-      }
+      setForm({
+        full_name: data.user.full_name ?? '',
+        phone: data.user.phone ?? '',
+        institution: data.user.institution ?? '',
+        department: data.user.department ?? '',
+        position: data.user.position ?? '',
+        country: data.user.country ?? 'NP',
+        orcid: data.user.orcid ?? '',
+        bio: data.user.bio ?? '',
+      })
+      setPhotoPath(data.user.photo_path)
       setChecking(false)
     }
 
@@ -85,7 +71,7 @@ export function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [navigate])
+  }, [navigate, refresh])
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -110,14 +96,15 @@ export function ProfilePage() {
     setErrors({})
     setSaving(true)
 
-    const { error } = await supabase.from('profiles').update(parsed.data).eq('id', userId as string)
-    setSaving(false)
-
-    if (error) {
-      setFormError(error.message)
-      return
+    try {
+      await api.patch('/me/profile', parsed.data)
+      await refresh()
+      setSaved(true)
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not save your profile.')
+    } finally {
+      setSaving(false)
     }
-    setSaved(true)
   }
 
   if (checking) {
@@ -137,18 +124,15 @@ export function ProfilePage() {
             maxSizeMB={MAX_PHOTO_MB}
             aspect="square"
             transformFile={(file) => cropToSquareJpeg(file)}
-            buildPath={() => `avatars/${userId}/${crypto.randomUUID()}.jpg`}
-            onSaved={async (path) => {
-              const { error } = await supabase.from('profiles').update({ photo_path: path }).eq('id', userId as string)
-              if (error) return error.message
+            uploadUrl="/api/me/photo"
+            removeUrl="/api/me/photo"
+            onSaved={(path) => {
               setPhotoPath(path)
-              return null
+              refresh()
             }}
-            onRemoved={async () => {
-              const { error } = await supabase.from('profiles').update({ photo_path: null }).eq('id', userId as string)
-              if (error) return error.message
+            onRemoved={() => {
               setPhotoPath(null)
-              return null
+              refresh()
             }}
           />
           <p className="mt-2 text-xs text-ink/50">
@@ -168,7 +152,7 @@ export function ProfilePage() {
 
           <div>
             <label className="block text-sm font-medium text-ink">Email</label>
-            <p className="mt-1 rounded-md border border-line bg-background px-3 py-2 text-ink/70">{email}</p>
+            <p className="mt-1 rounded-md border border-line bg-background px-3 py-2 text-ink/70">{user?.email}</p>
             <p className="mt-1 text-xs text-ink/50">Your sign-in email cannot be changed here.</p>
           </div>
 

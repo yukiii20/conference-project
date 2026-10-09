@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 import { locationSchema, type LocationInput } from '../../lib/validation'
 
 type FormState = {
@@ -31,15 +31,18 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
 
     async function load() {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('conferences')
-        .select('venue_name, address, city, country, location_map_url')
-        .eq('id', conferenceId)
-        .single()
-      if (cancelled) return
-      if (error) {
-        setFormError(error.message)
-      } else if (data) {
+      try {
+        const res = await api.get<{
+          conference: {
+            venue_name: string | null
+            address: string | null
+            city: string | null
+            country: string | null
+            location_map_url: string | null
+          }
+        }>(`/conferences/${conferenceId}/details`)
+        if (cancelled) return
+        const data = res.conference
         setForm({
           venue_name: data.venue_name ?? '',
           address: data.address ?? '',
@@ -47,8 +50,12 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
           country: data.country ?? '',
           location_map_url: data.location_map_url ?? '',
         })
+      } catch (err) {
+        if (cancelled) return
+        setFormError(err instanceof ApiError ? err.message : 'Could not load the location.')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-      setLoading(false)
     }
 
     load()
@@ -82,14 +89,14 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
     setErrors({})
     setSaving(true)
 
-    const { error } = await supabase.from('conferences').update(parsed.data).eq('id', conferenceId)
-    setSaving(false)
-
-    if (error) {
-      setFormError(error.message)
-      return
+    try {
+      await api.patch(`/conferences/${conferenceId}`, parsed.data)
+      setSaved(true)
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not save this.')
+    } finally {
+      setSaving(false)
     }
-    setSaved(true)
   }
 
   if (loading) {

@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { imageExtension, publicImageUrl } from '../lib/storage'
+import { publicImageUrl } from '../lib/storage'
 
 const DEFAULT_ACCEPT = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -9,12 +8,14 @@ type ImageUploadProps = {
   label: string
   /** Current storage path saved on the row, or null if no image is set. */
   currentPath: string | null
-  /** Builds the storage path for a newly chosen (and possibly transformed) file. */
-  buildPath: (file: File) => string
-  /** Persists the new path to the database. Return an error message, or null on success. */
-  onSaved: (path: string) => Promise<string | null>
-  /** Clears the path on the database (sets the column to null). Return an error message, or null on success. */
-  onRemoved: () => Promise<string | null>
+  /** Endpoint that accepts a POST with a multipart `file` field and returns `{ path }`. */
+  uploadUrl: string
+  /** Endpoint that accepts a DELETE to clear the image. */
+  removeUrl: string
+  /** Called with the new path once the server has saved it. */
+  onSaved: (path: string) => void
+  /** Called once the server has cleared the path. */
+  onRemoved: () => void
   maxSizeMB: number
   aspect: 'square' | 'wide'
   /** Box size for the preview. Defaults to "md" (h-40 w-40 / h-32 w-full). "sm" is a compact h-16 w-16, square only. */
@@ -25,10 +26,21 @@ type ImageUploadProps = {
   transformFile?: (file: File) => Promise<File>
 }
 
+async function parseJsonSafely(res: Response): Promise<{ error?: { message?: string }; path?: string } | null> {
+  const isJson = res.headers.get('content-type')?.includes('application/json')
+  if (!isJson) return null
+  try {
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 export function ImageUpload({
   label,
   currentPath,
-  buildPath,
+  uploadUrl,
+  removeUrl,
   onSaved,
   onRemoved,
   maxSizeMB,
@@ -63,7 +75,7 @@ export function ImageUpload({
     setSuccess(null)
 
     if (!accept.includes(file.type)) {
-      setError(`Use a ${accept.map((t) => imageExtension(t)?.toUpperCase() ?? t).join(', ')} image.`)
+      setError(`Use a ${accept.map((t) => t.split('/')[1]?.toUpperCase() ?? t).join(', ')} image.`)
       return
     }
     if (file.size > maxSizeMB * 1024 * 1024) {
@@ -75,72 +87,31 @@ export function ImageUpload({
     const objectUrl = URL.createObjectURL(file)
     previewObjectUrl.current = objectUrl
     setPreview(objectUrl)
-
     setUploading(true)
 
-    let uploadFile = file
-    if (transformFile) {
-      try {
+    try {
+      let uploadFile = file
+      if (transformFile) {
         uploadFile = await transformFile(file)
-      } catch (transformError) {
-        setUploading(false)
-        clearPreview()
-        setError(transformError instanceof Error ? transformError.message : 'Could not process that image.')
-        return
       }
-    }
 
-    const path = buildPath(uploadFile)
-    const previousPath = currentPath
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      const res = await fetch(uploadUrl, { method: 'POST', body: formData, credentials: 'include' })
+      const data = await parseJsonSafely(res)
+      if (!res.ok || !data?.path) {
+        throw new Error(data?.error?.message ?? 'Upload failed. Please try again.')
+      }
 
-    // eslint-disable-next-line no-console
-    console.group(`[ImageUpload] uploading ${label}`)
-    // eslint-disable-next-line no-console
-    console.log('file', { name: uploadFile.name, type: uploadFile.type, size: uploadFile.size })
-    // eslint-disable-next-line no-console
-    console.log('path', path)
-
-    const { data, error: uploadError } = await supabase.storage.from('public-assets').upload(path, uploadFile, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: uploadFile.type,
-    })
-
-    // eslint-disable-next-line no-console
-    console.log('upload result', {
-      data,
-      error: uploadError,
-      message: uploadError?.message,
-      statusCode: (uploadError as unknown as { statusCode?: string })?.statusCode,
-      name: uploadError?.name,
-    })
-    // eslint-disable-next-line no-console
-    console.groupEnd()
-
-    if (uploadError) {
+      onSaved(data.path)
+      setSuccess(`${capitalize(label)} updated.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.')
+    } finally {
       setUploading(false)
       clearPreview()
-      setError(uploadError.message || 'Upload failed. See console for details.')
-      return
+      if (inputRef.current) inputRef.current.value = ''
     }
-
-    const saveError = await onSaved(path)
-    if (saveError) {
-      setUploading(false)
-      clearPreview()
-      await supabase.storage.from('public-assets').remove([path])
-      setError(saveError)
-      return
-    }
-
-    if (previousPath && previousPath !== path) {
-      await supabase.storage.from('public-assets').remove([previousPath])
-    }
-
-    setUploading(false)
-    clearPreview()
-    setSuccess(`${capitalize(label)} updated.`)
-    if (inputRef.current) inputRef.current.value = ''
   }
 
   async function handleRemove() {
@@ -150,17 +121,19 @@ export function ImageUpload({
     setSuccess(null)
     setRemoving(true)
 
-    const removeError = await onRemoved()
-    if (removeError) {
+    try {
+      const res = await fetch(removeUrl, { method: 'DELETE', credentials: 'include' })
+      const data = await parseJsonSafely(res)
+      if (!res.ok) {
+        throw new Error(data?.error?.message ?? 'Could not remove this image.')
+      }
+      onRemoved()
+      setSuccess(`${capitalize(label)} removed.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove this image.')
+    } finally {
       setRemoving(false)
-      setError(removeError)
-      return
     }
-
-    await supabase.storage.from('public-assets').remove([currentPath])
-    setRemoving(false)
-    clearPreview()
-    setSuccess(`${capitalize(label)} removed.`)
   }
 
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { supabase, setRememberMe } from '../lib/supabase'
+import { api, ApiError } from '../lib/api'
+import { useAuth } from '../lib/authContext'
 import { superAdminLoginSchema } from '../lib/validation'
-import type { MyRoleRow } from '../lib/types'
 
 const GENERIC_ERROR = 'Email or password is incorrect.'
 const RATE_LIMIT_ERROR = 'Too many attempts. Wait a minute and try again.'
@@ -42,15 +42,17 @@ function getSafeNext(searchParams: URLSearchParams): string {
   return '/super-admin'
 }
 
-function classifySignInError(error: { status?: number; name?: string }): 'rate_limit' | 'network' | 'invalid' {
-  if (error.status === 429) return 'rate_limit'
-  if (!error.status || error.name === 'AuthRetryableFetchError') return 'network'
-  return 'invalid'
+function classifySignInError(error: unknown): 'rate_limit' | 'network' | 'invalid' {
+  if (error instanceof ApiError) {
+    return error.status === 429 ? 'rate_limit' : 'invalid'
+  }
+  return 'network'
 }
 
 export function SuperAdminLoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { refresh } = useAuth()
 
   useEffect(() => {
     const prevTitle = document.title
@@ -72,23 +74,12 @@ export function SuperAdminLoginPage() {
     let cancelled = false
 
     async function check() {
-      try {
-        const { data: userData } = await supabase.auth.getUser()
-        if (!userData.user) {
-          if (!cancelled) setCheckingSession(false)
-          return
-        }
-        const { data: rolesData } = await supabase.rpc('get_my_roles')
-        const roles = (rolesData ?? []) as MyRoleRow[]
-        const isAdmin = roles.some((r) => r.role_code === 'admin')
-        if (cancelled) return
-        if (isAdmin) {
-          navigate(getSafeNext(searchParams), { replace: true })
-        } else {
-          setCheckingSession(false)
-        }
-      } catch {
-        if (!cancelled) setCheckingSession(false)
+      const data = await refresh()
+      if (cancelled) return
+      if (data?.isAdmin) {
+        navigate(getSafeNext(searchParams), { replace: true })
+      } else {
+        setCheckingSession(false)
       }
     }
 
@@ -174,24 +165,26 @@ export function SuperAdminLoginPage() {
     }
     setFieldErrors({})
     setSubmitting(true)
-    setRememberMe(false) // admin sessions live in sessionStorage only
 
-    let signInError: { status?: number; name?: string } | null = null
     try {
-      const result = await supabase.auth.signInWithPassword({
-        email: parsed.data.email,
-        password: parsed.data.password,
-      })
-      signInError = result.error
-    } catch {
-      setSubmitting(false)
-      setFormError(NETWORK_ERROR)
-      return
-    }
+      await api.post('/auth/admin-login', { email: parsed.data.email, password: parsed.data.password })
 
-    if (signInError) {
+      // Re-fetch /me on the session we just created, rather than trusting
+      // the login response alone, so the guard we're about to navigate into
+      // never has to bounce us back out on a fresh session.
+      const me = await refresh()
       setSubmitting(false)
-      const kind = classifySignInError(signInError)
+      if (!me?.isAdmin) {
+        setFormError(GENERIC_ERROR)
+        recordFailedAttempt()
+        return
+      }
+
+      writeLockState({ attempts: 0, lockUntil: null })
+      navigate(getSafeNext(searchParams), { replace: true })
+    } catch (err) {
+      setSubmitting(false)
+      const kind = classifySignInError(err)
       if (kind === 'rate_limit') {
         setFormError(RATE_LIMIT_ERROR)
       } else if (kind === 'network') {
@@ -202,33 +195,7 @@ export function SuperAdminLoginPage() {
         setFormError(GENERIC_ERROR)
         recordFailedAttempt()
       }
-      return
     }
-
-    let roles: MyRoleRow[] = []
-    try {
-      const { data: rolesData, error: rolesError } = await supabase.rpc('get_my_roles')
-      if (rolesError) throw rolesError
-      roles = (rolesData ?? []) as MyRoleRow[]
-    } catch {
-      setSubmitting(false)
-      await supabase.auth.signOut()
-      setFormError(NETWORK_ERROR)
-      return
-    }
-
-    const isAdmin = roles.some((r) => r.role_code === 'admin')
-    setSubmitting(false)
-
-    if (!isAdmin) {
-      await supabase.auth.signOut()
-      setFormError(GENERIC_ERROR)
-      recordFailedAttempt()
-      return
-    }
-
-    writeLockState({ attempts: 0, lockUntil: null })
-    navigate(getSafeNext(searchParams), { replace: true })
   }
 
   if (checkingSession) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 import { SIGNUP_ROLE_CODES, getRoleDefinition } from '../../lib/roles'
 import { nameSchema, emailSchema, phoneSchema, signupSchema, getPasswordChecklist } from '../../lib/validation'
 
@@ -58,14 +58,11 @@ export function SignUpForm({
   useEffect(() => {
     let cancelled = false
     async function loadConferences() {
-      const { data } = await supabase
-        .from('conferences')
-        .select('id, name, code, slug')
-        .neq('status', 'draft')
-        .is('deleted_at', null)
-        .order('name', { ascending: true })
+      const data = await api.get<{ conferences: ConferenceSlugRow[] }>('/conferences/public').catch(() => null)
       if (cancelled) return
-      const rows = (data ?? []) as ConferenceSlugRow[]
+      const rows = (data?.conferences ?? [])
+        .slice()
+        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
       setConferences(rows)
 
       if (preselectedSlug) {
@@ -145,39 +142,26 @@ export function SignUpForm({
     setErrors({})
 
     setSubmitting(true)
-    const { data, error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      options: {
-        data: {
-          full_name: parsed.data.full_name,
-          phone: parsed.data.phone,
-          requested_role: parsed.data.role,
-          requested_conference_id: parsed.data.conference_id,
-        },
-      },
-    })
-
-    if (error) {
-      setSubmitting(false)
-      const code = (error as { code?: string }).code
-      if (code === 'user_already_exists') {
-        setFormError('An account with this email already exists. Sign in instead.')
-      } else if (code === 'weak_password') {
-        setFormError('Please choose a stronger password.')
+    try {
+      await api.post('/auth/register', {
+        full_name: parsed.data.full_name,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        password: parsed.data.password,
+        requested_role: parsed.data.role,
+        conference_id: parsed.data.conference_id,
+      })
+      setSuccess(true)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setFormError(err.message)
+        if (err.fields) setErrors((prev) => ({ ...prev, ...err.fields }))
       } else {
         setFormError('We could not create your account. Please check your details and try again.')
       }
-      return
+    } finally {
+      setSubmitting(false)
     }
-
-    // Email confirmation is off, so signUp() just returned an active
-    // session — sign out immediately since the account isn't approved yet.
-    if (data.session) {
-      await supabase.auth.signOut()
-    }
-    setSubmitting(false)
-    setSuccess(true)
   }
 
   if (success) {

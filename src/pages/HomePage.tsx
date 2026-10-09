@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api, ApiError } from '../lib/api'
 import { publicImageUrl } from '../lib/storage'
 import { DEFAULT_CONFERENCE_COLOR } from '../lib/color'
 import { formatDateRange, formatKathmandu } from '../lib/datetime'
@@ -33,7 +33,8 @@ type Announcement = {
   body: string
   publish_at: string | null
   created_at: string
-  conference: { name: string; slug: string } | { name: string; slug: string }[] | null
+  conference_name: string
+  conference_slug: string
 }
 
 type TabId = 'all' | 'open' | 'upcoming' | 'past'
@@ -66,12 +67,6 @@ function setMetaDescription(content: string) {
     document.head.appendChild(tag)
   }
   tag.setAttribute('content', content)
-}
-
-/** The embedded `conference` relation comes back as an object or a one-item array depending on the client version. */
-function announcementConference(a: Announcement): { name: string; slug: string } | null {
-  if (!a.conference) return null
-  return Array.isArray(a.conference) ? (a.conference[0] ?? null) : a.conference
 }
 
 function SkeletonCard() {
@@ -145,47 +140,45 @@ export function HomePage() {
   const loadConferences = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data, error: loadError } = await supabase
-      .from('conferences')
-      .select('id, slug, code, name, tagline, city, country, start_date, end_date, status, logo_path, primary_color')
-      .neq('status', 'draft')
-      .is('deleted_at', null)
-      .order('start_date', { ascending: true })
-
-    if (!mountedRef.current) return
-    if (loadError) {
-      setError(loadError.message)
-      setLoading(false)
-      return
+    try {
+      const data = await api.get<{ conferences: Conference[] }>('/conferences/public')
+      if (!mountedRef.current) return
+      const rows = Array.isArray(data?.conferences) ? data.conferences : []
+      setConferences(rows)
+      setConfCount(rows.length)
+    } catch (err) {
+      if (!mountedRef.current) return
+      setError(err instanceof ApiError ? err.message : 'Could not load conferences.')
+    } finally {
+      if (mountedRef.current) setLoading(false)
     }
-    const rows = (data ?? []) as Conference[]
-    setConferences(rows)
-    setConfCount(rows.length)
-    setLoading(false)
 
-    const { data: deadlineRows, error: deadlineError } = await supabase
-      .from('conference_deadlines')
-      .select('conference_id, opens_at, closes_at')
-      .eq('deadline_type', 'abstract_submission')
-    if (!mountedRef.current) return
-    if (!deadlineError) {
+    try {
+      const deadlineData = await api.get<{ deadlines: Array<{ conference_id: string; opens_at: string; closes_at: string | null }> }>(
+        '/conferences/public-deadlines',
+        { deadline_type: 'abstract_submission' },
+      )
+      if (!mountedRef.current) return
       const now = Date.now()
       const open = new Set<string>()
-      for (const d of deadlineRows ?? []) {
+      for (const d of deadlineData?.deadlines ?? []) {
         const opens = new Date(d.opens_at).getTime()
         const closes = d.closes_at ? new Date(d.closes_at).getTime() : null
         if (now >= opens && (closes === null || now <= closes)) open.add(d.conference_id)
       }
       setOpenDeadlines(open)
       setOpenCount(open.size)
+    } catch {
+      // Quiet feature: no deadline badges if this fails.
     }
 
-    const { count, error: trackError } = await supabase
-      .from('conference_tracks')
-      .select('id', { count: 'exact', head: true })
-      .eq('is_active', true)
-    if (!mountedRef.current) return
-    if (!trackError) setTrackCount(count ?? 0)
+    try {
+      const trackData = await api.get<{ count: number }>('/conferences/public-track-count')
+      if (!mountedRef.current) return
+      setTrackCount(trackData.count)
+    } catch {
+      // Quiet feature: no track count if this fails.
+    }
   }, [])
 
   useEffect(() => {
@@ -197,14 +190,13 @@ export function HomePage() {
   useEffect(() => {
     let cancelled = false
     async function loadAnnouncements() {
-      const { data } = await supabase
-        .from('announcements')
-        .select('id, title, body, publish_at, created_at, conference:conferences(name, slug)')
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(3)
-      if (cancelled) return
-      setAnnouncements((data ?? []) as Announcement[])
+      try {
+        const data = await api.get<{ announcements: Announcement[] }>('/announcements/public', { limit: '3' })
+        if (cancelled) return
+        setAnnouncements(Array.isArray(data?.announcements) ? data.announcements : [])
+      } catch {
+        // Quiet feature: hide the section entirely if this fails.
+      }
     }
     loadAnnouncements()
     return () => {
@@ -299,8 +291,8 @@ export function HomePage() {
     const term = query.trim().toLowerCase()
     if (!term) return true
     return (
-      c.name.toLowerCase().includes(term) ||
-      c.code.toLowerCase().includes(term) ||
+      (c.name ?? '').toLowerCase().includes(term) ||
+      (c.code ?? '').toLowerCase().includes(term) ||
       (c.city ?? '').toLowerCase().includes(term)
     )
   })
@@ -472,12 +464,13 @@ export function HomePage() {
           <h2 className="text-2xl font-semibold sm:text-3xl">{SITE.announcements.heading}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {announcements.map((a) => {
-              const conf = announcementConference(a)
               const bodyLines = a.body.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2).join(' ')
               return (
                 <div key={a.id} className="rounded-xl border border-landing-border bg-white p-5">
-                  {conf ? (
-                    <p className="text-xs font-semibold uppercase tracking-wide text-landing-navy-600">{conf.name}</p>
+                  {a.conference_name ? (
+                    <p className="text-xs font-semibold uppercase tracking-wide text-landing-navy-600">
+                      {a.conference_name}
+                    </p>
                   ) : null}
                   <h3 className="mt-1 font-semibold text-landing-text">{a.title}</h3>
                   <p className="mt-2 line-clamp-2 text-sm text-landing-muted">{bodyLines}</p>

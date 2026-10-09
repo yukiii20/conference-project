@@ -1,53 +1,19 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { api, ApiError } from '../lib/api'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
 
-/**
- * Landed on from the link in the reset email. Supabase puts a recovery
- * token in the URL hash; the client picks it up and fires PASSWORD_RECOVERY
- * (or, if that already happened before we subscribed, getSession() will
- * just return the session directly).
- */
+/** Landed on from the link in the reset email: /reset-password?token=... */
 export function ResetPasswordPage() {
-  const [status, setStatus] = useState<'checking' | 'ready' | 'invalid'>('checking')
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') ?? ''
+
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' && !cancelled) {
-        setStatus('ready')
-      }
-    })
-
-    async function check() {
-      const { data } = await supabase.auth.getSession()
-      if (cancelled) return
-      if (data.session) {
-        setStatus('ready')
-        return
-      }
-      // The recovery hash can take a moment to be parsed; give it one retry.
-      setTimeout(async () => {
-        if (cancelled) return
-        const { data: retry } = await supabase.auth.getSession()
-        if (!cancelled) setStatus(retry.session ? 'ready' : 'invalid')
-      }, 1500)
-    }
-    check()
-
-    return () => {
-      cancelled = true
-      listener.subscription.unsubscribe()
-    }
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -60,27 +26,21 @@ export function ResetPasswordPage() {
     }
 
     setSubmitting(true)
-    const { error: updateError } = await supabase.auth.updateUser({ password: parsed.data.password })
-    setSubmitting(false)
-
-    if (updateError) {
-      setError('We could not update your password. Request a new reset link and try again.')
-      return
+    try {
+      await api.post('/auth/reset-password', { token, password: parsed.data.password })
+      setSuccess(true)
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'We could not update your password. Request a new reset link and try again.',
+      )
+    } finally {
+      setSubmitting(false)
     }
-
-    await supabase.auth.signOut()
-    setSuccess(true)
   }
 
-  if (status === 'checking') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-ink">
-        Checking your link…
-      </div>
-    )
-  }
-
-  if (status === 'invalid') {
+  if (!token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 text-center shadow-sm">

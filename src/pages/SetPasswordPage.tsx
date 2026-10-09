@@ -1,52 +1,19 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { api, ApiError } from '../lib/api'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
 
-/**
- * Landed on from the invitation email link. Supabase puts the invite token
- * in the URL hash; the client picks it up and either fires an auth event
- * (INVITED / PASSWORD_RECOVERY, depending on Supabase version) or the
- * session is simply present by the time getSession() resolves.
- */
+/** Landed on from the invitation email link: /set-password?token=... */
 export function SetPasswordPage() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<'checking' | 'ready' | 'invalid'>('checking')
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') ?? ''
+
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && !cancelled) {
-        setStatus('ready')
-      }
-    })
-
-    async function check() {
-      const { data } = await supabase.auth.getSession()
-      if (cancelled) return
-      if (data.session) {
-        setStatus('ready')
-        return
-      }
-      setTimeout(async () => {
-        if (cancelled) return
-        const { data: retry } = await supabase.auth.getSession()
-        if (!cancelled) setStatus(retry.session ? 'ready' : 'invalid')
-      }, 1500)
-    }
-    check()
-
-    return () => {
-      cancelled = true
-      listener.subscription.unsubscribe()
-    }
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -59,26 +26,17 @@ export function SetPasswordPage() {
     }
 
     setSubmitting(true)
-    const { error: updateError } = await supabase.auth.updateUser({ password: parsed.data.password })
-    setSubmitting(false)
-
-    if (updateError) {
-      setError(updateError.message)
-      return
+    try {
+      await api.post('/auth/accept-invitation', { token, password: parsed.data.password })
+      navigate('/convenor')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'We could not set your password. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
-
-    navigate('/convenor')
   }
 
-  if (status === 'checking') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-ink">
-        Checking your invitation…
-      </div>
-    )
-  }
-
-  if (status === 'invalid') {
+  if (!token) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 text-center shadow-sm">

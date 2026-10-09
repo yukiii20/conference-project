@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 import { fromKathmanduInputValue, formatKathmandu, toKathmanduInputValue } from '../../lib/datetime'
 import {
   roomSchema,
@@ -42,7 +42,7 @@ const EMPTY_SESSION_FORM = {
   status: 'draft' as (typeof SESSION_STATUSES)[number],
 }
 
-function RoomsSection({ conferenceId }: { conferenceId: string }) {
+function RoomsSection({ conferenceId, onRoomsChanged }: { conferenceId: string; onRoomsChanged: () => void }) {
   const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,18 +52,15 @@ function RoomsSection({ conferenceId }: { conferenceId: string }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data, error: loadError } = await supabase
-      .from('rooms')
-      .select('id, name, building, capacity, status')
-      .eq('conference_id', conferenceId)
-      .order('name')
-    if (loadError) {
-      setError(loadError.message)
-    } else {
-      setRooms((data ?? []) as Room[])
+    try {
+      const data = await api.get<{ rooms: Room[] }>(`/conferences/${conferenceId}/rooms`)
+      setRooms(data.rooms)
       setError(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load rooms.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [conferenceId])
 
   useEffect(() => {
@@ -79,33 +76,31 @@ function RoomsSection({ conferenceId }: { conferenceId: string }) {
       return
     }
     setCreating(true)
-    const { error: createError } = await supabase.from('rooms').insert({
-      conference_id: conferenceId,
-      name: parsed.data.name,
-      building: parsed.data.building,
-      capacity: parsed.data.capacity,
-    })
-    setCreating(false)
-    if (createError) {
-      setError(createError.message)
-      return
+    try {
+      await api.post(`/conferences/${conferenceId}/rooms`, parsed.data)
+      setNewRoom(EMPTY_ROOM)
+      await load()
+      onRoomsChanged()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this room.')
+    } finally {
+      setCreating(false)
     }
-    setNewRoom(EMPTY_ROOM)
-    await load()
   }
 
   async function handleToggle(room: Room) {
     setBusyId(room.id)
-    const { error: toggleError } = await supabase
-      .from('rooms')
-      .update({ status: room.status === 'active' ? 'inactive' : 'active' })
-      .eq('id', room.id)
-    setBusyId(null)
-    if (toggleError) {
-      setError(toggleError.message)
-      return
+    try {
+      await api.patch(`/conferences/${conferenceId}/rooms/${room.id}/status`, {
+        status: room.status === 'active' ? 'inactive' : 'active',
+      })
+      await load()
+      onRoomsChanged()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this room.')
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   return (
@@ -194,7 +189,7 @@ function RoomsSection({ conferenceId }: { conferenceId: string }) {
   )
 }
 
-function SessionsSection({ conferenceId }: { conferenceId: string }) {
+function SessionsSection({ conferenceId, roomsVersion }: { conferenceId: string; roomsVersion: number }) {
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [tracks, setTracks] = useState<Track[]>([])
@@ -208,31 +203,26 @@ function SessionsSection({ conferenceId }: { conferenceId: string }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [{ data: sessionsData, error: sessionsError }, { data: roomsData }, { data: tracksData }] =
-      await Promise.all([
-        supabase
-          .from('conference_sessions')
-          .select('id, title, session_type, track_id, room_id, starts_at, ends_at, status')
-          .eq('conference_id', conferenceId)
-          .order('starts_at'),
-        supabase.from('rooms').select('id, name, building, capacity, status').eq('conference_id', conferenceId).eq('status', 'active'),
-        supabase.from('conference_tracks').select('id, name').eq('conference_id', conferenceId).eq('is_active', true),
+    try {
+      const [sessionsData, roomsData, tracksData] = await Promise.all([
+        api.get<{ sessions: SessionRow[] }>(`/conferences/${conferenceId}/sessions`),
+        api.get<{ rooms: Room[] }>(`/conferences/${conferenceId}/rooms`),
+        api.get<{ tracks: Track[] }>(`/conferences/${conferenceId}/tracks`),
       ])
-
-    if (sessionsError) {
-      setError(sessionsError.message)
-    } else {
-      setSessions((sessionsData ?? []) as SessionRow[])
+      setSessions(sessionsData.sessions)
+      setRooms(roomsData.rooms.filter((r) => r.status === 'active'))
+      setTracks(tracksData.tracks)
       setError(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load sessions.')
+    } finally {
+      setLoading(false)
     }
-    setRooms((roomsData ?? []) as Room[])
-    setTracks((tracksData ?? []) as Track[])
-    setLoading(false)
   }, [conferenceId])
 
   useEffect(() => {
     load()
-  }, [load])
+  }, [load, roomsVersion])
 
   function resetForm() {
     setForm(EMPTY_SESSION_FORM)
@@ -273,42 +263,43 @@ function SessionsSection({ conferenceId }: { conferenceId: string }) {
 
     setSaving(true)
     const payload = {
-      conference_id: conferenceId,
       title: parsed.data.title,
       session_type: parsed.data.session_type,
-      track_id: parsed.data.track_id,
+      track_id: parsed.data.track_id || null,
       room_id: parsed.data.room_id,
       starts_at: startsIso,
       ends_at: endsIso,
       status: parsed.data.status,
     }
 
-    const { error: saveError } = editingId
-      ? await supabase.from('conference_sessions').update(payload).eq('id', editingId)
-      : await supabase.from('conference_sessions').insert(payload)
-    setSaving(false)
-
-    if (saveError) {
+    try {
+      if (editingId) {
+        await api.patch(`/conferences/${conferenceId}/sessions/${editingId}`, payload)
+      } else {
+        await api.post(`/conferences/${conferenceId}/sessions`, payload)
+      }
+      resetForm()
+      await load()
+    } catch (err) {
       // Surface the database's own message (e.g. room overlap, outside conference dates) verbatim.
-      setFormError(saveError.message)
-      return
+      setFormError(err instanceof ApiError ? err.message : 'Could not save this session.')
+    } finally {
+      setSaving(false)
     }
-
-    resetForm()
-    await load()
   }
 
   async function handleDelete(session: SessionRow) {
     if (!window.confirm(`Delete "${session.title}"?`)) return
     setBusyId(session.id)
-    const { error: deleteError } = await supabase.from('conference_sessions').delete().eq('id', session.id)
-    setBusyId(null)
-    if (deleteError) {
-      setError(deleteError.message)
-      return
+    try {
+      await api.del(`/conferences/${conferenceId}/sessions/${session.id}`)
+      if (editingId === session.id) resetForm()
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not delete this session.')
+    } finally {
+      setBusyId(null)
     }
-    if (editingId === session.id) resetForm()
-    await load()
   }
 
   const roomName = (id: string) => rooms.find((r) => r.id === id)?.name ?? '—'
@@ -488,10 +479,11 @@ function SessionsSection({ conferenceId }: { conferenceId: string }) {
 }
 
 export function ProgrammeTab({ conferenceId }: { conferenceId: string }) {
+  const [roomsVersion, setRoomsVersion] = useState(0)
   return (
     <div className="mt-6 max-w-5xl">
-      <RoomsSection conferenceId={conferenceId} />
-      <SessionsSection conferenceId={conferenceId} />
+      <RoomsSection conferenceId={conferenceId} onRoomsChanged={() => setRoomsVersion((v) => v + 1)} />
+      <SessionsSection conferenceId={conferenceId} roomsVersion={roomsVersion} />
     </div>
   )
 }

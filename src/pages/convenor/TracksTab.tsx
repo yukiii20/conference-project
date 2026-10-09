@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 import { trackSchema } from '../../lib/validation'
 
 type Track = {
@@ -32,23 +32,16 @@ export function TracksTab({ conferenceId }: { conferenceId: string }) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data, error: loadError } = await supabase
-      .from('conference_tracks')
-      .select('id, code, name, description, display_order, is_active')
-      .eq('conference_id', conferenceId)
-      .order('display_order', { ascending: true })
-
-    if (loadError) {
-      setError(loadError.message)
+    try {
+      const data = await api.get<{ tracks: Track[] }>(`/conferences/${conferenceId}/tracks`)
+      setTracks(data.tracks)
+      setEdits(Object.fromEntries(data.tracks.map((t) => [t.id, toEditState(t)])))
+      setError(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load tracks.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    const list = (data ?? []) as Track[]
-    setTracks(list)
-    setEdits(Object.fromEntries(list.map((t) => [t.id, toEditState(t)])))
-    setError(null)
-    setLoading(false)
   }, [conferenceId])
 
   useEffect(() => {
@@ -68,30 +61,26 @@ export function TracksTab({ conferenceId }: { conferenceId: string }) {
     }
     setRowErrors((prev) => ({ ...prev, [track.id]: '' }))
     setBusyId(track.id)
-    const { error: saveError } = await supabase
-      .from('conference_tracks')
-      .update(parsed.data)
-      .eq('id', track.id)
-    setBusyId(null)
-    if (saveError) {
-      setRowErrors((prev) => ({ ...prev, [track.id]: saveError.message }))
-      return
+    try {
+      await api.patch(`/conferences/${conferenceId}/tracks/${track.id}`, parsed.data)
+      await load()
+    } catch (err) {
+      setRowErrors((prev) => ({ ...prev, [track.id]: err instanceof ApiError ? err.message : 'Could not save this.' }))
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   async function handleToggleActive(track: Track) {
     setBusyId(track.id)
-    const { error: toggleError } = await supabase
-      .from('conference_tracks')
-      .update({ is_active: !track.is_active })
-      .eq('id', track.id)
-    setBusyId(null)
-    if (toggleError) {
-      setRowErrors((prev) => ({ ...prev, [track.id]: toggleError.message }))
-      return
+    try {
+      await api.patch(`/conferences/${conferenceId}/tracks/${track.id}/deactivate`, { is_active: !track.is_active })
+      await load()
+    } catch (err) {
+      setRowErrors((prev) => ({ ...prev, [track.id]: err instanceof ApiError ? err.message : 'Could not update this.' }))
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   async function handleMove(track: Track, direction: 'up' | 'down') {
@@ -99,19 +88,21 @@ export function TracksTab({ conferenceId }: { conferenceId: string }) {
     const index = sorted.findIndex((t) => t.id === track.id)
     const swapIndex = direction === 'up' ? index - 1 : index + 1
     if (swapIndex < 0 || swapIndex >= sorted.length) return
-    const other = sorted[swapIndex]
+
+    const reordered = [...sorted]
+    const tmp = reordered[index]!
+    reordered[index] = reordered[swapIndex]!
+    reordered[swapIndex] = tmp
 
     setBusyId(track.id)
-    const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from('conference_tracks').update({ display_order: other.display_order }).eq('id', track.id),
-      supabase.from('conference_tracks').update({ display_order: track.display_order }).eq('id', other.id),
-    ])
-    setBusyId(null)
-    if (e1 || e2) {
-      setError((e1 ?? e2)?.message ?? 'Could not reorder tracks.')
-      return
+    try {
+      await api.post(`/conferences/${conferenceId}/tracks/reorder`, { track_ids: reordered.map((t) => t.id) })
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reorder tracks.')
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -123,19 +114,15 @@ export function TracksTab({ conferenceId }: { conferenceId: string }) {
       return
     }
     setCreating(true)
-    const nextOrder = tracks.length === 0 ? 0 : Math.max(...tracks.map((t) => t.display_order)) + 1
-    const { error: createError } = await supabase.from('conference_tracks').insert({
-      conference_id: conferenceId,
-      ...parsed.data,
-      display_order: nextOrder,
-    })
-    setCreating(false)
-    if (createError) {
-      setNewError(createError.message)
-      return
+    try {
+      await api.post(`/conferences/${conferenceId}/tracks`, parsed.data)
+      setNewTrack(EMPTY_NEW)
+      await load()
+    } catch (err) {
+      setNewError(err instanceof ApiError ? err.message : 'Could not create this track.')
+    } finally {
+      setCreating(false)
     }
-    setNewTrack(EMPTY_NEW)
-    await load()
   }
 
   if (loading) {

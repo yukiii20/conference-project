@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { forgotPasswordSchema } from '../lib/validation'
 
 export function ForgotPasswordPage() {
@@ -20,9 +20,7 @@ export function ForgotPasswordPage() {
     }
 
     setSubmitting(true)
-    await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
+    await api.post('/auth/forgot-password', { email: parsed.data.email }).catch(() => {})
     setSubmitting(false)
     // Always show success, whether or not the email exists, so we don't leak
     // which addresses have accounts.

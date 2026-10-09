@@ -6,13 +6,17 @@ const KATHMANDU_OFFSET_MS = (5 * 60 + 45) * 60 * 1000
 /** ISO timestamptz -> "YYYY-MM-DDTHH:mm" for a datetime-local input, in Asia/Kathmandu wall-clock time. */
 export function toKathmanduInputValue(iso: string | null): string {
   if (!iso) return ''
-  const shifted = new Date(new Date(iso).getTime() + KATHMANDU_OFFSET_MS)
-  return shifted.toISOString().slice(0, 16)
+  const ms = new Date(iso).getTime()
+  if (Number.isNaN(ms)) return ''
+  return new Date(ms + KATHMANDU_OFFSET_MS).toISOString().slice(0, 16)
 }
 
 /** "YYYY-MM-DDTHH:mm" (Asia/Kathmandu wall-clock) -> ISO timestamptz (UTC) for storage. */
 export function fromKathmanduInputValue(local: string): string | null {
-  if (!local) return null
+  // Date.parse is too lenient to trust directly here: V8 will happily turn
+  // unrelated garbage strings into *some* date instead of NaN, so the shape
+  // must be checked first (datetime-local inputs always produce this shape).
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local)) return null
   const asUtcMs = Date.parse(`${local}:00Z`)
   if (Number.isNaN(asUtcMs)) return null
   return new Date(asUtcMs - KATHMANDU_OFFSET_MS).toISOString()
@@ -31,7 +35,7 @@ export function fromKathmanduDateInputValue(local: string): string | null {
 
 /** Friendly display string in Asia/Kathmandu time, e.g. "15 Nov 2026, 9:00 am". */
 export function formatKathmandu(iso: string | null, opts?: { dateOnly?: boolean }): string {
-  if (!iso) return '—'
+  if (!iso || Number.isNaN(new Date(iso).getTime())) return '—'
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Kathmandu',
     day: 'numeric',
@@ -49,6 +53,7 @@ export function kathmanduDateKey(iso: string): string {
 
 /** Time-only display in Asia/Kathmandu, e.g. "9:00 am". */
 export function formatKathmanduTime(iso: string): string {
+  if (Number.isNaN(new Date(iso).getTime())) return '—'
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Kathmandu',
     hour: 'numeric',

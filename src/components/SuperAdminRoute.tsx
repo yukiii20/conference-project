@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import type { MyRoleRow } from '../lib/types'
+import { useAuth } from '../lib/authContext'
 import { NotFoundPage } from '../pages/NotFoundPage'
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000
@@ -15,35 +14,28 @@ const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'
  * learns nothing about whether it exists.
  *
  * The /super-admin path being unlinked anywhere in the UI is just tidiness
- * (nothing to stumble onto); the actual protection is this get_my_roles()
- * check on every load, backed by the database's own admin checks
- * (appoint_convenor, RLS policies gated on private.is_platform_admin()).
+ * (nothing to stumble onto); the actual protection is this admin check on
+ * every load. Identity comes only from useAuth()'s refresh(), i.e.
+ * GET /api/auth/me — never from a Supabase session.
  */
 export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { refresh } = useAuth()
   const [state, setState] = useState<'checking' | 'ok' | 'denied'>('checking')
 
   useEffect(() => {
     let cancelled = false
 
     async function check() {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        if (!cancelled) setState('denied')
-        return
-      }
-
-      const { data } = await supabase.rpc('get_my_roles')
-      const roles = (data ?? []) as MyRoleRow[]
-      const isAdmin = roles.some((r) => r.role_code === 'admin')
-      if (!cancelled) setState(isAdmin ? 'ok' : 'denied')
+      setState('checking')
+      const data = await refresh()
+      if (!cancelled) setState(data?.isAdmin ? 'ok' : 'denied')
     }
 
-    setState('checking')
     check()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refresh])
 
   if (state === 'checking') {
     return <div className="min-h-screen bg-background" />
@@ -69,6 +61,7 @@ export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
  */
 function AdminIdleGuard() {
   const navigate = useNavigate()
+  const { signOut } = useAuth()
   const [warning, setWarning] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(WARNING_MS / 1000)
   const warningRef = useRef(false)
@@ -88,9 +81,9 @@ function AdminIdleGuard() {
 
   const signOutNow = useCallback(async () => {
     clearTimers()
-    await supabase.auth.signOut()
+    await signOut()
     navigate('/super-admin/login', { replace: true })
-  }, [clearTimers, navigate])
+  }, [clearTimers, navigate, signOut])
 
   const resetIdle = useCallback(() => {
     clearTimers()

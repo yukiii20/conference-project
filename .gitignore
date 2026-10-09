@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 .env
+server/storage/
+server/storage-test/
+server/storage-test-e2e/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
 
 # Editor directories and files
 .vscode/*
