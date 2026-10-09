@@ -1,6 +1,7 @@
 import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
+import { issuePasswordReset } from '../auth/service.js'
 import { insertAuditLog } from '../../utils/audit.js'
 import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
@@ -223,7 +224,7 @@ export async function inviteConvenor(
         `SELECT subject, body_html FROM email_templates WHERE conference_id IS NULL AND template_key = 'convenor_invitation' LIMIT 1`,
       )
       const template = (templateRows as Array<{ subject: string; body_html: string }>)[0]
-      const inviteUrl = `${env.CLIENT_ORIGIN}/set-password?token=${rawToken}`
+      const inviteUrl = `${env.APP_URL}/set-password?token=${rawToken}`
       const data = { full_name: input.full_name, conference_name: conference.name, invite_url: inviteUrl }
       const subject = template
         ? renderTemplate(template.subject, data)
@@ -231,6 +232,7 @@ export async function inviteConvenor(
 
       await queueEmail(conn, {
         userId,
+        conferenceId,
         recipientEmail: input.email,
         templateKey: 'convenor_invitation',
         subject,
@@ -349,6 +351,29 @@ export async function reactivateUser(actorUserId: string, targetUserId: string):
       entityId: targetUserId,
       oldValues: { status: user.status },
       newValues: { status: 'active' },
+    })
+  })
+}
+
+/** Sends the same reset-password link a self-service request would — never shows or sets a password directly. */
+export async function adminResetUserPassword(actorUserId: string, targetUserId: string): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const [rows] = await conn.query(
+      'SELECT id, email, full_name, status FROM users WHERE id = ? LIMIT 1',
+      [targetUserId],
+    )
+    const user = (rows as Array<{ id: string; email: string; full_name: string; status: string }>)[0]
+    if (!user) throw new NotFoundError('This user does not exist.')
+    if (user.status !== 'active') {
+      throw new BadRequestError('This account is not active.')
+    }
+
+    await issuePasswordReset(conn, user)
+    await insertAuditLog(conn, {
+      actorUserId,
+      action: 'user.admin_reset_password',
+      entityType: 'users',
+      entityId: targetUserId,
     })
   })
 }

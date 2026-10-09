@@ -7,6 +7,9 @@ import { DEADLINE_LABELS, type Conference, type Deadline, type ScheduleRow, type
 export const SECTIONS = [
   { id: 'home', label: 'Home' },
   { id: 'about', label: 'About' },
+  { id: 'announcements', label: 'Announcements' },
+  { id: 'committees', label: 'Committees' },
+  { id: 'speakers', label: 'Speakers' },
   { id: 'supporters', label: 'Supporters' },
   { id: 'programme', label: 'Programme' },
   { id: 'location', label: 'Location' },
@@ -442,7 +445,16 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
           }}
           className="flex items-center gap-2 font-semibold"
         >
-          {logoUrl ? <img src={logoUrl} alt="" className="h-8 w-8 object-contain" /> : null}
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 object-contain" />
+          ) : (
+            <span
+              style={{ backgroundColor: accent, color: accentText }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md px-0.5 text-center text-[10px] font-bold leading-none"
+            >
+              {conference.code}
+            </span>
+          )}
           {conference.name}
         </a>
 

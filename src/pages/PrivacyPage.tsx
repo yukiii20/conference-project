@@ -74,8 +74,8 @@ export function PrivacyPage() {
           <section>
             <h2>Where it is stored</h2>
             <p>
-              Data is stored with Supabase, a hosted database and file storage provider. Access is controlled by
-              role-based permissions enforced at the database level, so accounts only see what their role allows.
+              Data is stored in our own MySQL database and private file storage. Access is controlled by role-based
+              permissions enforced by the backend, so accounts only see what their role allows.
             </p>
           </section>
 

@@ -49,7 +49,9 @@ export function requireConferencePermission(
   permission: string,
   getConferenceId: (req: Request) => string | undefined = (req) => req.params.id,
 ) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  // Named (not an arrow function) so a route-guard audit can recognise it by
+  // name in a route's middleware stack — see tests/routeGuards.test.ts.
+  return function conferencePermissionGuard(req: Request, _res: Response, next: NextFunction): void {
     requireAuth(req, _res, async (err?: unknown) => {
       if (err) {
         next(err)
@@ -86,7 +88,8 @@ export function requireConferenceRole(
   roleCodes: string[],
   getConferenceId: (req: Request) => string | undefined = (req) => req.params.id,
 ) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  // Named for the same reason as conferencePermissionGuard above.
+  return function conferenceRoleGuard(req: Request, _res: Response, next: NextFunction): void {
     requireAuth(req, _res, async (err?: unknown) => {
       if (err) {
         next(err)

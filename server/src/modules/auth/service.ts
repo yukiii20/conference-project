@@ -2,9 +2,11 @@ import bcrypt from 'bcryptjs'
 import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
+import { PLATFORM_NAME } from '../../email/layout.js'
 import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { insertAuditLog } from '../../utils/audit.js'
+import { notifyUser } from '../../utils/notifications.js'
 import { AppError, BadRequestError, ConflictError, UnauthorizedError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
 import type { LoginRoleCode, RegisterInput, UpdateProfileInput } from './validation.js'
@@ -33,7 +35,7 @@ export function verifyPassword(password: string, hash: string): Promise<boolean>
   return bcrypt.compare(password, hash)
 }
 
-/** Same shape the frontend used to get from the Supabase get_my_roles() RPC. */
+/** Same shape the frontend used to get from the previous backend's get_my_roles() RPC. */
 export async function getMyRoles(userId: string): Promise<MyRoleRow[]> {
   const [confRows] = await pool.query(
     `SELECT cm.role_code, cm.conference_id, c.code AS conference_code, c.name AS conference_name,
@@ -118,6 +120,21 @@ export async function registerUser(
       action: 'user.register',
       entityType: 'users',
       entityId: userId,
+    })
+
+    const [templateRows] = await conn.query(
+      `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'account_created' LIMIT 1`,
+    )
+    const template = (templateRows as Array<{ subject: string }>)[0]
+    const data = { full_name: input.full_name, platform_name: PLATFORM_NAME }
+    const subject = template ? renderTemplate(template.subject, data) : `Welcome to ${PLATFORM_NAME}`
+    await queueEmail(conn, {
+      userId,
+      conferenceId: input.conference_id,
+      recipientEmail: input.email,
+      templateKey: 'account_created',
+      subject,
+      templateData: data,
     })
 
     return { userId }
@@ -250,6 +267,7 @@ export async function changePassword(
   userId: string,
   currentPassword: string,
   newPassword: string,
+  currentSessionId: string,
 ): Promise<void> {
   const [rows] = await pool.query('SELECT password_hash FROM users WHERE id = ? LIMIT 1', [userId])
   const row = (rows as Array<{ password_hash: string | null }>)[0]
@@ -261,7 +279,60 @@ export async function changePassword(
     throw new BadRequestError('Current password is incorrect.', { current_password: 'Current password is incorrect.' })
   }
   const newHash = await hashPassword(newPassword)
-  await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, userId])
+  await withTransaction(userId, async (conn) => {
+    await conn.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, userId])
+    // Keep the session that made this request; every other session held by this user is now stale.
+    await conn.query(
+      'UPDATE auth_sessions SET revoked_at = NOW(3) WHERE user_id = ? AND id <> ? AND revoked_at IS NULL',
+      [userId, currentSessionId],
+    )
+    await insertAuditLog(conn, {
+      actorUserId: userId,
+      action: 'user.change_password',
+      entityType: 'users',
+      entityId: userId,
+    })
+  })
+}
+
+/**
+ * Shared by the self-service "forgot password" flow and an admin resetting
+ * someone's password for them: invalidates any previous unused reset tokens
+ * for this user (only the newest link should ever work), issues a new
+ * single-use token, and queues the email with the link.
+ */
+export async function issuePasswordReset(
+  conn: PoolConnection,
+  user: { id: string; email: string; full_name: string },
+): Promise<void> {
+  await conn.query(
+    `UPDATE auth_tokens SET used_at = NOW(3) WHERE user_id = ? AND purpose = 'password_reset' AND used_at IS NULL`,
+    [user.id],
+  )
+
+  const rawToken = generateToken()
+  const tokenHash = sha256(rawToken)
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS)
+  await conn.query(
+    `INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at) VALUES (?, 'password_reset', ?, ?)`,
+    [user.id, tokenHash, expiresAt],
+  )
+
+  const [templateRows] = await conn.query(
+    `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'password_reset' LIMIT 1`,
+  )
+  const template = (templateRows as Array<{ subject: string }>)[0]
+  const resetUrl = `${env.APP_URL}/reset-password?token=${rawToken}`
+  const data = { full_name: user.full_name, reset_url: resetUrl }
+  const subject = template ? renderTemplate(template.subject, data) : 'Reset your password'
+
+  await queueEmail(conn, {
+    userId: user.id,
+    recipientEmail: user.email,
+    templateKey: 'password_reset',
+    subject,
+    templateData: data,
+  })
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
@@ -269,36 +340,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   // Always behave the same way whether or not the account exists — the
   // caller (route handler) returns the same response either way.
   if (!user || user.status !== 'active') return
-
-  const rawToken = generateToken()
-  const tokenHash = sha256(rawToken)
-  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS)
-
-  await pool.query(
-    `INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at) VALUES (?, 'password_reset', ?, ?)`,
-    [user.id, tokenHash, expiresAt],
-  )
-
-  const [templateRows] = await pool.query(
-    `SELECT subject, body_html FROM email_templates WHERE conference_id IS NULL AND template_key = 'password_reset' LIMIT 1`,
-  )
-  const template = (templateRows as Array<{ subject: string; body_html: string }>)[0]
-  const resetUrl = `${env.CLIENT_ORIGIN}/reset-password?token=${rawToken}`
-  const data = { full_name: user.full_name, reset_url: resetUrl }
-  const subject = template ? renderTemplate(template.subject, data) : 'Reset your password'
-
-  const conn = await pool.getConnection()
-  try {
-    await queueEmail(conn, {
-      userId: user.id,
-      recipientEmail: user.email,
-      templateKey: 'password_reset',
-      subject,
-      templateData: data,
-    })
-  } finally {
-    conn.release()
-  }
+  await withTransaction(user.id, (conn) => issuePasswordReset(conn, user))
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
@@ -315,30 +357,61 @@ export async function resetPassword(token: string, newPassword: string): Promise
   }
 
   const newHash = await hashPassword(newPassword)
-  await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, row.user_id])
-  await pool.query('UPDATE auth_tokens SET used_at = NOW(3) WHERE id = ?', [row.id])
-  // A reset is a good moment to invalidate any session someone else might be holding.
-  await pool.query('UPDATE auth_sessions SET revoked_at = NOW(3) WHERE user_id = ? AND revoked_at IS NULL', [
-    row.user_id,
-  ])
+  await withTransaction(row.user_id, async (conn) => {
+    await conn.query(
+      'UPDATE users SET password_hash = ?, failed_login_count = 0, locked_until = NULL WHERE id = ?',
+      [newHash, row.user_id],
+    )
+    await conn.query('UPDATE auth_tokens SET used_at = NOW(3) WHERE id = ?', [row.id])
+    // A reset is a good moment to invalidate every session, including whoever else might be holding one.
+    await conn.query('UPDATE auth_sessions SET revoked_at = NOW(3) WHERE user_id = ? AND revoked_at IS NULL', [
+      row.user_id,
+    ])
+    await insertAuditLog(conn, {
+      actorUserId: row.user_id,
+      action: 'user.reset_password',
+      entityType: 'users',
+      entityId: row.user_id,
+    })
+  })
 }
 
 export async function acceptInvitation(token: string, newPassword: string): Promise<{ userId: string }> {
   const tokenHash = sha256(token)
   const [rows] = await pool.query(
-    `SELECT id, user_id FROM auth_tokens
+    `SELECT id, user_id, created_by FROM auth_tokens
      WHERE token_hash = ? AND purpose = 'invitation' AND used_at IS NULL AND expires_at > NOW(3)
      LIMIT 1`,
     [tokenHash],
   )
-  const row = (rows as Array<{ id: string; user_id: string }>)[0]
+  const row = (rows as Array<{ id: string; user_id: string; created_by: string | null }>)[0]
   if (!row) {
     throw new BadRequestError('This invitation link is invalid or has expired.')
   }
 
   const newHash = await hashPassword(newPassword)
-  await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, row.user_id])
-  await pool.query('UPDATE auth_tokens SET used_at = NOW(3) WHERE id = ?', [row.id])
+  await withTransaction(row.user_id, async (conn) => {
+    await conn.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, row.user_id])
+    await conn.query('UPDATE auth_tokens SET used_at = NOW(3) WHERE id = ?', [row.id])
+    await insertAuditLog(conn, {
+      actorUserId: row.user_id,
+      action: 'user.accept_invitation',
+      entityType: 'users',
+      entityId: row.user_id,
+    })
+
+    if (row.created_by) {
+      const [userRows] = await conn.query('SELECT full_name FROM users WHERE id = ? LIMIT 1', [row.user_id])
+      const fullName = (userRows as Array<{ full_name: string }>)[0]?.full_name ?? 'A new user'
+      await notifyUser(conn, {
+        userId: row.created_by,
+        type: 'system',
+        title: 'Invitation accepted',
+        body: `${fullName} has set their password and can now sign in.`,
+      })
+    }
+  })
+
   return { userId: row.user_id }
 }
 

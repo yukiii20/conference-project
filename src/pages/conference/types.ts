@@ -39,6 +39,40 @@ export type Deadline = {
   closes_at: string | null
 }
 
+export type CommitteeMember = {
+  member_name: string
+  affiliation: string | null
+  country: string | null
+  member_role: string
+  display_order: number
+}
+
+export type Committee = {
+  id: string
+  name: string
+  committee_type: string
+  description: string | null
+  members: CommitteeMember[]
+}
+
+export type Speaker = {
+  id: string
+  full_name: string
+  designation: string | null
+  affiliation: string | null
+  bio: string | null
+  photo_path: string | null
+  speaker_type: 'keynote' | 'invited' | 'panelist' | 'guest'
+}
+
+export type ConferenceAnnouncement = {
+  id: string
+  title: string
+  body: string
+  publish_at: string | null
+  created_at: string
+}
+
 export type ScheduleRow = {
   session_id: string
   session_title: string

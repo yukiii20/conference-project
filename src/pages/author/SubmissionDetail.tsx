@@ -1,28 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { uploadSubmissionFile, getSubmissionFileUrl, validateSubmissionFile, SUBMISSION_FILE_RULES } from '../../lib/submissionFiles'
-import { sendQueuedEmails } from '../../lib/sendQueuedEmails'
+import { api, ApiError } from '../../lib/api'
+import { downloadSubmissionFile, uploadSubmissionFile, validateSubmissionFile, SUBMISSION_FILE_RULES } from '../../lib/submissionFiles'
 import { buildSubmissionSchema, coAuthorSchema, type CoAuthorInput } from '../../lib/validation'
 import {
   FILE_KIND_LABELS,
   SUBMISSION_STATUS_LABELS,
-  isSubmissionEditable,
   statusBadgeClass,
 } from '../../lib/submissionDisplay'
 
 type Track = { id: string; name: string }
-
-type Submission = {
-  id: string
-  submission_code: string | null
-  title: string
-  abstract: string
-  keywords: string[]
-  presentation_preference: 'oral' | 'poster' | 'either'
-  track_id: string
-  status: string
-  submitted_at: string | null
-}
 
 type Author = {
   id: string
@@ -40,7 +26,6 @@ type FileRow = {
   version: number
   status: string
   original_filename: string
-  storage_path: string
   uploaded_at: string
 }
 
@@ -53,19 +38,29 @@ type HistoryRow = {
 }
 
 type Feedback = {
-  decision: string
-  decision_comments: string | null
-  decided_at: string
-  stage: string
-  round: number
-  review_number: number
-  originality: number | null
-  quality: number | null
-  relevance: number | null
-  methodology: number | null
-  overall_score: number | null
-  recommendation: string | null
-  comments_to_author: string | null
+  decisions: Array<{ stage: string; decision: string; comments_to_author: string | null; decided_at: string }>
+  reviews: Array<{ review_number: number; comments_to_author: string | null; overall_score: number | null; recommendation: string | null }>
+}
+
+type CanUpload = { abstract: boolean; full_paper: boolean; slides: boolean; camera_ready: boolean }
+
+type SubmissionDetailData = {
+  id: string
+  submission_code: string | null
+  title: string
+  abstract: string
+  keywords: string[]
+  presentation_preference: 'oral' | 'poster' | 'either'
+  track_id: string
+  status: string
+  authors: Author[]
+  files: FileRow[]
+  status_history: HistoryRow[]
+  feedback: Feedback
+  can_edit: boolean
+  can_delete: boolean
+  can_withdraw: boolean
+  can_upload: CanUpload
 }
 
 const EMPTY_CORE = {
@@ -99,13 +94,18 @@ export function SubmissionDetail({
   const [authors, setAuthors] = useState<Author[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
   const [history, setHistory] = useState<HistoryRow[]>([])
-  const [feedback, setFeedback] = useState<Feedback[]>([])
+  const [feedback, setFeedback] = useState<Feedback>({ decisions: [], reviews: [] })
+  const [canEdit, setCanEdit] = useState(true)
+  const [canDelete, setCanDelete] = useState(false)
+  const [canWithdraw, setCanWithdraw] = useState(false)
+  const [canUpload, setCanUpload] = useState<CanUpload>({ abstract: false, full_paper: false, slides: false, camera_ready: false })
 
   const [loading, setLoading] = useState(Boolean(submissionId))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawReason, setWithdrawReason] = useState('')
@@ -121,44 +121,31 @@ export function SubmissionDetail({
   const fullPaperFileInputRef = useRef<HTMLInputElement>(null)
   const slidesFileInputRef = useRef<HTMLInputElement>(null)
 
-  const editable = isSubmissionEditable(status)
-
   const load = useCallback(async (sid: string) => {
     setLoading(true)
-    const [
-      { data: sub, error: subError },
-      { data: authorsData },
-      { data: filesData },
-      { data: historyData },
-      { data: feedbackData },
-    ] = await Promise.all([
-      supabase
-        .from('submissions')
-        .select('id, submission_code, title, abstract, keywords, presentation_preference, track_id, status, submitted_at')
-        .eq('id', sid)
-        .single(),
-      supabase.from('submission_authors').select('*').eq('submission_id', sid).order('author_order'),
-      supabase.from('submission_files').select('*').eq('submission_id', sid).order('file_kind').order('version', { ascending: false }),
-      supabase.from('submission_status_history').select('*').eq('submission_id', sid).order('changed_at'),
-      supabase.rpc('get_submission_feedback', { p_submission_id: sid }),
-    ])
-
-    if (subError) {
-      setFormError(subError.message)
-      setLoading(false)
-      return
+    try {
+      const data = await api.get<SubmissionDetailData>(`/submissions/${sid}`)
+      setCore({
+        track_id: data.track_id,
+        title: data.title,
+        abstract: data.abstract,
+        presentation_preference: data.presentation_preference,
+      })
+      setKeywords(data.keywords ?? [])
+      setStatus(data.status)
+      setSubmissionCode(data.submission_code)
+      setAuthors(data.authors)
+      setFiles(data.files)
+      setHistory(data.status_history)
+      setFeedback(data.feedback)
+      setCanEdit(data.can_edit)
+      setCanDelete(data.can_delete)
+      setCanWithdraw(data.can_withdraw)
+      setCanUpload(data.can_upload)
+      setFormError(null)
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not load this submission.')
     }
-    if (sub) {
-      const s = sub as Submission
-      setCore({ track_id: s.track_id, title: s.title, abstract: s.abstract, presentation_preference: s.presentation_preference })
-      setKeywords(s.keywords ?? [])
-      setStatus(s.status)
-      setSubmissionCode(s.submission_code)
-    }
-    setAuthors((authorsData ?? []) as Author[])
-    setFiles((filesData ?? []) as FileRow[])
-    setHistory((historyData ?? []) as HistoryRow[])
-    setFeedback((feedbackData ?? []) as Feedback[])
     setLoading(false)
   }, [])
 
@@ -174,7 +161,11 @@ export function SubmissionDetail({
       setAuthors([])
       setFiles([])
       setHistory([])
-      setFeedback([])
+      setFeedback({ decisions: [], reviews: [] })
+      setCanEdit(true)
+      setCanDelete(false)
+      setCanWithdraw(false)
+      setCanUpload({ abstract: false, full_paper: false, slides: false, camera_ready: false })
     }
   }, [submissionId, load])
 
@@ -211,48 +202,32 @@ export function SubmissionDetail({
     setErrors({})
     setSaving(true)
 
-    if (!id) {
-      const { data: userData } = await supabase.auth.getUser()
-      const { data: inserted, error } = await supabase
-        .from('submissions')
-        .insert({
-          conference_id: conferenceId,
+    try {
+      if (!id) {
+        const created = await api.post<{ id: string }>(`/conferences/${conferenceId}/submissions`, {
           track_id: parsed.data.track_id,
           title: parsed.data.title,
           abstract: parsed.data.abstract,
           keywords: parsed.data.keywords,
           presentation_preference: parsed.data.presentation_preference,
-          created_by: userData.user?.id,
         })
-        .select('id')
-        .single()
-      setSaving(false)
-      if (error || !inserted) {
-        setFormError(error?.message ?? 'Could not create the submission.')
-        return
+        setId(created.id)
+        onSaved(created.id)
+        await load(created.id)
+      } else {
+        await api.patch(`/submissions/${id}`, {
+          track_id: parsed.data.track_id,
+          title: parsed.data.title,
+          abstract: parsed.data.abstract,
+          keywords: parsed.data.keywords,
+          presentation_preference: parsed.data.presentation_preference,
+        })
+        await load(id)
       }
-      setId(inserted.id)
-      onSaved(inserted.id)
-      await load(inserted.id)
-      return
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not save this submission.')
     }
-
-    const { error } = await supabase
-      .from('submissions')
-      .update({
-        track_id: parsed.data.track_id,
-        title: parsed.data.title,
-        abstract: parsed.data.abstract,
-        keywords: parsed.data.keywords,
-        presentation_preference: parsed.data.presentation_preference,
-      })
-      .eq('id', id)
     setSaving(false)
-    if (error) {
-      setFormError(error.message)
-      return
-    }
-    await load(id)
   }
 
   async function handleSubmitForReview() {
@@ -261,32 +236,41 @@ export function SubmissionDetail({
     setSubmitting(true)
     setFormError(null)
     setNotice(null)
-    const { error } = await supabase.from('submissions').update({ status: 'submitted' }).eq('id', id)
-    setSubmitting(false)
-    if (error) {
-      setFormError(error.message)
-      return
+    try {
+      await api.post(`/submissions/${id}/submit`)
+      setNotice('Submitted.')
+      await load(id)
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not submit this abstract.')
     }
-    const emailOk = await sendQueuedEmails()
-    setNotice(emailOk ? 'Submitted.' : 'Submitted. Email will be retried.')
-    await load(id)
+    setSubmitting(false)
   }
 
   async function handleWithdraw() {
     if (!id) return
     setWithdrawing(true)
-    const { error } = await supabase.rpc('withdraw_submission', {
-      p_submission_id: id,
-      p_reason: withdrawReason.trim() || undefined,
-    })
-    setWithdrawing(false)
-    if (error) {
-      setFormError(error.message)
-      return
+    try {
+      await api.post(`/submissions/${id}/withdraw`, { reason: withdrawReason.trim() || undefined })
+      setShowWithdraw(false)
+      setWithdrawReason('')
+      await load(id)
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not withdraw this submission.')
     }
-    setShowWithdraw(false)
-    setWithdrawReason('')
-    await load(id)
+    setWithdrawing(false)
+  }
+
+  async function handleDelete() {
+    if (!id) return
+    if (!window.confirm('Delete this submission? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      await api.del(`/submissions/${id}`)
+      onSaved('')
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not delete this submission.')
+      setDeleting(false)
+    }
   }
 
   async function handleAddAuthor(e: React.FormEvent) {
@@ -298,55 +282,46 @@ export function SubmissionDetail({
       setAuthorError(parsed.error.issues[0]?.message ?? 'Invalid value.')
       return
     }
-    const nextOrder = authors.length === 0 ? 1 : Math.max(...authors.map((a) => a.author_order)) + 1
     setAuthorBusy('new')
-    const { error } = await supabase.from('submission_authors').insert({
-      submission_id: id,
-      author_order: nextOrder,
-      full_name: parsed.data.full_name,
-      email: parsed.data.email,
-      affiliation: parsed.data.affiliation,
-      country: parsed.data.country,
-      is_corresponding: parsed.data.is_corresponding,
-    })
+    try {
+      await api.post(`/submissions/${id}/authors`, {
+        full_name: parsed.data.full_name,
+        email: parsed.data.email,
+        affiliation: parsed.data.affiliation,
+        country: parsed.data.country,
+        is_corresponding: parsed.data.is_corresponding,
+      })
+      setNewAuthor(EMPTY_CO_AUTHOR)
+      await load(id)
+    } catch (err) {
+      setAuthorError(err instanceof ApiError ? err.message : 'Could not add this co-author.')
+    }
     setAuthorBusy(null)
-    if (error) {
-      setAuthorError(error.message)
-      return
-    }
-    if (parsed.data.is_corresponding) {
-      await supabase.from('submission_authors').update({ is_corresponding: false }).eq('submission_id', id).neq('email', parsed.data.email)
-    }
-    setNewAuthor(EMPTY_CO_AUTHOR)
-    await load(id)
   }
 
   async function handleRemoveAuthor(author: Author) {
     if (!id) return
     if (!window.confirm(`Remove ${author.full_name}?`)) return
     setAuthorBusy(author.id)
-    const { error } = await supabase.from('submission_authors').delete().eq('id', author.id)
-    setAuthorBusy(null)
-    if (error) {
-      setAuthorError(error.message)
-      return
+    try {
+      await api.del(`/submissions/${id}/authors/${author.id}`)
+      await load(id)
+    } catch (err) {
+      setAuthorError(err instanceof ApiError ? err.message : 'Could not remove this author.')
     }
-    await load(id)
+    setAuthorBusy(null)
   }
 
   async function handleMakeCorresponding(author: Author) {
     if (!id) return
     setAuthorBusy(author.id)
-    const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from('submission_authors').update({ is_corresponding: true }).eq('id', author.id),
-      supabase.from('submission_authors').update({ is_corresponding: false }).eq('submission_id', id).neq('id', author.id),
-    ])
-    setAuthorBusy(null)
-    if (e1 || e2) {
-      setAuthorError((e1 ?? e2)?.message ?? 'Could not update.')
-      return
+    try {
+      await api.patch(`/submissions/${id}/authors/${author.id}`, { is_corresponding: true })
+      await load(id)
+    } catch (err) {
+      setAuthorError(err instanceof ApiError ? err.message : 'Could not update.')
     }
-    await load(id)
+    setAuthorBusy(null)
   }
 
   async function handleMoveAuthor(author: Author, direction: 'up' | 'down') {
@@ -355,18 +330,15 @@ export function SubmissionDetail({
     const index = sorted.findIndex((a) => a.id === author.id)
     const swapIndex = direction === 'up' ? index - 1 : index + 1
     if (swapIndex < 0 || swapIndex >= sorted.length) return
-    const other = sorted[swapIndex]
+    const other = sorted[swapIndex]!
     setAuthorBusy(author.id)
-    const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from('submission_authors').update({ author_order: other.author_order }).eq('id', author.id),
-      supabase.from('submission_authors').update({ author_order: author.author_order }).eq('id', other.id),
-    ])
-    setAuthorBusy(null)
-    if (e1 || e2) {
-      setAuthorError((e1 ?? e2)?.message ?? 'Could not reorder.')
-      return
+    try {
+      await api.patch(`/submissions/${id}/authors/${author.id}`, { author_order: other.author_order })
+      await load(id)
+    } catch (err) {
+      setAuthorError(err instanceof ApiError ? err.message : 'Could not reorder.')
     }
-    await load(id)
+    setAuthorBusy(null)
   }
 
   const fileInputRefs = {
@@ -398,9 +370,9 @@ export function SubmissionDetail({
     await load(id)
   }
 
-  async function handleDownload(path: string) {
-    const url = await getSubmissionFileUrl(path)
-    if (url) window.open(url, '_blank', 'noopener,noreferrer')
+  function handleDownload(fileId: string) {
+    if (!id) return
+    downloadSubmissionFile(id, fileId)
   }
 
   if (loading) {
@@ -409,6 +381,7 @@ export function SubmissionDetail({
 
   const words = core.abstract.trim() ? core.abstract.trim().split(/\s+/).filter(Boolean).length : 0
   const sortedAuthors = [...authors].sort((a, b) => a.author_order - b.author_order)
+  const editable = !id || canEdit
 
   return (
     <div className="mt-6 max-w-3xl space-y-8">
@@ -485,14 +458,14 @@ export function SubmissionDetail({
                 ref={abstractFileInputRef}
                 type="file"
                 accept={SUBMISSION_FILE_RULES.abstract.accept}
-                disabled={!id || uploadingKind === 'abstract'}
+                disabled={!id || !canUpload.abstract || uploadingKind === 'abstract'}
                 onChange={(e) => handleFilePick('abstract', e.target.files?.[0])}
                 className="hidden"
               />
               <button
                 type="button"
                 onClick={() => abstractFileInputRef.current?.click()}
-                disabled={!id || uploadingKind === 'abstract'}
+                disabled={!id || !canUpload.abstract || uploadingKind === 'abstract'}
                 className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 {uploadingKind === 'abstract' ? 'Uploading…' : 'Upload abstract file'}
@@ -671,6 +644,7 @@ export function SubmissionDetail({
                   />
                   Corresponding author
                 </label>
+                <p className="text-xs text-ink/50">The corresponding author must already have an account.</p>
                 {authorError ? <p className="text-sm text-red-600">{authorError}</p> : null}
                 <button
                   type="submit"
@@ -688,7 +662,7 @@ export function SubmissionDetail({
             <p className="mt-1 text-xs text-ink/50">The abstract file upload is above, with the abstract text.</p>
             {uploadError ? <p className="mt-2 text-sm text-red-600">{uploadError}</p> : null}
 
-            {status === 'accepted' || status === 'full_paper_pending' || status === 'full_paper_submitted' ? (
+            {canUpload.full_paper || canUpload.slides ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm text-ink/70">Full paper</label>
@@ -698,14 +672,14 @@ export function SubmissionDetail({
                       ref={fullPaperFileInputRef}
                       type="file"
                       accept={SUBMISSION_FILE_RULES.full_paper.accept}
-                      disabled={uploadingKind === 'full_paper'}
+                      disabled={!canUpload.full_paper || uploadingKind === 'full_paper'}
                       onChange={(e) => handleFilePick('full_paper', e.target.files?.[0])}
                       className="hidden"
                     />
                     <button
                       type="button"
                       onClick={() => fullPaperFileInputRef.current?.click()}
-                      disabled={uploadingKind === 'full_paper'}
+                      disabled={!canUpload.full_paper || uploadingKind === 'full_paper'}
                       className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
                     >
                       {uploadingKind === 'full_paper' ? 'Uploading…' : 'Upload full paper'}
@@ -720,14 +694,14 @@ export function SubmissionDetail({
                       ref={slidesFileInputRef}
                       type="file"
                       accept={SUBMISSION_FILE_RULES.slides.accept}
-                      disabled={uploadingKind === 'slides'}
+                      disabled={!canUpload.slides || uploadingKind === 'slides'}
                       onChange={(e) => handleFilePick('slides', e.target.files?.[0])}
                       className="hidden"
                     />
                     <button
                       type="button"
                       onClick={() => slidesFileInputRef.current?.click()}
-                      disabled={uploadingKind === 'slides'}
+                      disabled={!canUpload.slides || uploadingKind === 'slides'}
                       className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
                     >
                       {uploadingKind === 'slides' ? 'Uploading…' : 'Upload presentation'}
@@ -752,7 +726,7 @@ export function SubmissionDetail({
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleDownload(f.storage_path)}
+                      onClick={() => handleDownload(f.id)}
                       className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background"
                     >
                       Download
@@ -782,29 +756,32 @@ export function SubmissionDetail({
             </div>
           ) : null}
 
-          {feedback.length > 0 ? (
+          {feedback.decisions.length > 0 || feedback.reviews.length > 0 ? (
             <div className="rounded-lg border border-line bg-white p-5">
               <h3 className="font-medium text-ink">Feedback</h3>
               <ul className="mt-3 space-y-4">
-                {feedback.map((f, i) => (
-                  <li key={i} className="rounded-md border border-line p-3 text-sm">
+                {feedback.decisions.map((d, i) => (
+                  <li key={`decision-${i}`} className="rounded-md border border-line p-3 text-sm">
                     <p className="font-medium text-ink capitalize">
-                      {f.stage.replace('_', ' ')} decision: {f.decision.replace('_', ' ')}
+                      {d.stage.replace('_', ' ')} decision: {d.decision.replace('_', ' ')}
                     </p>
-                    {f.decision_comments ? <p className="mt-1 text-ink/70">{f.decision_comments}</p> : null}
-                    {f.overall_score !== null ? (
-                      <p className="mt-2 text-ink/60">
-                        Review #{f.review_number} — overall {f.overall_score}/5, recommendation: {f.recommendation ?? '—'}
-                      </p>
-                    ) : null}
-                    {f.comments_to_author ? <p className="mt-1 text-ink/70">{f.comments_to_author}</p> : null}
+                    {d.comments_to_author ? <p className="mt-1 text-ink/70">{d.comments_to_author}</p> : null}
+                  </li>
+                ))}
+                {feedback.reviews.map((r) => (
+                  <li key={`review-${r.review_number}`} className="rounded-md border border-line p-3 text-sm">
+                    <p className="font-medium text-ink">
+                      Review #{r.review_number}
+                      {r.overall_score !== null ? ` — overall ${r.overall_score}/5` : ''}
+                    </p>
+                    {r.comments_to_author ? <p className="mt-1 text-ink/70">{r.comments_to_author}</p> : null}
                   </li>
                 ))}
               </ul>
             </div>
           ) : null}
 
-          {status !== 'withdrawn' && status !== 'rejected' ? (
+          {canWithdraw ? (
             <div className="rounded-lg border border-line bg-white p-5">
               {showWithdraw ? (
                 <div className="space-y-2">
@@ -842,6 +819,19 @@ export function SubmissionDetail({
                   Withdraw submission
                 </button>
               )}
+            </div>
+          ) : null}
+
+          {canDelete ? (
+            <div className="rounded-lg border border-line bg-white p-5">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting…' : 'Delete submission'}
+              </button>
             </div>
           ) : null}
         </>

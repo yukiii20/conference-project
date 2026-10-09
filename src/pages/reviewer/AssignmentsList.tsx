@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 
 type Assignment = {
   id: string
   submission_id: string
   submission_code: string | null
-  submission_title: string | null
+  title: string
+  track_name: string
   due_at: string | null
   status: string
-  is_overdue: boolean | null
+  is_overdue: boolean
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -51,19 +52,12 @@ export function AssignmentsList({
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: userData } = await supabase.auth.getUser()
-    const { data, error: loadError } = await supabase
-      .from('v_review_assignments')
-      .select('id, submission_id, submission_code, submission_title, due_at, status, is_overdue')
-      .eq('reviewer_id', userData.user?.id ?? '')
-      .eq('conference_id', conferenceId)
-      .order('due_at')
-
-    if (loadError) {
-      setError(loadError.message)
-    } else {
-      setRows((data ?? []) as Assignment[])
+    try {
+      const data = await api.get<{ assignments: Assignment[] }>('/reviewer/assignments', { conference_id: conferenceId })
+      setRows(data.assignments)
       setError(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load your assignments.')
     }
     setLoading(false)
   }, [conferenceId])
@@ -74,29 +68,26 @@ export function AssignmentsList({
 
   async function handleAccept(id: string) {
     setBusyId(id)
-    const { error: updateError } = await supabase.from('review_assignments').update({ status: 'in_progress' }).eq('id', id)
-    setBusyId(null)
-    if (updateError) {
-      setError(updateError.message)
-      return
+    try {
+      await api.post(`/reviewer/assignments/${id}/accept`)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not accept this assignment.')
     }
-    await load()
+    setBusyId(null)
   }
 
   async function handleDeclineConfirm(id: string) {
     setBusyId(id)
-    const { error: updateError } = await supabase
-      .from('review_assignments')
-      .update({ status: 'declined', cancel_reason: declineReason.trim() || null })
-      .eq('id', id)
-    setBusyId(null)
-    if (updateError) {
-      setError(updateError.message)
-      return
+    try {
+      await api.post(`/reviewer/assignments/${id}/decline`, { reason: declineReason.trim() || undefined })
+      setDecliningId(null)
+      setDeclineReason('')
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not decline this assignment.')
     }
-    setDecliningId(null)
-    setDeclineReason('')
-    await load()
+    setBusyId(null)
   }
 
   if (loading) {
@@ -122,7 +113,7 @@ export function AssignmentsList({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               {a.submission_code ? <p className="font-mono text-xs text-ink/50">{a.submission_code}</p> : null}
-              <p className="font-medium text-ink">{a.submission_title}</p>
+              <p className="font-medium text-ink">{a.title}</p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/60">
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(a.status)}`}>
                   {STATUS_LABELS[a.status] ?? a.status}

@@ -39,6 +39,53 @@ async function main() {
   const [confRows] = await pool.query('SELECT id FROM conferences WHERE slug = ? LIMIT 1', [E2E.conferenceSlug])
   const existingConferenceId = (confRows as Array<{ id: string }>)[0]?.id
   if (existingConferenceId) {
+    // Phase 3/4 features leave rows pointing at this conference too (reviews,
+    // submissions, their files, email activity, notifications, ...) — delete
+    // in FK-safe order (children before parents), same as tests/helpers.ts's
+    // resetDatabase, before the conference row itself can go.
+    await pool.query(
+      `DELETE r FROM reviews r JOIN review_assignments ra ON ra.id = r.assignment_id WHERE ra.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query('DELETE FROM review_assignments WHERE conference_id = ?', [existingConferenceId])
+    await pool.query(
+      `DELETE rt FROM reviewer_tracks rt WHERE rt.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query(
+      `DELETE co FROM conflicts_of_interest co JOIN submissions s ON s.id = co.submission_id WHERE s.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query(
+      `DELETE sd FROM submission_decisions sd JOIN submissions s ON s.id = sd.submission_id WHERE s.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query(
+      `DELETE ssh FROM submission_status_history ssh JOIN submissions s ON s.id = ssh.submission_id WHERE s.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query(
+      `DELETE sf FROM submission_files sf JOIN submissions s ON s.id = sf.submission_id WHERE s.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query(
+      `DELETE sa FROM submission_authors sa JOIN submissions s ON s.id = sa.submission_id WHERE s.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query('DELETE FROM submissions WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM conference_counters WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM conference_tracks WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM notifications WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM email_logs WHERE conference_id = ?', [existingConferenceId])
+    // Convenor portal (Part A) features — same FK-safe ordering as tests/helpers.ts's resetDatabase.
+    await pool.query('DELETE FROM email_templates WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM announcements WHERE conference_id = ?', [existingConferenceId])
+    await pool.query(
+      `DELETE cm FROM committee_members cm JOIN committees c ON c.id = cm.committee_id WHERE c.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query('DELETE FROM committees WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM conference_speakers WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM role_requests WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM conference_members WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM conference_deadlines WHERE conference_id = ?', [existingConferenceId])

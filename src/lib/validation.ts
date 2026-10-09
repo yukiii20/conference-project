@@ -488,7 +488,7 @@ export const assignReviewerSchema = z.object({
 export type AssignReviewerInput = z.input<typeof assignReviewerSchema>
 
 export const DECISIONS = ['accepted', 'rejected', 'revision_required'] as const
-export const DECISION_STAGES = ['abstract', 'full_paper'] as const
+export const DECISION_STAGES = ['abstract', 'full_paper', 'final_approval'] as const
 
 export const decisionSchema = z.object({
   decision: z.enum(DECISIONS),
@@ -560,3 +560,84 @@ export const portalTextsSchema = z.object({
 })
 
 export type PortalTextsInput = z.input<typeof portalTextsSchema>
+
+// ---------------------------------------------------------------------------
+// Convenor portal — dashboard, members, committees, speakers, announcements,
+// email templates
+// ---------------------------------------------------------------------------
+
+export const reviewSettingsSchema = z.object({
+  review_mode: z.enum(['open', 'single_blind', 'double_blind']),
+  reviews_required: z.coerce.number().int().min(1, 'At least 1.').max(10, 'At most 10.'),
+  max_submissions_per_author: z.coerce.number().int().positive().nullable(),
+  max_abstract_words: z.coerce.number().int().min(50, 'At least 50.').max(2000, 'At most 2000.'),
+  max_file_size_mb: z.coerce.number().int().min(1, 'At least 1.').max(100, 'At most 100.'),
+  allowed_file_types: z.array(z.string().trim().toLowerCase().min(1).max(20)).min(1, 'Allow at least one file type.'),
+  authors_see_review_comments: z.boolean(),
+})
+export type ReviewSettingsInput = z.input<typeof reviewSettingsSchema>
+
+export const ASSIGNABLE_MEMBER_ROLES = ['reviewer', 'session_chair', 'staff', 'manager'] as const
+
+export const inviteMemberSchema = z.object({
+  full_name: nameSchema,
+  email: emailSchema,
+  phone: phoneSchema,
+  role_code: z.enum(ASSIGNABLE_MEMBER_ROLES),
+})
+export type InviteMemberInput = z.input<typeof inviteMemberSchema>
+
+export const COMMITTEE_TYPES = ['organizing', 'program', 'technical', 'review', 'registration', 'advisory', 'other'] as const
+export const COMMITTEE_MEMBER_ROLES = ['chair', 'co_chair', 'secretary', 'member'] as const
+
+export const committeeSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters.').max(200, 'Name must be 200 characters or fewer.'),
+  committee_type: z.enum(COMMITTEE_TYPES),
+  description: optionalTrimmed(5000, 'Description'),
+  is_public: z.boolean(),
+})
+export type CommitteeInput = z.input<typeof committeeSchema>
+
+export const committeeMemberSchema = z
+  .object({
+    user_id: z.string().trim().uuid().optional().or(z.literal('')),
+    display_name: z.string().trim().max(200).optional().or(z.literal('')),
+    affiliation: optionalTrimmed(300, 'Affiliation'),
+    country: z.string().trim().max(2).optional().or(z.literal('')),
+    member_role: z.enum(COMMITTEE_MEMBER_ROLES),
+  })
+  .refine((v) => Boolean(v.user_id) || Boolean(v.display_name), {
+    message: 'Pick an existing user or type a name.',
+    path: ['display_name'],
+  })
+export type CommitteeMemberInput = z.input<typeof committeeMemberSchema>
+
+export const SPEAKER_TYPES = ['keynote', 'invited', 'panelist', 'guest'] as const
+
+export const speakerSchema = z.object({
+  full_name: z.string().trim().min(2, 'Name must be at least 2 characters.').max(200, 'Name must be 200 characters or fewer.'),
+  designation: optionalTrimmed(200, 'Designation'),
+  affiliation: optionalTrimmed(300, 'Affiliation'),
+  bio: optionalTrimmed(5000, 'Bio'),
+  speaker_type: z.enum(SPEAKER_TYPES),
+  is_public: z.boolean(),
+})
+export type SpeakerInput = z.input<typeof speakerSchema>
+
+export const ANNOUNCEMENT_AUDIENCES = ['all', 'authors', 'reviewers', 'session_chairs', 'staff'] as const
+
+export const announcementSchema = z.object({
+  title: z.string().trim().min(2, 'Title must be at least 2 characters.').max(200, 'Title must be 200 characters or fewer.'),
+  body: z.string().trim().min(1, 'Write the announcement.').max(10_000, 'Body must be 10,000 characters or fewer.'),
+  audience: z.array(z.enum(ANNOUNCEMENT_AUDIENCES)).min(1, 'Choose at least one audience.'),
+  status: z.enum(['draft', 'scheduled', 'published']),
+  publish_at: z.string().optional(),
+  send_email: z.boolean(),
+})
+export type AnnouncementInput = z.input<typeof announcementSchema>
+
+export const emailTemplateSchema = z.object({
+  subject: z.string().trim().min(3, 'Subject must be at least 3 characters.').max(300, 'Subject must be 300 characters or fewer.'),
+  body_html: z.string().trim().min(1, 'Write the email body.').max(20_000, 'Body must be 20,000 characters or fewer.'),
+})
+export type EmailTemplateInput = z.input<typeof emailTemplateSchema>

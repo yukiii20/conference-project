@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 import { SUBMISSION_STATUS_LABELS, statusBadgeClass } from '../../lib/submissionDisplay'
 
 type Row = {
@@ -7,7 +7,7 @@ type Row = {
   submission_code: string | null
   title: string
   status: string
-  track_id: string
+  track_name: string
   updated_at: string
 }
 
@@ -26,18 +26,12 @@ export function SubmissionsList({
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data, error: loadError } = await supabase
-      .from('submissions')
-      .select('id, submission_code, title, status, track_id, updated_at')
-      .eq('conference_id', conferenceId)
-      .is('deleted_at', null)
-      .order('updated_at', { ascending: false })
-
-    if (loadError) {
-      setError(loadError.message)
-    } else {
-      setRows((data ?? []) as Row[])
+    try {
+      const data = await api.get<{ submissions: Row[] }>(`/conferences/${conferenceId}/my-submissions`)
+      setRows(data.submissions)
       setError(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load your submissions.')
     }
     setLoading(false)
   }, [conferenceId])
@@ -74,6 +68,7 @@ export function SubmissionsList({
             <div>
               {r.submission_code ? <p className="font-mono text-xs text-ink/50">{r.submission_code}</p> : null}
               <p className="font-medium text-ink">{r.title}</p>
+              <p className="text-xs text-ink/50">{r.track_name}</p>
             </div>
             <span className={statusBadgeClass(r.status)}>{SUBMISSION_STATUS_LABELS[r.status] ?? r.status}</span>
           </button>

@@ -316,7 +316,7 @@ export function HomePage() {
       <main id="main-content">
       {/* ---------------------------------------------------------------- Hero */}
       <section className="bg-landing-navy-900 text-white">
-        <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10 px-4 py-16 sm:px-6 lg:flex-row lg:items-center lg:py-24">
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10 px-4 pb-16 pt-8 sm:px-6 lg:flex-row lg:items-center lg:pb-24 lg:pt-12">
           <div className="w-full text-center lg:w-1/2 lg:text-left">
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">{SITE.hero.headline}</h1>
             <p className="mt-4 text-lg text-white/80">{SITE.hero.subheadline}</p>
@@ -347,7 +347,7 @@ export function HomePage() {
             <div className="mx-auto max-w-[480px] overflow-hidden rounded-xl shadow-2xl lg:mx-0 lg:ml-auto">
               <ConferenceOpeningScene
                 title="Conference portal"
-                subtitle="Find a conference, submit your research, join the programme"
+                subtitle="Find a conference, submit an abstract, join the programme"
                 laptopLabel="CMS"
                 color="#1F3F73"
               />

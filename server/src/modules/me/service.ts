@@ -1,6 +1,8 @@
 import { getUserProfile, updateProfile } from '../auth/service.js'
+import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { insertAuditLog } from '../../utils/audit.js'
+import { NotFoundError } from '../../utils/errors.js'
 import type { UpdateProfileInput } from '../auth/validation.js'
 import type { UpdateMyProfileInput } from './validation.js'
 
@@ -75,4 +77,47 @@ export async function setMyPhoto(userId: string, path: string): Promise<string |
 
 export async function removeMyPhoto(userId: string): Promise<string | null> {
   return setMyPhotoPath(userId, null)
+}
+
+export type NotificationRow = {
+  id: string
+  conference_id: string | null
+  type: string
+  title: string
+  body: string | null
+  link_path: string | null
+  read_at: string | null
+  created_at: string
+}
+
+export async function listMyNotifications(userId: string, unreadOnly: boolean): Promise<NotificationRow[]> {
+  const unreadClause = unreadOnly ? 'AND read_at IS NULL' : ''
+  const [rows] = await pool.query(
+    `SELECT id, conference_id, type, title, body, link_path, read_at, created_at
+     FROM notifications WHERE user_id = ? ${unreadClause}
+     ORDER BY created_at DESC LIMIT 50`,
+    [userId],
+  )
+  return rows as NotificationRow[]
+}
+
+export async function markNotificationRead(userId: string, notificationId: string): Promise<void> {
+  const [result] = await pool.query(
+    `UPDATE notifications SET read_at = NOW(3) WHERE id = ? AND user_id = ? AND read_at IS NULL`,
+    [notificationId, userId],
+  )
+  if ((result as { affectedRows: number }).affectedRows === 0) {
+    const [existsRows] = await pool.query('SELECT 1 FROM notifications WHERE id = ? AND user_id = ? LIMIT 1', [
+      notificationId,
+      userId,
+    ])
+    if ((existsRows as unknown[]).length === 0) {
+      throw new NotFoundError('This notification does not exist.')
+    }
+    // Otherwise it exists but was already read — treat that as success, not an error.
+  }
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  await pool.query(`UPDATE notifications SET read_at = NOW(3) WHERE user_id = ? AND read_at IS NULL`, [userId])
 }

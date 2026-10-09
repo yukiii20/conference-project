@@ -9,6 +9,7 @@ import {
   listUsersQuerySchema,
 } from './validation.js'
 import {
+  adminResetUserPassword,
   appointConvenor,
   archiveConference,
   createConference,
@@ -102,6 +103,15 @@ adminRouter.post('/users/:id/reactivate', requireAdmin, async (req, res, next) =
   try {
     await reactivateUser(req.user!.id, req.params.id!)
     res.json({ message: 'User reactivated.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+adminRouter.post('/users/:id/reset-password', requireAdmin, async (req, res, next) => {
+  try {
+    await adminResetUserPassword(req.user!.id, req.params.id!)
+    res.json({ message: 'A password reset link has been sent to this user.' })
   } catch (err) {
     next(err)
   }

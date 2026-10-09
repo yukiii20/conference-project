@@ -20,7 +20,6 @@ import { ConvenorPage } from './pages/ConvenorPage'
 import { AuthorPage } from './pages/AuthorPage'
 import { ReviewerPage } from './pages/ReviewerPage'
 import { StaffPage } from './pages/StaffPage'
-import { ManagerPage } from './pages/ManagerPage'
 
 export default function App() {
   return (
@@ -48,9 +47,17 @@ export default function App() {
             }
           />
           <Route
-            path="/convenor"
+            path="/convenor/*"
             element={
               <ProtectedRoute kind="convenor">
+                <ConvenorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manager/*"
+            element={
+              <ProtectedRoute kind="role" role="manager">
                 <ConvenorPage />
               </ProtectedRoute>
             }
@@ -76,14 +83,6 @@ export default function App() {
             element={
               <ProtectedRoute kind="role" role="staff">
                 <StaffPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/manager"
-            element={
-              <ProtectedRoute kind="role" role="manager">
-                <ManagerPage />
               </ProtectedRoute>
             }
           />

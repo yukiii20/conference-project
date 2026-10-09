@@ -13,7 +13,7 @@ type SignedInInfo = {
 
 /**
  * Identity comes only from the shared auth context (GET /api/auth/me) —
- * never from a Supabase session, RPC, or supabase.auth.signOut().
+ * never from any client-side auth SDK.
  */
 export function AuthCard({ conference }: { conference: { id: string; slug: string; name: string } }) {
   const { user, roles, loading, refresh, signOut } = useAuth()

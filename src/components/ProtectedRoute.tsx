@@ -11,7 +11,7 @@ type Props =
  * navigation to it), not just once at login — a pending/rejected/removed
  * role never grants access, and an approval takes effect on the next visit.
  * Identity comes only from useAuth()'s refresh(), i.e. GET /api/auth/me —
- * never from a Supabase session.
+ * never from a client-side auth SDK session.
  */
 export function ProtectedRoute(props: Props) {
   const { refresh } = useAuth()

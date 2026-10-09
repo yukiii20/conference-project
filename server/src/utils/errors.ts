@@ -38,3 +38,21 @@ export class BadRequestError extends AppError {
     super(400, message, fields)
   }
 }
+
+export function isSignalError(err: unknown): err is { sqlState: string; sqlMessage: string } {
+  return Boolean(err && typeof err === 'object' && (err as { sqlState?: string }).sqlState === '45000')
+}
+
+/**
+ * Trigger SIGNAL 45000 errors (invalid status transition, locked review,
+ * locked decision, ...) carry a human-readable message that's safe to show
+ * to the user as-is (see database/03_triggers.sql) — map them to a 409
+ * instead of letting them surface as a raw 500. Any other error is rethrown
+ * unchanged.
+ */
+export function mapDatabaseError(err: unknown): never {
+  if (isSignalError(err)) {
+    throw new ConflictError(err.sqlMessage)
+  }
+  throw err as Error
+}

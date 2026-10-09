@@ -2,6 +2,7 @@ import type { PoolConnection } from 'mysql2/promise'
 
 type QueueEmailInput = {
   userId: string | null
+  conferenceId?: string | null
   recipientEmail: string
   templateKey: string
   subject: string
@@ -11,16 +12,17 @@ type QueueEmailInput = {
 }
 
 /**
- * Email sending is not wired up yet. In development we print the message to
- * the server console (so a developer can click the link) and record it in
- * email_logs as 'queued', exactly like a real provider integration will once
- * it exists — only the actual delivery step is missing.
+ * The only way any code in this app sends email: inserts a 'queued' row into
+ * email_logs. server/src/email/worker.ts picks it up, renders the body from
+ * email_templates, and actually sends it (or prints it, in console mode) —
+ * see that module for the "why" behind the two-step design.
  */
 export async function queueEmail(conn: PoolConnection, input: QueueEmailInput): Promise<void> {
   await conn.query(
     `INSERT INTO email_logs (conference_id, user_id, recipient_email, template_key, subject, template_data, entity_type, entity_id, status)
-     VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, 'queued')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued')`,
     [
+      input.conferenceId ?? null,
       input.userId,
       input.recipientEmail,
       input.templateKey,
@@ -30,16 +32,9 @@ export async function queueEmail(conn: PoolConnection, input: QueueEmailInput): 
       input.entityId ?? null,
     ],
   )
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`\n--- [dev email] ${input.templateKey} -> ${input.recipientEmail} ---`)
-    console.log(`Subject: ${input.subject}`)
-    console.log(JSON.stringify(input.templateData, null, 2))
-    console.log('--- end dev email ---\n')
-  }
 }
 
-/** Fills {{placeholder}} tokens in an email_templates body/subject with plain string replacement. */
+/** Fills {{placeholder}} tokens in an email_templates subject with plain string replacement (used for the subject only — the worker HTML-escapes the body separately). */
 export function renderTemplate(template: string, data: Record<string, unknown>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
     const value = data[key]

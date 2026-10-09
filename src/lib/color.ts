@@ -1,5 +1,12 @@
 export const DEFAULT_CONFERENCE_COLOR = '#2747A0'
 
+// Conference page hero palette (brick). Kept in one place so it's easy to
+// re-theme later. Contrast checked: BRICK vs BRICK_TEXT = 5.9:1, BRICK vs
+// #ffffff = 6.75:1 — both pass WCAG AA (4.5:1) for normal text.
+export const BRICK = '#9C3D27'
+export const BRICK_DARK = '#6E2A1A'
+export const BRICK_TEXT = '#FBEDE7'
+
 function hexToRgb(hex: string): [number, number, number] | null {
   const match = /^#([0-9A-Fa-f]{6})$/.exec(hex)
   if (!match) return null
@@ -32,4 +39,11 @@ export function getAccessibleTextColor(backgroundHex: string): '#ffffff' | '#172
 
 export function isValidHexColor(value: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(value)
+}
+
+/** `#rrggbb` -> `rgba(r, g, b, alpha)`, e.g. for a translucent overlay over a banner image. */
+export function hexToRgba(hex: string, alpha: number): string {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`
 }

@@ -1,8 +1,28 @@
+import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { assertConferencePermission } from '../../middleware/auth.js'
 import { insertAuditLog } from '../../utils/audit.js'
+import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
+import { notifyUser } from '../../utils/notifications.js'
+
+async function loadRoleRequestTarget(
+  conn: PoolConnection,
+  requestId: string,
+): Promise<{ userId: string; fullName: string; email: string; roleCode: string; conferenceName: string }> {
+  const [rows] = await conn.query(
+    `SELECT u.id AS user_id, u.full_name, u.email, rr.role_code, c.name AS conference_name
+     FROM role_requests rr
+     JOIN users u ON u.id = rr.user_id
+     JOIN conferences c ON c.id = rr.conference_id
+     WHERE rr.id = ? LIMIT 1`,
+    [requestId],
+  )
+  const row = (rows as Array<{ user_id: string; full_name: string; email: string; role_code: string; conference_name: string }>)[0]
+  if (!row) throw new NotFoundError('This role request no longer exists.')
+  return { userId: row.user_id, fullName: row.full_name, email: row.email, roleCode: row.role_code, conferenceName: row.conference_name }
+}
 
 const MEMBERS_MANAGE = 'members.manage'
 
@@ -91,6 +111,34 @@ export async function approveRoleRequest(actorUserId: string, requestId: string)
       entityId: requestId,
       newValues: { role_code: row.role_code, user_id: row.user_id },
     })
+
+    const target = await loadRoleRequestTarget(conn, requestId)
+    const [templateRows] = await conn.query(
+      `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'role_request_approved' LIMIT 1`,
+    )
+    const template = (templateRows as Array<{ subject: string }>)[0]
+    const data = { full_name: target.fullName, role_name: target.roleCode, conference_name: target.conferenceName }
+    const subject = template ? renderTemplate(template.subject, data) : `Your ${target.roleCode} request was approved`
+    await queueEmail(conn, {
+      userId: target.userId,
+      conferenceId: row.conference_id,
+      recipientEmail: target.email,
+      templateKey: 'role_request_approved',
+      subject,
+      templateData: data,
+      entityType: 'role_requests',
+      entityId: requestId,
+    })
+    await notifyUser(conn, {
+      userId: target.userId,
+      conferenceId: row.conference_id,
+      type: 'system',
+      title: 'Role request approved',
+      body: `You're now approved as ${target.roleCode} for ${target.conferenceName}.`,
+      linkPath: '/login',
+      entityType: 'role_requests',
+      entityId: requestId,
+    })
   })
 }
 
@@ -118,6 +166,33 @@ export async function rejectRoleRequest(actorUserId: string, requestId: string, 
       entityType: 'role_requests',
       entityId: requestId,
       newValues: { reason },
+    })
+
+    const target = await loadRoleRequestTarget(conn, requestId)
+    const [templateRows] = await conn.query(
+      `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'role_request_rejected' LIMIT 1`,
+    )
+    const template = (templateRows as Array<{ subject: string }>)[0]
+    const data = { full_name: target.fullName, role_name: target.roleCode, conference_name: target.conferenceName, reason }
+    const subject = template ? renderTemplate(template.subject, data) : `Your ${target.roleCode} request`
+    await queueEmail(conn, {
+      userId: target.userId,
+      conferenceId,
+      recipientEmail: target.email,
+      templateKey: 'role_request_rejected',
+      subject,
+      templateData: data,
+      entityType: 'role_requests',
+      entityId: requestId,
+    })
+    await notifyUser(conn, {
+      userId: target.userId,
+      conferenceId,
+      type: 'system',
+      title: 'Role request rejected',
+      body: reason,
+      entityType: 'role_requests',
+      entityId: requestId,
     })
   })
 }

@@ -9,5 +9,6 @@ export const updateSettingsSchema = z.object({
   allowed_file_types: z
     .array(z.string().trim().toLowerCase().min(1).max(20))
     .min(1, 'Allow at least one file type.'),
+  authors_see_review_comments: z.boolean(),
 })
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>

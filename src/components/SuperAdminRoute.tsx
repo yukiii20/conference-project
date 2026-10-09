@@ -16,7 +16,7 @@ const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'
  * The /super-admin path being unlinked anywhere in the UI is just tidiness
  * (nothing to stumble onto); the actual protection is this admin check on
  * every load. Identity comes only from useAuth()'s refresh(), i.e.
- * GET /api/auth/me — never from a Supabase session.
+ * GET /api/auth/me — never from a client-side auth SDK session.
  */
 export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { refresh } = useAuth()

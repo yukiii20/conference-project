@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { api, ApiError } from './api'
 
 export type FileKind = 'abstract' | 'full_paper' | 'camera_ready' | 'supplementary' | 'slides'
 
@@ -7,10 +7,11 @@ const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp']
 const SLIDE_EXTENSIONS = ['pdf', 'ppt', 'pptx']
 
 /**
- * Per-kind upload rules, matching the submission-upload Edge Function and
- * the "submissions" storage bucket. abstract/supplementary additionally
- * accept images (e.g. a photographed or scanned abstract); full_paper/
- * camera_ready stay document-only; slides stay presentation-only.
+ * Per-kind upload rules, matching server/src/modules/submissions/fileRules.ts.
+ * abstract/supplementary additionally accept images (e.g. a photographed or
+ * scanned abstract); full_paper/camera_ready stay document-only; slides stay
+ * presentation-only. The server re-checks the real file type from magic
+ * bytes regardless of what's picked here.
  */
 export const SUBMISSION_FILE_RULES: Record<FileKind, { extensions: string[]; accept: string; helpText: string }> = {
   abstract: {
@@ -40,7 +41,7 @@ export const SUBMISSION_FILE_RULES: Record<FileKind, { extensions: string[]; acc
   },
 }
 
-/** Client-side pre-check mirroring the Edge Function's per-kind rule. Returns an error message, or null if OK. */
+/** Client-side pre-check mirroring the server's per-kind rule. Returns an error message, or null if OK. */
 export function validateSubmissionFile(fileKind: FileKind, file: File): string | null {
   const rule = SUBMISSION_FILE_RULES[fileKind]
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -50,71 +51,44 @@ export function validateSubmissionFile(fileKind: FileKind, file: File): string |
   return null
 }
 
-async function readFunctionError(error: unknown, fallback: string): Promise<string> {
-  const context = (error as { context?: Response }).context
-  if (context) {
-    try {
-      const body = await context.json()
-      if (body && typeof body.error === 'string') return body.error
-    } catch {
-      // fall through to fallback
-    }
-  }
-  return (error as { message?: string }).message ?? fallback
+export type UploadedSubmissionFile = {
+  id: string
+  file_kind: string
+  version: number
+  status: string
+  original_filename: string
+  mime_type: string
+  size_bytes: number
+  uploaded_at: string
 }
 
-/**
- * Uploads a file for a submission via the submission-upload edge function
- * (start -> direct upload to the signed URL -> finish). Returns an error
- * message on failure, or null on success.
- */
+/** Uploads a file for a submission. Returns an error message on failure, or null on success. */
 export async function uploadSubmissionFile(
   submissionId: string,
   fileKind: FileKind,
   file: File,
 ): Promise<string | null> {
-  const { data: startData, error: startError } = await supabase.functions.invoke('submission-upload', {
-    body: {
-      action: 'start',
-      submission_id: submissionId,
-      file_kind: fileKind,
-      filename: file.name,
-      size: file.size,
-      mime: file.type,
-    },
-  })
-
-  if (startError) {
-    return await readFunctionError(startError, 'Could not start the upload.')
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    await api.upload<UploadedSubmissionFile>(`/submissions/${submissionId}/files/${fileKind}`, formData)
+    return null
+  } catch (err) {
+    return err instanceof ApiError ? err.message : 'Upload failed. Please try again.'
   }
-
-  const { path, token } = startData as { path: string; token: string }
-
-  const { error: uploadError } = await supabase.storage.from('submissions').uploadToSignedUrl(path, token, file)
-  if (uploadError) {
-    return uploadError.message
-  }
-
-  const { error: finishError } = await supabase.functions.invoke('submission-upload', {
-    body: {
-      action: 'finish',
-      submission_id: submissionId,
-      file_kind: fileKind,
-      path,
-      filename: file.name,
-    },
-  })
-
-  if (finishError) {
-    return await readFunctionError(finishError, 'Could not finish the upload.')
-  }
-
-  return null
 }
 
-/** Signed, short-lived download URL for a private submission file. */
-export async function getSubmissionFileUrl(path: string, expiresInSeconds = 300): Promise<string | null> {
-  const { data, error } = await supabase.storage.from('submissions').createSignedUrl(path, expiresInSeconds)
-  if (error || !data) return null
-  return data.signedUrl
+/** The URL that streams a private submission file — the browser sends the session cookie automatically. */
+export function submissionFileDownloadUrl(submissionId: string, fileId: string): string {
+  return `/api/submissions/${submissionId}/files/${fileId}/download`
+}
+
+/** Triggers a browser download of a private submission file without navigating away. */
+export function downloadSubmissionFile(submissionId: string, fileId: string): void {
+  const a = document.createElement('a')
+  a.href = submissionFileDownloadUrl(submissionId, fileId)
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }

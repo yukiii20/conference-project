@@ -20,7 +20,7 @@ export function ReviewerPage() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   // The conference selector comes only from GET /api/auth/me (via the
-  // shared auth context) — never from a Supabase session/RPC.
+  // shared auth context) — never from a client-side auth SDK session.
   useEffect(() => {
     const options: ReviewerConference[] = roles
       .filter((r) => r.role_code === 'reviewer' && r.conference_id)

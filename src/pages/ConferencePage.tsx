@@ -3,11 +3,21 @@ import { Link, useParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { publicImageUrl } from '../lib/storage'
 import { formatDateRange, formatKathmandu, formatKathmanduTime, kathmanduDateKey } from '../lib/datetime'
-import { DEFAULT_CONFERENCE_COLOR, getAccessibleTextColor } from '../lib/color'
+import { BRICK, BRICK_DARK, BRICK_TEXT, DEFAULT_CONFERENCE_COLOR, getAccessibleTextColor, hexToRgba } from '../lib/color'
 import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
-import { ConferenceOpeningScene } from '../components/ConferenceOpeningScene'
-import { DEADLINE_LABELS, type Conference, type Deadline, type ScheduleRow, type Supporter, type Track } from './conference/types'
+import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
+import {
+  DEADLINE_LABELS,
+  type Committee,
+  type Conference,
+  type ConferenceAnnouncement,
+  type Deadline,
+  type ScheduleRow,
+  type Speaker,
+  type Supporter,
+  type Track,
+} from './conference/types'
 
 const TIER_LABELS: Record<SupporterTier, string> = {
   organizer: 'Organizers',
@@ -49,6 +59,9 @@ export function ConferencePage() {
   const [tracks, setTracks] = useState<Track[]>([])
   const [supporters, setSupporters] = useState<Supporter[]>([])
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
+  const [committees, setCommittees] = useState<Committee[]>([])
+  const [speakers, setSpeakers] = useState<Speaker[]>([])
+  const [announcements, setAnnouncements] = useState<ConferenceAnnouncement[]>([])
   const [schedule, setSchedule] = useState<ScheduleRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -69,8 +82,17 @@ export function ConferencePage() {
     async function load() {
       setLoading(true)
 
-      let result: { conference: Conference; tracks: Track[]; deadlines: Deadline[]; supporters: Supporter[] } | null =
-        null
+      let result:
+        | {
+            conference: Conference
+            tracks: Track[]
+            deadlines: Deadline[]
+            supporters: Supporter[]
+            committees: Committee[]
+            speakers: Speaker[]
+            announcements: ConferenceAnnouncement[]
+          }
+        | null = null
       try {
         result = await api.get(`/conferences/${slug ?? ''}`)
       } catch (err) {
@@ -90,6 +112,9 @@ export function ConferencePage() {
       setTracks(result.tracks)
       setSupporters(result.supporters)
       setDeadlines(result.deadlines)
+      setCommittees(result.committees)
+      setSpeakers(result.speakers)
+      setAnnouncements(result.announcements)
 
       const scheduleData = await api
         .get<{ schedule: ScheduleRow[] }>(`/conferences/${result.conference.id}/sessions/public`)
@@ -294,38 +319,21 @@ export function ConferencePage() {
         {bannerUrl ? (
           <>
             <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0" style={{ backgroundColor: hexToRgba(BRICK_DARK, 0.7) }} />
           </>
         ) : (
-          <div className="absolute inset-0" style={{ backgroundColor: accent }} />
+          <div className="absolute inset-0" style={{ backgroundColor: BRICK }} />
         )}
         <div
           className="relative mx-auto flex max-w-5xl flex-col items-center gap-8 px-4 py-14 text-center md:flex-row md:items-center md:gap-10 md:text-left"
-          style={{ color: bannerUrl ? '#ffffff' : accentText }}
+          style={{ color: BRICK_TEXT }}
         >
-          <div className="w-full md:max-w-[480px] md:flex-1">
-            <ConferenceOpeningScene
-              key={conference.slug}
-              title={`Welcome to ${conference.name}`}
-              subtitle={[conference.theme, formatDateRange(conference.start_date, conference.end_date), conference.city]
-                .filter(Boolean)
-                .join(' · ')}
-              laptopLabel={conference.code}
-              color={conference.primary_color ?? undefined}
-              storageKey={conference.slug}
-              onDone={() => setIntroDone(true)}
-            />
+          <div className="flex w-full justify-center md:w-auto md:flex-none">
+            <ConferenceBadgeAnimation key={conference.slug} code={conference.code} onDone={() => setIntroDone(true)} />
           </div>
 
           <div className="w-full md:flex-1">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={`${conference.name} logo`}
-                className="mx-auto h-24 w-24 object-contain md:mx-0"
-              />
-            ) : null}
-            <h1 className="mt-4 text-3xl font-bold sm:text-4xl">{conference.name}</h1>
+            <h1 className="text-3xl font-bold text-white sm:text-4xl">{conference.name}</h1>
             {conference.tagline ? <p className="mt-2 text-lg opacity-90">{conference.tagline}</p> : null}
             {conference.theme ? <p className="mt-1 opacity-80">{conference.theme}</p> : null}
             <p className="mt-4 opacity-90">
@@ -340,22 +348,22 @@ export function ConferencePage() {
             >
               <Link
                 to={signupHref}
-                style={{ backgroundColor: bannerUrl ? accent : '#ffffff', color: bannerUrl ? accentText : accent }}
+                style={{ backgroundColor: '#ffffff', color: BRICK }}
                 className="rounded-md px-5 py-2.5 font-medium hover:opacity-90"
               >
                 Submit an abstract
               </Link>
               <Link
                 to={signupHref}
-                className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
-                style={{ borderColor: bannerUrl || accentText === '#ffffff' ? '#ffffff' : accent, color: bannerUrl ? '#ffffff' : accentText }}
+                style={{ borderColor: BRICK_DARK, color: BRICK_TEXT }}
+                className="rounded-md border px-5 py-2.5 font-medium hover:bg-[#6E2A1A]"
               >
                 Register
               </Link>
               <Link
                 to="/login"
-                className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
-                style={{ borderColor: bannerUrl || accentText === '#ffffff' ? '#ffffff' : accent, color: bannerUrl ? '#ffffff' : accentText }}
+                style={{ borderColor: BRICK_DARK, color: BRICK_TEXT }}
+                className="rounded-md border px-5 py-2.5 font-medium hover:bg-[#6E2A1A]"
               >
                 Sign in
               </Link>
@@ -392,6 +400,103 @@ export function ConferencePage() {
             </ul>
           </div>
         ) : null}
+      </section>
+
+      <section
+        id="announcements"
+        ref={(el) => {
+          sectionRefs.current.announcements = el
+        }}
+        style={sectionStyle}
+        className="mx-auto max-w-3xl px-4 py-12"
+      >
+        <h2 className="text-2xl font-semibold">Announcements</h2>
+        {announcements.length === 0 ? (
+          <p className="mt-4 text-sm text-ink/60">No announcements yet.</p>
+        ) : (
+          <ul className="mt-6 space-y-4">
+            {announcements.map((a) => (
+              <li key={a.id} className="rounded-lg border border-line bg-white p-4">
+                <p className="font-medium text-ink">{a.title}</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{a.body}</p>
+                <p className="mt-2 text-xs text-ink/50">{formatKathmandu(a.publish_at ?? a.created_at, { dateOnly: true })}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section
+        id="committees"
+        ref={(el) => {
+          sectionRefs.current.committees = el
+        }}
+        style={sectionStyle}
+        className="mx-auto max-w-5xl px-4 py-12"
+      >
+        <h2 className="text-2xl font-semibold">Committees</h2>
+        {committees.length === 0 ? (
+          <p className="mt-4 text-sm text-ink/60">Committees will be announced soon.</p>
+        ) : (
+          <div className="mt-6 space-y-8">
+            {committees.map((c) => (
+              <div key={c.id}>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-ink/50">{c.name}</h3>
+                {c.description ? <p className="mt-1 text-sm text-ink/70">{c.description}</p> : null}
+                {c.members.length > 0 ? (
+                  <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {c.members.map((m, i) => (
+                      <li key={i} className="rounded-md border border-line bg-white p-3 text-sm">
+                        <p className="font-medium text-ink">{m.member_name}</p>
+                        <p className="text-xs text-ink/60">
+                          {m.member_role.replace('_', '-')}
+                          {m.affiliation ? ` · ${m.affiliation}` : ''}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        id="speakers"
+        ref={(el) => {
+          sectionRefs.current.speakers = el
+        }}
+        style={sectionStyle}
+        className="mx-auto max-w-5xl px-4 py-12"
+      >
+        <h2 className="text-2xl font-semibold">Speakers</h2>
+        {speakers.length === 0 ? (
+          <p className="mt-4 text-sm text-ink/60">Speakers will be announced soon.</p>
+        ) : (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {speakers.map((s) => {
+              const photoUrl = publicImageUrl(s.photo_path)
+              return (
+                <div key={s.id} className="rounded-lg border border-line bg-white p-4 text-center">
+                  {photoUrl ? (
+                    <img src={photoUrl} alt={s.full_name} className="mx-auto h-20 w-20 rounded-full object-cover" />
+                  ) : (
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-background text-xl font-semibold text-ink/40">
+                      {s.full_name.charAt(0)}
+                    </div>
+                  )}
+                  <p className="mt-3 font-medium text-ink">{s.full_name}</p>
+                  {s.designation ? <p className="text-xs text-ink/60">{s.designation}</p> : null}
+                  {s.affiliation ? <p className="text-xs text-ink/50">{s.affiliation}</p> : null}
+                  <span className="mt-2 inline-block rounded-full bg-background px-2 py-0.5 text-xs capitalize text-ink/60">
+                    {s.speaker_type}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <section

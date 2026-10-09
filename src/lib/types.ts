@@ -35,6 +35,17 @@ export type MyRoleRequestRow = {
   created_at: string
 }
 
+export type NotificationRow = {
+  id: string
+  conference_id: string | null
+  type: string
+  title: string
+  body: string | null
+  link_path: string | null
+  read_at: string | null
+  created_at: string
+}
+
 export type RoleRequestForReview = {
   id: string
   role_code: string

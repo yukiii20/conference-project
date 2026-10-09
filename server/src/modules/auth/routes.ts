@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { withTransaction } from '../../db/withTransaction.js'
 import { requireAuth } from '../../middleware/auth.js'
-import { authRateLimit } from '../../middleware/rateLimit.js'
+import { authRateLimit, forgotPasswordEmailLimit, forgotPasswordIpLimit } from '../../middleware/rateLimit.js'
 import { validateBody } from '../../middleware/validate.js'
 import {
   acceptInvitationSchema,
@@ -124,21 +124,27 @@ authRouter.patch('/profile', requireAuth, validateBody(updateProfileSchema), asy
 
 authRouter.post('/change-password', requireAuth, validateBody(changePasswordSchema), async (req, res, next) => {
   try {
-    await changePassword(req.user!.id, req.body.current_password, req.body.new_password)
+    await changePassword(req.user!.id, req.body.current_password, req.body.new_password, req.user!.sessionId)
     res.json({ message: 'Password updated.' })
   } catch (err) {
     next(err)
   }
 })
 
-authRouter.post('/forgot-password', authRateLimit, validateBody(forgotPasswordSchema), async (req, res, next) => {
-  try {
-    await requestPasswordReset(req.body.email)
-    res.json({ message: "If an account exists for this email, we've sent a reset link." })
-  } catch (err) {
-    next(err)
-  }
-})
+authRouter.post(
+  '/forgot-password',
+  forgotPasswordIpLimit,
+  forgotPasswordEmailLimit,
+  validateBody(forgotPasswordSchema),
+  async (req, res, next) => {
+    try {
+      await requestPasswordReset(req.body.email)
+      res.json({ message: "If an account exists for this email, we've sent a reset link." })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
 
 authRouter.post('/reset-password', authRateLimit, validateBody(resetPasswordSchema), async (req, res, next) => {
   try {

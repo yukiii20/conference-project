@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { requireConferencePermission } from '../../middleware/auth.js'
+import { uploadRateLimit } from '../../middleware/rateLimit.js'
 import { validateBody } from '../../middleware/validate.js'
 import { buildPublicPath, deletePublicFile, savePublicFile } from '../../storage/fileStore.js'
 import { imageUpload, processImage } from '../../storage/imageUpload.js'
@@ -104,6 +105,7 @@ supportersRouter.delete(
 supportersRouter.post(
   '/:id/supporters/:supporterId/logo',
   requireConferencePermission('conference.manage'),
+  uploadRateLimit,
   imageUpload(LOGO_MAX_BYTES),
   async (req, res, next) => {
     try {

@@ -5,7 +5,7 @@ import { PortalHeader } from './PortalHeader'
 
 /**
  * Identity, roles and the matched conference come only from the shared auth
- * context (GET /api/auth/me) — never from a Supabase session or RPC.
+ * context (GET /api/auth/me) — never from a client-side auth SDK session.
  */
 export function SimpleRolePage({ role }: { role: string }) {
   const [searchParams] = useSearchParams()

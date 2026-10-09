@@ -42,5 +42,46 @@ export async function getPublicConferenceBySlug(slug: string) {
     [conferenceId],
   )
 
-  return { conference, tracks, deadlines, supporters }
+  const [committeeRows] = await pool.query(
+    `SELECT id, name, committee_type, description, display_order FROM committees
+     WHERE conference_id = ? AND is_public = TRUE ORDER BY display_order`,
+    [conferenceId],
+  )
+  const committees = committeeRows as Array<{ id: string; name: string; committee_type: string; description: string | null; display_order: number }>
+  let committeeMembers: unknown[] = []
+  if (committees.length > 0) {
+    const [memberRows] = await pool.query(
+      `SELECT cm.committee_id, COALESCE(u.full_name, cm.display_name) AS member_name,
+              cm.affiliation, cm.country, cm.member_role, cm.display_order
+       FROM committee_members cm
+       LEFT JOIN users u ON u.id = cm.user_id
+       WHERE cm.committee_id IN (?)
+       ORDER BY cm.display_order`,
+      [committees.map((c) => c.id)],
+    )
+    committeeMembers = memberRows as unknown[]
+  }
+  const committeesWithMembers = committees.map((c) => ({
+    ...c,
+    members: (committeeMembers as Array<{ committee_id: string } & Record<string, unknown>>)
+      .filter((m) => m.committee_id === c.id)
+      .map(({ committee_id: _committee_id, ...rest }) => rest),
+  }))
+
+  const [speakers] = await pool.query(
+    `SELECT id, full_name, designation, affiliation, bio, photo_path, speaker_type, display_order
+     FROM conference_speakers
+     WHERE conference_id = ? AND is_public = TRUE
+     ORDER BY FIELD(speaker_type, 'keynote', 'invited', 'panelist', 'guest'), display_order`,
+    [conferenceId],
+  )
+
+  const [announcements] = await pool.query(
+    `SELECT id, title, body, publish_at, created_at FROM announcements
+     WHERE conference_id = ? AND status = 'published' AND JSON_CONTAINS(audience, '"all"')
+     ORDER BY COALESCE(publish_at, created_at) DESC LIMIT 10`,
+    [conferenceId],
+  )
+
+  return { conference, tracks, deadlines, supporters, committees: committeesWithMembers, speakers, announcements }
 }

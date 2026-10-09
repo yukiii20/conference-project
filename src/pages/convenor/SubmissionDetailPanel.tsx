@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { api, ApiError } from '../../lib/api'
 import { Avatar } from '../../components/Avatar'
-import { getSubmissionFileUrl } from '../../lib/submissionFiles'
-import { sendQueuedEmails } from '../../lib/sendQueuedEmails'
+import { downloadSubmissionFile } from '../../lib/submissionFiles'
 import { assignReviewerSchema, decisionSchema, DECISIONS, DECISION_STAGES } from '../../lib/validation'
 import {
   DECISION_LABELS,
   FILE_KIND_LABELS,
   RECOMMENDATION_LABELS,
   SUBMISSION_STATUS_LABELS,
-  isImageFile,
   statusBadgeClass,
 } from '../../lib/submissionDisplay'
 
@@ -21,7 +19,6 @@ type Submission = {
   keywords: string[]
   status: string
   current_round: number
-  created_by: string
 }
 
 type Author = {
@@ -30,7 +27,7 @@ type Author = {
   email: string
   is_corresponding: boolean
   user_id: string | null
-  photo_path?: string | null
+  photo_path: string | null
 }
 type FileRow = {
   id: string
@@ -38,8 +35,6 @@ type FileRow = {
   version: number
   status: string
   original_filename: string
-  storage_path: string
-  mime_type: string | null
 }
 
 type Assignment = {
@@ -47,24 +42,38 @@ type Assignment = {
   status: string
   due_at: string
   reviewer_id: string
-  reviewer: { full_name: string | null; email: string | null } | null
-  review: {
-    status: string
-    originality: number | null
-    quality: number | null
-    relevance: number | null
-    methodology: number | null
-    overall_score: number | null
-    confidence: number | null
-    recommendation: string | null
-    comments_to_author: string | null
-    confidential_comments: string | null
-  } | null
+  reviewer_name: string | null
+  reviewer_email: string | null
+  review_status: string | null
+  originality: number | null
+  quality: number | null
+  relevance: number | null
+  methodology: number | null
+  overall_score: number | null
+  confidence: number | null
+  recommendation: string | null
+  comments_to_author: string | null
+  confidential_comments: string | null
 }
 
-type ReviewerOption = { user_id: string; full_name: string | null; email: string | null }
+type ReviewerOption = {
+  user_id: string
+  full_name: string
+  email: string
+  has_conflict: boolean
+  already_assigned: boolean
+  is_author_of_submission: boolean
+}
 
 type Decision = { id: string; stage: string; decision: string; comments_to_author: string | null; decided_at: string }
+
+type DetailResponse = {
+  submission: Submission
+  authors: Author[]
+  files: FileRow[]
+  assignments: Assignment[]
+  decisions: Decision[]
+}
 
 function defaultDueDate() {
   const d = new Date()
@@ -76,7 +85,6 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
   const [submission, setSubmission] = useState<Submission | null>(null)
   const [authors, setAuthors] = useState<Author[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
-  const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({})
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [reviewerOptions, setReviewerOptions] = useState<ReviewerOption[]>([])
   const [decisions, setDecisions] = useState<Decision[]>([])
@@ -97,91 +105,31 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: sub, error: subError } = await supabase
-      .from('submissions')
-      .select('id, submission_code, title, abstract, keywords, status, current_round, created_by')
-      .eq('id', submissionId)
-      .single()
+    try {
+      const data = await api.get<DetailResponse>(`/conferences/${conferenceId}/submissions/${submissionId}`)
+      setSubmission(data.submission)
+      setStage(data.submission.status === 'full_paper_submitted' ? 'full_paper' : 'abstract')
+      setAuthors(data.authors)
+      setFiles(data.files)
+      setAssignments(data.assignments)
+      setDecisions(data.decisions)
 
-    if (subError || !sub) {
-      setError(subError?.message ?? 'Submission not found.')
-      setLoading(false)
-      return
+      const reviewersData = await api.get<{ reviewers: ReviewerOption[] }>(`/conferences/${conferenceId}/reviewers`, {
+        submission_id: submissionId,
+      })
+      setReviewerOptions(
+        reviewersData.reviewers.filter((r) => !r.has_conflict && !r.already_assigned && !r.is_author_of_submission),
+      )
+      setError(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load this submission.')
     }
-    setSubmission(sub as Submission)
-    setStage(sub.status === 'full_paper_pending' || sub.status === 'full_paper_submitted' ? 'full_paper' : 'abstract')
-
-    const [{ data: authorsData }, { data: filesData }, { data: assignData }, { data: membersData }, { data: decisionsData }] =
-      await Promise.all([
-        supabase.from('submission_authors').select('id, full_name, email, is_corresponding, user_id').eq('submission_id', submissionId).order('author_order'),
-        supabase
-          .from('submission_files')
-          .select('id, file_kind, version, status, original_filename, storage_path, mime_type')
-          .eq('submission_id', submissionId)
-          .order('file_kind')
-          .order('version', { ascending: false }),
-        supabase
-          .from('review_assignments')
-          .select('id, status, due_at, reviewer_id, reviewer:profiles!review_assignments_reviewer_id_fkey(full_name, email), review:reviews(status, originality, quality, relevance, methodology, overall_score, confidence, recommendation, comments_to_author, confidential_comments)')
-          .eq('submission_id', submissionId)
-          .order('assigned_at'),
-        supabase
-          .from('conference_members')
-          .select('user_id, profiles!conference_members_user_id_fkey(full_name, email)')
-          .eq('conference_id', conferenceId)
-          .eq('role_code', 'reviewer')
-          .eq('status', 'active'),
-        supabase.from('submission_decisions').select('id, stage, decision, comments_to_author, decided_at').eq('submission_id', submissionId).order('decided_at', { ascending: false }),
-      ])
-
-    const authorRows = (authorsData ?? []) as Author[]
-    const authorAccountIds = authorRows.map((a) => a.user_id).filter((id): id is string => Boolean(id))
-    if (authorAccountIds.length > 0) {
-      const { data: photoRows } = await supabase.from('profiles').select('id, photo_path').in('id', authorAccountIds)
-      const photoById = new Map((photoRows ?? []).map((p) => [p.id, p.photo_path]))
-      for (const a of authorRows) {
-        if (a.user_id) a.photo_path = photoById.get(a.user_id) ?? null
-      }
-    }
-    setAuthors(authorRows)
-    setFiles((filesData ?? []) as FileRow[])
-    setAssignments(
-      ((assignData ?? []) as unknown[]).map((a) => a as Assignment),
-    )
-
-    const authorUserIds = new Set(((authorsData ?? []) as Author[]).map((a) => a.user_id).filter(Boolean))
-    const options = ((membersData ?? []) as unknown as Array<{ user_id: string; profiles: ReviewerOption | null }>)
-      .filter((m) => m.user_id !== sub.created_by && !authorUserIds.has(m.user_id))
-      .map((m) => ({ user_id: m.user_id, full_name: m.profiles?.full_name ?? null, email: m.profiles?.email ?? null }))
-    setReviewerOptions(options)
-
-    setDecisions((decisionsData ?? []) as Decision[])
-    setError(null)
     setLoading(false)
   }, [conferenceId, submissionId])
 
   useEffect(() => {
     load()
   }, [load])
-
-  useEffect(() => {
-    let cancelled = false
-    const imageFiles = files.filter((f) => isImageFile(f.mime_type))
-    if (imageFiles.length === 0) return
-
-    async function loadPreviews() {
-      const entries = await Promise.all(
-        imageFiles.map(async (f) => [f.id, await getSubmissionFileUrl(f.storage_path, 1800)] as const),
-      )
-      if (cancelled) return
-      setImagePreviews(Object.fromEntries(entries.filter(([, url]) => url)) as Record<string, string>)
-    }
-
-    loadPreviews()
-    return () => {
-      cancelled = true
-    }
-  }, [files])
 
   async function handleAssign(e: React.FormEvent) {
     e.preventDefault()
@@ -192,30 +140,24 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
       setAssignError(parsed.error.issues[0]?.message ?? 'Invalid value.')
       return
     }
-    if (!submission) return
     setAssigning(true)
-    const { error: assignErr } = await supabase.from('review_assignments').insert({
-      conference_id: conferenceId,
-      submission_id: submissionId,
-      reviewer_id: parsed.data.reviewer_id,
-      due_at: new Date(`${parsed.data.due_at}T23:59:59`).toISOString(),
-      round: submission.current_round,
-    })
-    setAssigning(false)
-    if (assignErr) {
-      setAssignError(assignErr.message)
-      return
+    try {
+      await api.post(`/conferences/${conferenceId}/submissions/${submissionId}/assignments`, {
+        reviewer_id: parsed.data.reviewer_id,
+        due_at: new Date(`${parsed.data.due_at}T23:59:59`).toISOString(),
+      })
+      setReviewerId('')
+      setDueAt(defaultDueDate())
+      setNotice('Reviewer assigned.')
+      await load()
+    } catch (err) {
+      setAssignError(err instanceof ApiError ? err.message : 'Could not assign this reviewer.')
     }
-    setReviewerId('')
-    setDueAt(defaultDueDate())
-    const emailOk = await sendQueuedEmails()
-    setNotice(emailOk ? 'Reviewer assigned.' : 'Reviewer assigned. Email will be retried.')
-    await load()
+    setAssigning(false)
   }
 
-  async function handleDownload(path: string) {
-    const url = await getSubmissionFileUrl(path)
-    if (url) window.open(url, '_blank', 'noopener,noreferrer')
+  function handleDownload(fileId: string) {
+    downloadSubmissionFile(submissionId, fileId)
   }
 
   async function handleDecision(e: React.FormEvent) {
@@ -228,25 +170,28 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
       return
     }
     if (!submission) return
-    if (!window.confirm(`Record decision "${DECISION_LABELS[parsed.data.decision]}" for stage "${parsed.data.stage}"?`)) return
+
+    const completedCount = assignments.filter((a) => a.review_status === 'submitted').length
+    let confirmMessage = `Record decision "${DECISION_LABELS[parsed.data.decision]}" for stage "${parsed.data.stage}"?`
+    if (completedCount < assignments.length) {
+      confirmMessage += ` Only ${completedCount} of ${assignments.length} assigned reviews have been submitted.`
+    }
+    if (!window.confirm(confirmMessage)) return
 
     setDecisionSaving(true)
-    const { error: saveError } = await supabase.from('submission_decisions').insert({
-      submission_id: submissionId,
-      stage: parsed.data.stage,
-      decision: parsed.data.decision,
-      comments_to_author: parsed.data.comments_to_author,
-      round: submission.current_round,
-    })
-    setDecisionSaving(false)
-    if (saveError) {
-      setDecisionError(saveError.message)
-      return
+    try {
+      await api.post(`/conferences/${conferenceId}/submissions/${submissionId}/decisions`, {
+        stage: parsed.data.stage,
+        decision: parsed.data.decision,
+        comments_to_author: parsed.data.comments_to_author,
+      })
+      setDecisionComments('')
+      setNotice('Decision saved.')
+      await load()
+    } catch (err) {
+      setDecisionError(err instanceof ApiError ? err.message : 'Could not save this decision.')
     }
-    setDecisionComments('')
-    const emailOk = await sendQueuedEmails()
-    setNotice(emailOk ? 'Decision saved.' : 'Decision saved. Email will be retried.')
-    await load()
+    setDecisionSaving(false)
   }
 
   if (loading) {
@@ -297,30 +242,16 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
           <p className="mt-2 text-sm text-ink/60">No files uploaded.</p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
-            {files.map((f) => {
-              const previewUrl = isImageFile(f.mime_type) ? imagePreviews[f.id] : undefined
-              return (
-                <li key={f.id} className="py-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>
-                      {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} · v{f.version} <span className="text-ink/50">({f.status})</span> — {f.original_filename}
-                    </span>
-                    <button type="button" onClick={() => handleDownload(f.storage_path)} className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background">
-                      Download
-                    </button>
-                  </div>
-                  {previewUrl ? (
-                    <a href={previewUrl} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={previewUrl}
-                        alt={`${FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} preview`}
-                        className="mt-2 max-h-64 rounded-md border border-line object-contain"
-                      />
-                    </a>
-                  ) : null}
-                </li>
-              )
-            })}
+            {files.map((f) => (
+              <li key={f.id} className="flex items-center justify-between py-2 text-sm">
+                <span>
+                  {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} · v{f.version} <span className="text-ink/50">({f.status})</span> — {f.original_filename}
+                </span>
+                <button type="button" onClick={() => handleDownload(f.id)} className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background">
+                  Download
+                </button>
+              </li>
+            ))}
           </ul>
         )}
       </div>
@@ -334,18 +265,18 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
             {assignments.map((a) => (
               <li key={a.id} className="rounded-md border border-line p-3 text-sm">
                 <p className="font-medium text-ink">
-                  {a.reviewer?.full_name ?? a.reviewer?.email ?? 'Reviewer'} — <span className="capitalize">{a.status.replace('_', ' ')}</span>
+                  {a.reviewer_name ?? a.reviewer_email ?? 'Reviewer'} — <span className="capitalize">{a.status.replace('_', ' ')}</span>
                 </p>
                 <p className="text-ink/60">Due {new Date(a.due_at).toLocaleDateString()}</p>
-                {a.review && a.review.status === 'submitted' ? (
+                {a.review_status === 'submitted' ? (
                   <div className="mt-2 space-y-1 text-ink/80">
                     <p>
-                      Originality {a.review.originality} · Quality {a.review.quality} · Relevance {a.review.relevance} · Methodology{' '}
-                      {a.review.methodology} · Overall {a.review.overall_score} · Confidence {a.review.confidence}
+                      Originality {a.originality} · Quality {a.quality} · Relevance {a.relevance} · Methodology{' '}
+                      {a.methodology} · Overall {a.overall_score} · Confidence {a.confidence}
                     </p>
-                    <p>Recommendation: {RECOMMENDATION_LABELS[a.review.recommendation ?? ''] ?? a.review.recommendation}</p>
-                    {a.review.comments_to_author ? <p>To author: {a.review.comments_to_author}</p> : null}
-                    {a.review.confidential_comments ? <p className="text-amber-700">Confidential: {a.review.confidential_comments}</p> : null}
+                    <p>Recommendation: {RECOMMENDATION_LABELS[a.recommendation ?? ''] ?? a.recommendation}</p>
+                    {a.comments_to_author ? <p>To author: {a.comments_to_author}</p> : null}
+                    {a.confidential_comments ? <p className="text-amber-700">Confidential: {a.confidential_comments}</p> : null}
                   </div>
                 ) : (
                   <p className="mt-1 text-ink/50">No submitted review yet.</p>

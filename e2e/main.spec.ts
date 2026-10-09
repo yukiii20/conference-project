@@ -93,7 +93,7 @@ test.describe('author sign-up -> convenor approval -> author login', () => {
     await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
     await expect(page).toHaveURL(/\/convenor/)
 
-    await page.getByRole('button', { name: 'Role requests' }).click()
+    await page.locator('nav').getByRole('link', { name: 'People' }).click()
     const row = page.locator('li', { hasText: authorEmail })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Approve' }).click()
@@ -113,14 +113,16 @@ test.describe('convenor edits the conference', () => {
   })
 
   test('edits conference details', async ({ page }) => {
-    await page.getByRole('button', { name: 'Conference details' }).click()
+    await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
+    await expect(page.getByRole('link', { name: 'Details', exact: true })).toHaveAttribute('aria-current', 'true')
     await page.locator('#tagline').fill('Updated by Playwright')
     await page.getByRole('button', { name: 'Save' }).first().click()
     await expect(page.getByText('Saved.').first()).toBeVisible()
   })
 
   test('uploads a logo', async ({ page }) => {
-    await page.getByRole('button', { name: 'Logo' }).click()
+    await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
+    await page.getByRole('link', { name: 'Logo and branding', exact: true }).click()
     const fileInput = page.locator('input[type="file"]')
     await fileInput.setInputFiles({
       name: 'logo.png',
@@ -135,7 +137,7 @@ test.describe('convenor edits the conference', () => {
   })
 
   test('saves key dates and they appear on the public home page', async ({ page }) => {
-    await page.getByRole('button', { name: 'Key dates' }).click()
+    await page.locator('nav').getByRole('link', { name: 'Dates and tracks' }).click()
     const row = page.locator('div.rounded-lg', { hasText: 'Abstract submission' })
     await expect(row).toBeVisible()
 

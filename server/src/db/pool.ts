@@ -12,7 +12,7 @@ export const pool = mysql.createPool({
   // DATE columns (start_date, end_date, ...) come back as plain 'YYYY-MM-DD'
   // strings — not JS Date objects — because every caller (conference forms,
   // <input type="date">, formatDateRange) expects that exact shape, same as
-  // Postgres/Supabase's DATE type did before this backend existed. Returning
+  // the previous backend's DATE type did before this one existed. Returning
   // a Date object here gets JSON-serialized as a full ISO timestamp
   // ("2026-10-11T00:00:00.000Z"), which silently breaks every one of those
   // (e.g. `new Date(`${isoWithTandZ}T00:00:00`)` -> Invalid Date -> a

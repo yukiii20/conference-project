@@ -35,7 +35,24 @@ export function oversizedBuffer(bytes: number): Buffer {
  * alone since those come from 02_reference_data.sql, not from tests.
  */
 export async function resetDatabase(): Promise<void> {
+  await pool.query('DELETE FROM notifications')
   await pool.query('DELETE FROM email_logs')
+  // Conference-specific template overrides only — never the platform defaults (conference_id IS NULL) from 02_reference_data.sql.
+  await pool.query('DELETE FROM email_templates WHERE conference_id IS NOT NULL')
+  await pool.query('DELETE FROM announcements')
+  await pool.query('DELETE FROM committee_members')
+  await pool.query('DELETE FROM committees')
+  await pool.query('DELETE FROM conference_speakers')
+  await pool.query('DELETE FROM reviews')
+  await pool.query('DELETE FROM review_assignments')
+  await pool.query('DELETE FROM reviewer_tracks')
+  await pool.query('DELETE FROM conflicts_of_interest')
+  await pool.query('DELETE FROM submission_decisions')
+  await pool.query('DELETE FROM submission_status_history')
+  await pool.query('DELETE FROM submission_files')
+  await pool.query('DELETE FROM submission_authors')
+  await pool.query('DELETE FROM submissions')
+  await pool.query('DELETE FROM conference_counters')
   await pool.query('DELETE FROM role_requests')
   await pool.query('DELETE FROM conference_members')
   await pool.query('DELETE FROM conference_deadlines')
@@ -67,6 +84,21 @@ export async function createUser(input: {
   ])
   const [rows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
   return (rows as Array<{ id: string }>)[0]!.id
+}
+
+/**
+ * Creates a session row directly (bypassing POST /api/auth/login, which is
+ * rate-limited to 20 attempts / 15 min and shared across every test in a
+ * file). Returns the raw cookie value — requireAuth only ever checks the
+ * session row, so this is indistinguishable from a real login.
+ */
+export async function createDirectSession(userId: string): Promise<string> {
+  const token = generateToken()
+  await pool.query(`INSERT INTO auth_sessions (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(3), INTERVAL 12 HOUR))`, [
+    userId,
+    sha256(token),
+  ])
+  return `cms_session=${token}`
 }
 
 export async function makePlatformAdmin(userId: string): Promise<void> {
@@ -127,6 +159,75 @@ export async function createPendingInviteUser(input: {
   ])
   const [rows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
   return (rows as Array<{ id: string }>)[0]!.id
+}
+
+export async function createTrack(conferenceId: string, name: string, isActive = true): Promise<string> {
+  await pool.query(
+    `INSERT INTO conference_tracks (conference_id, name, is_active) VALUES (?, ?, ?)`,
+    [conferenceId, name, isActive],
+  )
+  const [rows] = await pool.query('SELECT id FROM conference_tracks WHERE conference_id = ? AND name = ? LIMIT 1', [
+    conferenceId,
+    name,
+  ])
+  return (rows as Array<{ id: string }>)[0]!.id
+}
+
+export async function upsertConferenceSettings(
+  conferenceId: string,
+  overrides: Partial<Record<string, unknown>> = {},
+): Promise<void> {
+  const defaults = {
+    review_mode: 'double_blind',
+    reviews_required: 3,
+    max_submissions_per_author: null,
+    max_abstract_words: 300,
+    max_file_size_mb: 20,
+    authors_see_review_comments: true,
+  }
+  const merged = { ...defaults, ...overrides }
+  await pool.query(
+    `INSERT INTO conference_settings
+       (conference_id, review_mode, reviews_required, max_submissions_per_author, max_abstract_words, max_file_size_mb, authors_see_review_comments)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE review_mode = VALUES(review_mode), reviews_required = VALUES(reviews_required),
+       max_submissions_per_author = VALUES(max_submissions_per_author), max_abstract_words = VALUES(max_abstract_words),
+       max_file_size_mb = VALUES(max_file_size_mb), authors_see_review_comments = VALUES(authors_see_review_comments)`,
+    [
+      conferenceId,
+      merged.review_mode,
+      merged.reviews_required,
+      merged.max_submissions_per_author,
+      merged.max_abstract_words,
+      merged.max_file_size_mb,
+      merged.authors_see_review_comments,
+    ],
+  )
+}
+
+/** Sets a conference_deadlines window. Pass offsets in hours relative to now (negative = already open/past). */
+export async function setDeadlineWindow(
+  conferenceId: string,
+  deadlineType: string,
+  opensInHours: number,
+  closesInHours: number | null,
+): Promise<void> {
+  const opensAt = new Date(Date.now() + opensInHours * 3_600_000)
+  const closesAt = closesInHours === null ? null : new Date(Date.now() + closesInHours * 3_600_000)
+  await pool.query(
+    `INSERT INTO conference_deadlines (conference_id, deadline_type, opens_at, closes_at)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE opens_at = VALUES(opens_at), closes_at = VALUES(closes_at)`,
+    [conferenceId, deadlineType, opensAt, closesAt],
+  )
+}
+
+export async function addReviewerTrack(conferenceId: string, userId: string, trackId: string): Promise<void> {
+  await pool.query(`INSERT INTO reviewer_tracks (conference_id, user_id, track_id) VALUES (?, ?, ?)`, [
+    conferenceId,
+    userId,
+    trackId,
+  ])
 }
 
 export async function createRoleRequest(

@@ -21,7 +21,7 @@ export const SITE = {
     subheadline:
       'Calls for papers, peer review, programme and participants, from first abstract to final session.',
     primaryCta: 'Browse conferences',
-    secondaryCta: 'Submit your research',
+    secondaryCta: 'Submit abstract',
   },
 
   nav: [

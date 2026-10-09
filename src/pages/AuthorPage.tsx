@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { getRoleDefinition } from '../lib/roles'
 import { PortalHeader } from '../components/PortalHeader'
@@ -27,7 +27,7 @@ export function AuthorPage() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   // The conference selector comes only from GET /api/auth/me (via the
-  // shared auth context) — never from a Supabase session/RPC.
+  // shared auth context) — never from a client-side auth SDK session.
   useEffect(() => {
     const options: AuthorConference[] = roles
       .filter((r) => r.role_code === 'author' && r.conference_id)
@@ -44,13 +44,18 @@ export function AuthorPage() {
     if (!conferenceId) return
     let cancelled = false
     async function reload() {
-      const [{ data: tracksData }, { data: settings }] = await Promise.all([
-        supabase.from('conference_tracks').select('id, name').eq('conference_id', conferenceId as string).eq('is_active', true).order('display_order'),
-        supabase.from('conference_settings').select('max_abstract_words').eq('conference_id', conferenceId as string).maybeSingle(),
-      ])
-      if (cancelled) return
-      setTracks((tracksData ?? []) as Track[])
-      setMaxAbstractWords(settings?.max_abstract_words ?? 300)
+      try {
+        const data = await api.get<{ tracks: Track[]; settings: { max_abstract_words: number } }>(
+          `/conferences/${conferenceId}/author-form`,
+        )
+        if (cancelled) return
+        setTracks(data.tracks)
+        setMaxAbstractWords(data.settings.max_abstract_words)
+      } catch {
+        if (cancelled) return
+        setTracks([])
+        setMaxAbstractWords(300)
+      }
       setSelectedId(null)
       setTab('submissions')
     }

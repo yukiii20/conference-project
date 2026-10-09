@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireConferencePermission } from '../../middleware/auth.js'
+import { uploadRateLimit } from '../../middleware/rateLimit.js'
 import { validateBody } from '../../middleware/validate.js'
 import { buildPublicPath, deletePublicFile, savePublicFile } from '../../storage/fileStore.js'
 import { imageUpload, processImage } from '../../storage/imageUpload.js'
@@ -41,6 +42,7 @@ function imageRoutes(column: 'logo_path' | 'banner_path', urlSegment: string, ma
   conferencesManageRouter.post(
     `/:id/${urlSegment}`,
     requireConferencePermission('conference.manage'),
+    uploadRateLimit,
     imageUpload(maxBytes),
     async (req, res, next) => {
       try {

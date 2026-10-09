@@ -31,7 +31,7 @@ const EMPTY_FORM: FormState = {
   bio: '',
 }
 
-/** Identity (and the data this form edits) comes only from GET/PATCH /api/me/profile — never Supabase. */
+/** Identity (and the data this form edits) comes only from GET/PATCH /api/me/profile — never a client-side auth SDK. */
 export function ProfilePage() {
   const navigate = useNavigate()
   const { user, refresh } = useAuth()

@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } from '../lib/validation'
 import { useNoIndex } from '../lib/noindex'
+import { EmailLogTab } from '../components/EmailLogTab'
 import { PortalHeader } from '../components/PortalHeader'
 
-type AdminTab = 'conferences' | 'create-convenor' | 'appoint-convenor' | 'users'
+type AdminTab = 'conferences' | 'create-convenor' | 'appoint-convenor' | 'users' | 'email-log'
 
 type ConferenceRow = {
   id: string
@@ -58,6 +59,7 @@ const TABS: { id: AdminTab; label: string }[] = [
   { id: 'create-convenor', label: 'Create convenor' },
   { id: 'appoint-convenor', label: 'Appoint existing account' },
   { id: 'users', label: 'Users' },
+  { id: 'email-log', label: 'Email log' },
 ]
 
 export function SuperAdminPage() {
@@ -134,6 +136,7 @@ export function SuperAdminPage() {
         ) : null}
 
         {tab === 'users' ? <UsersTab /> : null}
+        {tab === 'email-log' ? <EmailLogTab scope="admin" /> : null}
       </main>
     </div>
   )
@@ -816,6 +819,22 @@ function UsersTab() {
   const [results, setResults] = useState<ProfileRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  async function handleResetPassword(profile: ProfileRow) {
+    if (!window.confirm(`Send a password reset link to ${profile.email ?? 'this user'}?`)) return
+    setBusyId(profile.id)
+    setNotice(null)
+    try {
+      await api.post(`/admin/users/${profile.id}/reset-password`)
+      setNotice(`Reset link sent to ${profile.email ?? 'this user'}.`)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send a reset link.')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -850,6 +869,9 @@ function UsersTab() {
       />
 
       {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {notice ? (
+        <div className="mt-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
+      ) : null}
 
       {loading ? (
         <p className="mt-6 text-sm text-ink/60">Loading…</p>
@@ -866,6 +888,7 @@ function UsersTab() {
                 <th className="px-4 py-2 font-medium">Email</th>
                 <th className="px-4 py-2 font-medium">Phone</th>
                 <th className="px-4 py-2 font-medium">Joined</th>
+                <th className="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -875,6 +898,16 @@ function UsersTab() {
                   <td className="px-4 py-3">{p.email ?? '—'}</td>
                   <td className="px-4 py-3">{p.phone ?? '—'}</td>
                   <td className="px-4 py-3">{formatDate(p.created_at)}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => handleResetPassword(p)}
+                      disabled={busyId === p.id}
+                      className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background disabled:opacity-50"
+                    >
+                      {busyId === p.id ? 'Sending…' : 'Reset password'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

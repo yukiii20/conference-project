@@ -52,10 +52,26 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   return data as T
 }
 
+/** POSTs a multipart/form-data body (file uploads) — never JSON-encoded, so the browser sets its own boundary header. */
+async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const res = await fetch(buildUrl(path), { method: 'POST', credentials: 'include', body: formData })
+
+  const isJson = res.headers.get('content-type')?.includes('application/json')
+  const data = isJson ? await res.json().catch(() => null) : null
+
+  if (!res.ok) {
+    const message = data?.error?.message ?? 'Something went wrong. Please try again.'
+    throw new ApiError(res.status, message, data?.error?.fields)
+  }
+
+  return data as T
+}
+
 export const api = {
   get: <T>(path: string, query?: Record<string, string | undefined>) => apiRequest<T>(path, { method: 'GET', query }),
   post: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: 'PATCH', body }),
   put: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: 'PUT', body }),
   del: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
+  upload: <T>(path: string, formData: FormData) => apiUpload<T>(path, formData),
 }
