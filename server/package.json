@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "create-admin": "tsx src/scripts/createAdmin.ts",
+    "doctor": "tsx src/scripts/doctor.ts",
     "test": "vitest run"
   },
   "dependencies": {
