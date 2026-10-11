@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
-import { api } from '../lib/api'
+import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
+import { api, setAdminViewAs } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { PortalHeader } from '../components/PortalHeader'
 import { ConvenorSidebar } from './convenor/ConvenorSidebar'
@@ -25,32 +25,35 @@ type DashboardSummary = {
   }
 }
 
-export function ConvenorPage() {
+type ViewAsInfo = { conferenceId: string; conferenceName: string }
+
+export function ConvenorPage({ viewAs }: { viewAs?: ViewAsInfo } = {}) {
   return (
     <DirtyGuardProvider>
-      <ConvenorPageInner />
+      <ConvenorPageInner viewAs={viewAs} />
     </DirtyGuardProvider>
   )
 }
 
-function ConvenorPageInner() {
+function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const preselectedSlug = searchParams.get('conference')?.trim() || null
   const { roles } = useAuth()
   const { markDirty, clearDirty } = useDirtyGuard()
-  const isManagerPortal = location.pathname.startsWith('/manager')
-  const base = isManagerPortal ? '/manager' : '/convenor'
+  const isManagerPortal = !viewAs && location.pathname.startsWith('/manager')
+  const base = viewAs ? `/super-admin/view-as/${viewAs.conferenceId}` : isManagerPortal ? '/manager' : '/convenor'
 
   const [myConferences, setMyConferences] = useState<ConvenorConference[]>([])
-  const [conferenceId, setConferenceId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [conferenceId, setConferenceId] = useState<string | null>(viewAs?.conferenceId ?? null)
+  const [loading, setLoading] = useState(!viewAs)
   const [missingAbstractDates, setMissingAbstractDates] = useState(false)
   const [pendingRoleRequests, setPendingRoleRequests] = useState(0)
   const [papersAttention, setPapersAttention] = useState(0)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
+    if (viewAs) return
     const wantedRole = isManagerPortal ? 'manager' : 'convenor'
     const options: ConvenorConference[] = roles
       .filter((r) => r.role_code === wantedRole && r.conference_id)
@@ -66,9 +69,18 @@ function ConvenorPageInner() {
     const preselected = preselectedSlug ? options.find((c) => c.slug === preselectedSlug) : null
     setConferenceId((preselected ?? options[0])?.id ?? null)
     setLoading(false)
-  }, [roles, preselectedSlug, isManagerPortal])
+  }, [roles, preselectedSlug, isManagerPortal, viewAs])
 
-  const conferenceName = myConferences.find((c) => c.id === conferenceId)?.name ?? ''
+  // Every request the api client makes while this is mounted carries a header
+  // the server rejects on any write — on top of (not instead of) each save
+  // button being disabled below, so a stray request can't sneak a change through.
+  useEffect(() => {
+    if (!viewAs) return
+    setAdminViewAs(true)
+    return () => setAdminViewAs(false)
+  }, [viewAs])
+
+  const conferenceName = viewAs ? viewAs.conferenceName : myConferences.find((c) => c.id === conferenceId)?.name ?? ''
 
   useEffect(() => {
     if (!conferenceId) return
@@ -134,9 +146,26 @@ function ConvenorPageInner() {
 
   return (
     <div className="min-h-screen bg-background text-ink">
-      <PortalHeader roleLabel={isManagerPortal ? 'Manager' : 'Convenor'} />
+      <PortalHeader roleLabel={viewAs ? 'Administrator' : isManagerPortal ? 'Manager' : 'Convenor'} />
 
       <div className="mx-auto max-w-7xl px-4 py-8">
+        {viewAs ? (
+          <div
+            role="status"
+            className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800"
+          >
+            <span>
+              Viewing <strong>{viewAs.conferenceName}</strong> as admin — read-only.
+            </span>
+            <Link
+              to="/super-admin"
+              className="rounded-md border border-amber-400 px-3 py-1 font-medium hover:bg-amber-100"
+            >
+              Exit
+            </Link>
+          </div>
+        ) : null}
+
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">{isManagerPortal ? 'Manager' : 'Convenor'}</h1>
           <button
@@ -188,34 +217,39 @@ function ConvenorPageInner() {
           </aside>
 
           <main className="min-w-0 flex-1" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
-            <Routes>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardTab conferenceId={conferenceId} base={base} />} />
-              <Route path="setup/*" element={<SetupSection conferenceId={conferenceId} basePath={`${base}/setup`} />} />
-              <Route
-                path="schedule-basics/*"
-                element={<ScheduleBasicsSection conferenceId={conferenceId} basePath={`${base}/schedule-basics`} />}
-              />
-              <Route
-                path="people/*"
-                element={<PeopleSection conferenceId={conferenceId} basePath={`${base}/people`} isManager={isManagerPortal} />}
-              />
-              <Route path="papers/*" element={<PapersSection conferenceId={conferenceId} basePath={`${base}/papers`} />} />
-              <Route path="event/*" element={<EventSection conferenceId={conferenceId} basePath={`${base}/event`} />} />
-              <Route
-                path="communication/*"
-                element={
-                  <CommunicationSection conferenceId={conferenceId} basePath={`${base}/communication`} isManager={isManagerPortal} />
-                }
-              />
+            {/* In "view as admin" mode this disables every input/select/textarea/button inside —
+                the real enforcement is server-side (blockWritesInAdminViewAsMode), this just keeps
+                the admin from clicking a save button that would only fail anyway. */}
+            <fieldset disabled={Boolean(viewAs)} className="m-0 min-w-0 border-0 p-0">
+              <Routes>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<DashboardTab conferenceId={conferenceId} base={base} />} />
+                <Route path="setup/*" element={<SetupSection conferenceId={conferenceId} basePath={`${base}/setup`} />} />
+                <Route
+                  path="schedule-basics/*"
+                  element={<ScheduleBasicsSection conferenceId={conferenceId} basePath={`${base}/schedule-basics`} />}
+                />
+                <Route
+                  path="people/*"
+                  element={<PeopleSection conferenceId={conferenceId} basePath={`${base}/people`} isManager={isManagerPortal} />}
+                />
+                <Route path="papers/*" element={<PapersSection conferenceId={conferenceId} basePath={`${base}/papers`} />} />
+                <Route path="event/*" element={<EventSection conferenceId={conferenceId} basePath={`${base}/event`} />} />
+                <Route
+                  path="communication/*"
+                  element={
+                    <CommunicationSection conferenceId={conferenceId} basePath={`${base}/communication`} isManager={isManagerPortal} />
+                  }
+                />
 
-              {/* Old flat tab URLs from before the sidebar was grouped into pages — kept working so nothing breaks. */}
-              {Object.entries(OLD_PATH_REDIRECTS).map(([oldPath, newPath]) => (
-                <Route key={oldPath} path={oldPath} element={<Navigate to={`${base}/${newPath}`} replace />} />
-              ))}
+                {/* Old flat tab URLs from before the sidebar was grouped into pages — kept working so nothing breaks. */}
+                {Object.entries(OLD_PATH_REDIRECTS).map(([oldPath, newPath]) => (
+                  <Route key={oldPath} path={oldPath} element={<Navigate to={`${base}/${newPath}`} replace />} />
+                ))}
 
-              <Route path="*" element={<Navigate to="dashboard" replace />} />
-            </Routes>
+                <Route path="*" element={<Navigate to="dashboard" replace />} />
+              </Routes>
+            </fieldset>
           </main>
         </div>
       </div>

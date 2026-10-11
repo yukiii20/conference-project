@@ -1,9 +1,13 @@
 # Final test report
 
-Last updated 2026-10-09, covering Phases 1-4 (auth & role requests, conference
+Last updated 2026-10-11, covering Phases 1-4 (auth & role requests, conference
 setup, submissions/reviews/decisions, email/notifications/password-reset/
-security) and the Convenor Portal Part A (sidebar layout, dashboard, settings,
-people, content, communication, reports).
+security), the Convenor Portal Part A (sidebar layout, dashboard, settings,
+people, content, communication, reports), the finishing Step 1 UI pass (brick
+home hero, conference branding by `primary_color`, badge animation, Logo and
+branding tab), and finishing Step 2 (super admin: platform admins, user
+unlock/deactivate/anonymise, view-as-admin read-only mode, system health
+card, platform settings, audit ip/user-agent).
 
 ## Automated test results
 
@@ -13,15 +17,15 @@ people, content, communication, reports).
 | Frontend type safety | `npx tsc --noEmit` (repo root) | ✅ Pass, no errors |
 | Backend build | `cd server && npm run build` → `dist/` | ✅ Pass |
 | Frontend build | `npm run build` (repo root) → `dist/` | ✅ Pass |
-| Backend unit/integration tests | `cd server && npm test` (Vitest) | ✅ 309/309 passed, 29 test files |
+| Backend unit/integration tests | `cd server && npm test` (Vitest) | ✅ 340/340 passed, 30 test files |
 | Frontend unit tests | `npm test` (repo root, Vitest) | ✅ 21/21 passed |
-| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 21/21 passed |
+| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 28/28 passed |
 | Dependency audit (frontend) | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
 | Dependency audit (backend) | `cd server && npm audit --omit=dev` | ⚠️ 2 moderate (see Known non-blocking items) |
 | Secrets in git history | `git log --all -- "*.env" ".env.local" "server/.env"` | ✅ Empty — no env file ever committed |
 | Supabase removal | `grep -ri supabase src server/src` | ✅ Empty |
 
-## Playwright suite detail (21 tests, ~1 min)
+## Playwright suite detail (28 tests, ~1.2 min)
 
 | Spec | Scenario | Result |
 |---|---|---|
@@ -38,6 +42,10 @@ people, content, communication, reports).
 | `convenorPortal.spec.ts` | Convenor opens every sidebar item at 390px (mobile drawer) with no console errors or horizontal scroll | ✅ |
 | `convenorPortal.spec.ts` | Convenor invites a reviewer by email | ✅ |
 | `convenorPortal.spec.ts` | Convenor adds a committee member and it appears on the public conference page | ✅ |
+| `adminPortal.spec.ts` | Admin dashboard shows stat tiles and the system health card | ✅ |
+| `adminPortal.spec.ts` | Admin grants and revokes platform admin access | ✅ |
+| `adminPortal.spec.ts` | Admin edits platform settings and the home page reflects them | ✅ |
+| `adminPortal.spec.ts` | "View as admin" shows a read-only banner and disables save buttons | ✅ |
 
 ## Manual / spot-checked areas
 
@@ -59,6 +67,7 @@ people, content, communication, reports).
 | Email templates | List with extracted placeholders, HTML sanitised on save (script tags / `onclick` / `javascript:` stripped), reset to default, preview with sample data, unknown key 404s, permission (staff 403) | ✅ `server/tests/emailTemplates.test.ts` |
 | Reports and export | CSV/XLSX download for all four report kinds, unknown kind 400s, permission (author 403), confidential-comment visibility gated on `review.read_all` independent of `report.view` | ✅ `server/tests/reports.test.ts` |
 | Activity log | Conference-scoped, filterable by action, convenor-only (manager 403, since `audit.read` is withheld from managers) | ✅ `server/tests/activityLog.test.ts` |
+| Super admin (Step 2) | Unlock a locked-out user, grant/revoke platform admin (last-admin and self protections), anonymise a user (PII cleared, history kept, blocked for admins/self), view-as-admin audit entry + server-side write block even though admins otherwise bypass permission checks, dashboard health card fields, platform settings (sanitised, public endpoint reflects it), audit log records real ip/user-agent | ✅ `server/tests/adminStep2.test.ts` |
 
 ## Known non-blocking items
 

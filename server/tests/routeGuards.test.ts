@@ -5,6 +5,7 @@ import { conferencesManageRouter } from '../src/modules/conferences/manage.route
 import { conferencesPublicExtrasRouter } from '../src/modules/conferences/publicExtras.routes.js'
 import { conferenceRoleRequestsRouter, roleRequestsRouter } from '../src/modules/roleRequests/routes.js'
 import { adminRouter } from '../src/modules/admin/routes.js'
+import { platformSettingsAdminRouter, platformSettingsPublicRouter } from '../src/modules/platformSettings/routes.js'
 import { adminEmailsRouter, emailsConferenceRouter } from '../src/modules/emails/routes.js'
 import { deadlinesRouter } from '../src/modules/deadlines/routes.js'
 import { tracksRouter } from '../src/modules/tracks/routes.js'
@@ -44,6 +45,7 @@ const PUBLIC_ROUTES = new Set([
   'conferencesPublicExtrasRouter GET /public-track-count',
   'announcementsRouter GET /public',
   'scheduleRouter GET /:id/sessions/public',
+  'platformSettingsPublicRouter GET /platform-settings',
 ])
 
 type NamedRouter = { name: string; router: import('express').Router }
@@ -56,6 +58,8 @@ const ROUTERS: NamedRouter[] = [
   { name: 'conferenceRoleRequestsRouter', router: conferenceRoleRequestsRouter },
   { name: 'roleRequestsRouter', router: roleRequestsRouter },
   { name: 'adminRouter', router: adminRouter },
+  { name: 'platformSettingsPublicRouter', router: platformSettingsPublicRouter },
+  { name: 'platformSettingsAdminRouter', router: platformSettingsAdminRouter },
   { name: 'adminEmailsRouter', router: adminEmailsRouter },
   { name: 'emailsConferenceRouter', router: emailsConferenceRouter },
   { name: 'deadlinesRouter', router: deadlinesRouter },

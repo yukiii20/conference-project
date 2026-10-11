@@ -5,7 +5,7 @@ import { withTransaction } from '../../db/withTransaction.js'
 import { PLATFORM_NAME } from '../../email/layout.js'
 import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
-import { insertAuditLog } from '../../utils/audit.js'
+import { insertAuditLog, type AuditContext } from '../../utils/audit.js'
 import { notifyUser } from '../../utils/notifications.js'
 import { AppError, BadRequestError, ConflictError, UnauthorizedError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
@@ -76,6 +76,7 @@ export async function getConferencePermissions(userId: string, conferenceId: str
 
 export async function registerUser(
   input: RegisterInput,
+  ctx: AuditContext = {},
 ): Promise<{ userId: string }> {
   return withTransaction(null, async (conn) => {
     const [existing] = await conn.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
@@ -120,6 +121,8 @@ export async function registerUser(
       action: 'user.register',
       entityType: 'users',
       entityId: userId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
 
     const [templateRows] = await conn.query(
@@ -268,6 +271,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
   currentSessionId: string,
+  ctx: AuditContext = {},
 ): Promise<void> {
   const [rows] = await pool.query('SELECT password_hash FROM users WHERE id = ? LIMIT 1', [userId])
   const row = (rows as Array<{ password_hash: string | null }>)[0]
@@ -291,6 +295,8 @@ export async function changePassword(
       action: 'user.change_password',
       entityType: 'users',
       entityId: userId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
@@ -343,7 +349,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await withTransaction(user.id, (conn) => issuePasswordReset(conn, user))
 }
 
-export async function resetPassword(token: string, newPassword: string): Promise<void> {
+export async function resetPassword(token: string, newPassword: string, ctx: AuditContext = {}): Promise<void> {
   const tokenHash = sha256(token)
   const [rows] = await pool.query(
     `SELECT id, user_id FROM auth_tokens
@@ -372,11 +378,17 @@ export async function resetPassword(token: string, newPassword: string): Promise
       action: 'user.reset_password',
       entityType: 'users',
       entityId: row.user_id,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
 
-export async function acceptInvitation(token: string, newPassword: string): Promise<{ userId: string }> {
+export async function acceptInvitation(
+  token: string,
+  newPassword: string,
+  ctx: AuditContext = {},
+): Promise<{ userId: string }> {
   const tokenHash = sha256(token)
   const [rows] = await pool.query(
     `SELECT id, user_id, created_by FROM auth_tokens
@@ -398,6 +410,8 @@ export async function acceptInvitation(token: string, newPassword: string): Prom
       action: 'user.accept_invitation',
       entityType: 'users',
       entityId: row.user_id,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
 
     if (row.created_by) {

@@ -64,3 +64,26 @@ export const auditLogQuerySchema = z.object({
   page: pageSchema,
 })
 export type AuditLogQuery = z.infer<typeof auditLogQuerySchema>
+
+export const listConferencesQuerySchema = z.object({
+  query: z.string().trim().max(200).optional(),
+  status: z
+    .enum([
+      'draft',
+      'registration_open',
+      'submission_open',
+      'under_review',
+      'scheduling',
+      'published',
+      'ongoing',
+      'completed',
+      'closed',
+    ])
+    .optional(),
+})
+export type ListConferencesQuery = z.infer<typeof listConferencesQuerySchema>
+
+export const grantAdminSchema = z.object({
+  email: emailSchema,
+})
+export type GrantAdminInput = z.infer<typeof grantAdminSchema>

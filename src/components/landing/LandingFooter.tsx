@@ -1,10 +1,19 @@
 import { Link } from 'react-router-dom'
 import { SITE } from '../../content/site'
+import { usePlatformSettings } from '../../lib/platformSettings'
 import { LogoMark } from './LandingHeader'
+
+function gmailComposeHref(email: string): string {
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`
+}
 
 export function LandingFooter() {
   const year = new Date().getFullYear()
   const columns = [SITE.footer.columns.platform, SITE.footer.columns.account, SITE.footer.columns.legal]
+  const platformSettings = usePlatformSettings()
+  const platformName = platformSettings?.platform_name ?? SITE.name
+  const footerText = platformSettings?.footer_text ?? SITE.footer.description
+  const contactEmail = platformSettings?.support_email ?? SITE.contactEmail
 
   return (
     <footer className="bg-landing-navy-900 text-white">
@@ -13,16 +22,16 @@ export function LandingFooter() {
           <div>
             <div className="flex items-center gap-2 font-semibold">
               <LogoMark size={28} />
-              <span>{SITE.name}</span>
+              <span>{platformName}</span>
             </div>
-            <p className="mt-3 max-w-xs text-sm text-white/70">{SITE.footer.description}</p>
+            <p className="mt-3 max-w-xs text-sm text-white/70">{footerText}</p>
             <a
-              href={SITE.contactGmailHref}
+              href={gmailComposeHref(contactEmail)}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-3 inline-block text-sm text-white/80 hover:text-white"
             >
-              {SITE.contactEmail}
+              {contactEmail}
             </a>
           </div>
 
@@ -51,7 +60,7 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-10 border-t border-white/10 pt-6 text-sm text-white/50">
-          {SITE.footer.bottomLine(year)}
+          © {year} {platformName} · Banepa, Nepal
         </div>
       </div>
     </footer>

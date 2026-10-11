@@ -2,16 +2,19 @@ import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { issuePasswordReset } from '../auth/service.js'
-import { insertAuditLog } from '../../utils/audit.js'
+import { insertAuditLog, type AuditContext } from '../../utils/audit.js'
 import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
+import { pingDatabase, getStorageDiskSpace } from '../../utils/health.js'
 import type {
   AppointConvenorInput,
   AuditLogQuery,
   ConvenorInviteInput,
   CreateConferenceInput,
+  GrantAdminInput,
+  ListConferencesQuery,
   ListUsersQuery,
 } from './validation.js'
 
@@ -32,20 +35,38 @@ const DEFAULT_DEADLINE_OFFSETS: Array<{ deadline_type: string; closes_in_days: n
 
 const INVITATION_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
-export async function listAdminConferences() {
+export async function listAdminConferences(filters: ListConferencesQuery = {}) {
+  const conditions: string[] = ['c.deleted_at IS NULL']
+  const params: unknown[] = []
+
+  if (filters.query) {
+    const pattern = `%${escapeLike(filters.query)}%`
+    conditions.push(`(c.name LIKE ? ESCAPE '\\\\' OR c.code LIKE ? ESCAPE '\\\\' OR c.slug LIKE ? ESCAPE '\\\\')`)
+    params.push(pattern, pattern, pattern)
+  }
+  if (filters.status) {
+    conditions.push('c.status = ?')
+    params.push(filters.status)
+  }
+
   const [rows] = await pool.query(
     `SELECT c.id, c.name, c.code, c.slug, c.short_name, c.start_date, c.end_date, c.status,
             u.id AS convenor_id, u.full_name AS convenor_name, u.email AS convenor_email
      FROM conferences c
      LEFT JOIN conference_members cm ON cm.conference_id = c.id AND cm.role_code = 'convenor' AND cm.status = 'active'
      LEFT JOIN users u ON u.id = cm.user_id
-     WHERE c.deleted_at IS NULL
+     WHERE ${conditions.join(' AND ')}
      ORDER BY c.created_at DESC`,
+    params,
   )
   return rows
 }
 
-export async function createConference(actorUserId: string, input: CreateConferenceInput): Promise<{ id: string }> {
+export async function createConference(
+  actorUserId: string,
+  input: CreateConferenceInput,
+  ctx: AuditContext = {},
+): Promise<{ id: string }> {
   return withTransaction(actorUserId, async (conn) => {
     await conn.query(
       `INSERT INTO conferences (slug, code, name, short_name, city, country, timezone, start_date, end_date, status, social_links, created_by)
@@ -86,6 +107,8 @@ export async function createConference(actorUserId: string, input: CreateConfere
       entityType: 'conferences',
       entityId: conferenceId,
       newValues: { name: input.name, code: input.code, slug: input.slug },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
 
     return { id: conferenceId }
@@ -93,7 +116,11 @@ export async function createConference(actorUserId: string, input: CreateConfere
 }
 
 /** Parity port of the admin page's existing "Publish" button: draft -> submission_open, nothing else. */
-export async function publishConference(actorUserId: string, conferenceId: string): Promise<void> {
+export async function publishConference(
+  actorUserId: string,
+  conferenceId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
     const [rows] = await conn.query("SELECT status FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1", [
       conferenceId,
@@ -111,6 +138,48 @@ export async function publishConference(actorUserId: string, conferenceId: strin
       entityId: conferenceId,
       oldValues: { status: 'draft' },
       newValues: { status: 'submission_open' },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+}
+
+const UNPUBLISHABLE_STATUSES = new Set([
+  'registration_open',
+  'submission_open',
+  'under_review',
+  'scheduling',
+  'published',
+])
+
+/** Reverses publish back to draft — only from a status before the conference actually ran (never from ongoing/completed/closed). */
+export async function unpublishConference(
+  actorUserId: string,
+  conferenceId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const [rows] = await conn.query("SELECT status FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1", [
+      conferenceId,
+    ])
+    const row = (rows as Array<{ status: string }>)[0]
+    if (!row) throw new NotFoundError('This conference does not exist.')
+    if (row.status === 'draft') return
+    if (!UNPUBLISHABLE_STATUSES.has(row.status)) {
+      throw new BadRequestError('This conference has already run and can no longer be unpublished.')
+    }
+
+    await conn.query("UPDATE conferences SET status = 'draft' WHERE id = ?", [conferenceId])
+    await insertAuditLog(conn, {
+      actorUserId,
+      conferenceId,
+      action: 'conference.unpublish',
+      entityType: 'conferences',
+      entityId: conferenceId,
+      oldValues: { status: row.status },
+      newValues: { status: 'draft' },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
@@ -149,6 +218,7 @@ export async function appointConvenor(
   actorUserId: string,
   conferenceId: string,
   input: AppointConvenorInput,
+  ctx: AuditContext = {},
 ): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
     const [confRows] = await conn.query('SELECT id FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1', [
@@ -173,6 +243,8 @@ export async function appointConvenor(
       entityType: 'conference_members',
       entityId: user.id,
       newValues: { email: input.email },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
@@ -188,6 +260,7 @@ export async function inviteConvenor(
   actorUserId: string,
   conferenceId: string,
   input: ConvenorInviteInput,
+  ctx: AuditContext = {},
 ): Promise<{ invited: boolean; appointed: boolean }> {
   return withTransaction(actorUserId, async (conn) => {
     const [confRows] = await conn.query(
@@ -249,10 +322,72 @@ export async function inviteConvenor(
       entityType: 'conference_members',
       entityId: userId,
       newValues: { email: input.email, invited },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
 
     return { invited, appointed: true }
   })
+}
+
+export type ConferenceStats = {
+  submissions_by_status: Array<{ status: string; count: number }>
+  registrations_by_status: Array<{ status: string; count: number }>
+  members_by_role: Array<{ role_code: string; count: number }>
+}
+
+export async function getConferenceStats(conferenceId: string): Promise<ConferenceStats> {
+  const [confRows] = await pool.query('SELECT id FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1', [
+    conferenceId,
+  ])
+  if ((confRows as unknown[]).length === 0) throw new NotFoundError('This conference does not exist.')
+
+  const [submissions, registrations, members] = await Promise.all([
+    pool.query(
+      'SELECT status, COUNT(*) AS count FROM submissions WHERE conference_id = ? AND deleted_at IS NULL GROUP BY status',
+      [conferenceId],
+    ),
+    pool.query('SELECT status, COUNT(*) AS count FROM registrations WHERE conference_id = ? GROUP BY status', [
+      conferenceId,
+    ]),
+    pool.query(
+      "SELECT role_code, COUNT(*) AS count FROM conference_members WHERE conference_id = ? AND status = 'active' GROUP BY role_code",
+      [conferenceId],
+    ),
+  ])
+
+  return {
+    submissions_by_status: submissions[0] as Array<{ status: string; count: number }>,
+    registrations_by_status: registrations[0] as Array<{ status: string; count: number }>,
+    members_by_role: members[0] as Array<{ role_code: string; count: number }>,
+  }
+}
+
+/** Audit-only: records that an admin opened a conference's convenor portal in read-only "view as" mode. */
+export async function recordViewAsAdmin(
+  actorUserId: string,
+  conferenceId: string,
+  ctx: AuditContext = {},
+): Promise<{ slug: string }> {
+  const [rows] = await pool.query('SELECT id, slug FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1', [
+    conferenceId,
+  ])
+  const conference = (rows as Array<{ id: string; slug: string }>)[0]
+  if (!conference) throw new NotFoundError('This conference does not exist.')
+
+  await withTransaction(actorUserId, async (conn) => {
+    await insertAuditLog(conn, {
+      actorUserId,
+      conferenceId,
+      action: 'conference.view_as_admin',
+      entityType: 'conferences',
+      entityId: conferenceId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+
+  return { slug: conference.slug }
 }
 
 export type AdminUserRow = {
@@ -261,6 +396,8 @@ export type AdminUserRow = {
   email: string
   phone: string | null
   status: 'active' | 'suspended' | 'deactivated'
+  failed_login_count: number
+  locked_until: string | null
   created_at: string
 }
 
@@ -283,11 +420,51 @@ export async function listUsers(query: ListUsersQuery): Promise<{ users: AdminUs
   params.push(PAGE_SIZE, offset)
 
   const [rows] = await pool.query(
-    `SELECT id, full_name, email, phone, status, created_at FROM users ${where}
+    `SELECT id, full_name, email, phone, status, failed_login_count, locked_until, created_at FROM users ${where}
      ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     params,
   )
   return { users: rows as AdminUserRow[], page: query.page }
+}
+
+export type UserDetail = {
+  id: string
+  full_name: string
+  email: string
+  phone: string | null
+  status: 'active' | 'suspended' | 'deactivated'
+  failed_login_count: number
+  locked_until: string | null
+  last_login_at: string | null
+  created_at: string
+  memberships: Array<{
+    conference_id: string
+    conference_name: string
+    conference_slug: string
+    role_code: string
+    status: 'active' | 'removed'
+  }>
+}
+
+export async function getUserDetail(targetUserId: string): Promise<UserDetail> {
+  const [userRows] = await pool.query(
+    `SELECT id, full_name, email, phone, status, failed_login_count, locked_until, last_login_at, created_at
+     FROM users WHERE id = ? LIMIT 1`,
+    [targetUserId],
+  )
+  const user = (userRows as Array<Omit<UserDetail, 'memberships'>>)[0]
+  if (!user) throw new NotFoundError('This user does not exist.')
+
+  const [memberRows] = await pool.query(
+    `SELECT c.id AS conference_id, c.name AS conference_name, c.slug AS conference_slug, cm.role_code, cm.status
+     FROM conference_members cm
+     JOIN conferences c ON c.id = cm.conference_id
+     WHERE cm.user_id = ?
+     ORDER BY c.name, cm.role_code`,
+    [targetUserId],
+  )
+
+  return { ...user, memberships: memberRows as UserDetail['memberships'] }
 }
 
 async function countOtherActiveAdmins(conn: PoolConnection, excludeUserId: string): Promise<number> {
@@ -300,9 +477,18 @@ async function countOtherActiveAdmins(conn: PoolConnection, excludeUserId: strin
   return Number((rows as Array<{ count: number }>)[0]?.count ?? 0)
 }
 
-export async function suspendUser(actorUserId: string, targetUserId: string): Promise<void> {
+const LOCK_VERBS: Record<'suspended' | 'deactivated', string> = { suspended: 'suspend', deactivated: 'deactivate' }
+
+/** Shared by suspend (temporary block) and deactivate (the account holder/admin has fully deactivated this account) — same last-admin protection and session revocation, different target status + audit action. */
+async function lockUserAccount(
+  actorUserId: string,
+  targetUserId: string,
+  status: 'suspended' | 'deactivated',
+  auditAction: 'user.suspend' | 'user.deactivate',
+  ctx: AuditContext = {},
+): Promise<void> {
   if (targetUserId === actorUserId) {
-    throw new BadRequestError('You cannot suspend your own account.')
+    throw new BadRequestError(`You cannot ${LOCK_VERBS[status]} your own account.`)
   }
 
   await withTransaction(actorUserId, async (conn) => {
@@ -319,22 +505,65 @@ export async function suspendUser(actorUserId: string, targetUserId: string): Pr
       throw new BadRequestError('This is the last active administrator — appoint another admin first.')
     }
 
-    await conn.query("UPDATE users SET status = 'suspended' WHERE id = ?", [targetUserId])
+    await conn.query('UPDATE users SET status = ? WHERE id = ?', [status, targetUserId])
     await conn.query('UPDATE auth_sessions SET revoked_at = NOW(3) WHERE user_id = ? AND revoked_at IS NULL', [
       targetUserId,
     ])
     await insertAuditLog(conn, {
       actorUserId,
-      action: 'user.suspend',
+      action: auditAction,
       entityType: 'users',
       entityId: targetUserId,
       oldValues: { status: user.status },
-      newValues: { status: 'suspended' },
+      newValues: { status },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
 
-export async function reactivateUser(actorUserId: string, targetUserId: string): Promise<void> {
+export async function suspendUser(actorUserId: string, targetUserId: string, ctx: AuditContext = {}): Promise<void> {
+  await lockUserAccount(actorUserId, targetUserId, 'suspended', 'user.suspend', ctx)
+}
+
+/** A second, distinct lifecycle action from suspend (status='deactivated' instead of 'suspended') — same protections, its own audit trail entry. */
+export async function deactivateUser(
+  actorUserId: string,
+  targetUserId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
+  await lockUserAccount(actorUserId, targetUserId, 'deactivated', 'user.deactivate', ctx)
+}
+
+/** Clears a failed-login lockout without touching status — safe to call on an already-active, merely-locked-out account. */
+export async function unlockUser(actorUserId: string, targetUserId: string, ctx: AuditContext = {}): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const [rows] = await conn.query(
+      'SELECT id, failed_login_count, locked_until FROM users WHERE id = ? LIMIT 1 FOR UPDATE',
+      [targetUserId],
+    )
+    const user = (rows as Array<{ id: string; failed_login_count: number; locked_until: string | null }>)[0]
+    if (!user) throw new NotFoundError('This user does not exist.')
+
+    await conn.query('UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE id = ?', [targetUserId])
+    await insertAuditLog(conn, {
+      actorUserId,
+      action: 'user.unlock',
+      entityType: 'users',
+      entityId: targetUserId,
+      oldValues: { failed_login_count: user.failed_login_count, locked_until: user.locked_until },
+      newValues: { failed_login_count: 0, locked_until: null },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+}
+
+export async function reactivateUser(
+  actorUserId: string,
+  targetUserId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
     const [rows] = await conn.query('SELECT id, status FROM users WHERE id = ? LIMIT 1 FOR UPDATE', [targetUserId])
     const user = (rows as Array<{ id: string; status: string }>)[0]
@@ -351,12 +580,18 @@ export async function reactivateUser(actorUserId: string, targetUserId: string):
       entityId: targetUserId,
       oldValues: { status: user.status },
       newValues: { status: 'active' },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
 
 /** Sends the same reset-password link a self-service request would — never shows or sets a password directly. */
-export async function adminResetUserPassword(actorUserId: string, targetUserId: string): Promise<void> {
+export async function adminResetUserPassword(
+  actorUserId: string,
+  targetUserId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
     const [rows] = await conn.query(
       'SELECT id, email, full_name, status FROM users WHERE id = ? LIMIT 1',
@@ -374,11 +609,160 @@ export async function adminResetUserPassword(actorUserId: string, targetUserId: 
       action: 'user.admin_reset_password',
       entityType: 'users',
       entityId: targetUserId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
 
-export async function archiveConference(actorUserId: string, conferenceId: string): Promise<void> {
+export type PlatformAdminRow = { id: string; full_name: string; email: string; status: string; granted_at: string }
+
+export async function listPlatformAdmins(): Promise<PlatformAdminRow[]> {
+  const [rows] = await pool.query(
+    `SELECT u.id, u.full_name, u.email, u.status, pur.granted_at
+     FROM platform_user_roles pur
+     JOIN users u ON u.id = pur.user_id
+     WHERE pur.role_code = 'admin'
+     ORDER BY u.full_name`,
+  )
+  return rows as PlatformAdminRow[]
+}
+
+export async function grantAdmin(
+  actorUserId: string,
+  input: GrantAdminInput,
+  ctx: AuditContext = {},
+): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const [userRows] = await conn.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
+    const user = (userRows as Array<{ id: string }>)[0]
+    if (!user) throw new NotFoundError('No account exists for that email yet.')
+
+    const [existing] = await conn.query(
+      `SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'admin' LIMIT 1`,
+      [user.id],
+    )
+    if ((existing as unknown[]).length > 0) return
+
+    await conn.query(`INSERT INTO platform_user_roles (user_id, role_code, granted_by) VALUES (?, 'admin', ?)`, [
+      user.id,
+      actorUserId,
+    ])
+    await insertAuditLog(conn, {
+      actorUserId,
+      action: 'admin.grant',
+      entityType: 'platform_user_roles',
+      entityId: user.id,
+      newValues: { email: input.email },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+}
+
+export async function revokeAdmin(
+  actorUserId: string,
+  targetUserId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
+  if (targetUserId === actorUserId) {
+    throw new BadRequestError('You cannot remove your own administrator access.')
+  }
+
+  await withTransaction(actorUserId, async (conn) => {
+    const [rows] = await conn.query(
+      `SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'admin' LIMIT 1 FOR UPDATE`,
+      [targetUserId],
+    )
+    if ((rows as unknown[]).length === 0) throw new NotFoundError('This user is not an administrator.')
+
+    if ((await countOtherActiveAdmins(conn, targetUserId)) === 0) {
+      throw new BadRequestError('This is the last active administrator — appoint another admin first.')
+    }
+
+    await conn.query(`DELETE FROM platform_user_roles WHERE user_id = ? AND role_code = 'admin'`, [targetUserId])
+    await insertAuditLog(conn, {
+      actorUserId,
+      action: 'admin.revoke',
+      entityType: 'platform_user_roles',
+      entityId: targetUserId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+}
+
+const ANONYMIZED_PROFILE_COLUMNS = [
+  'phone',
+  'institution',
+  'department',
+  'position',
+  'country',
+  'orcid',
+  'bio',
+  'photo_path',
+] as const
+
+/**
+ * Replaces a user's identifying profile fields with placeholders while
+ * leaving their id intact, so every row that references user_id (submissions,
+ * reviews, registrations, ...) keeps working — only the person's own PII is
+ * gone. Refuses on a platform admin or the acting admin's own account, same
+ * as suspend/deactivate's admin-protection style.
+ */
+export async function anonymizeUser(
+  actorUserId: string,
+  targetUserId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
+  if (targetUserId === actorUserId) {
+    throw new BadRequestError('You cannot anonymise your own account.')
+  }
+
+  await withTransaction(actorUserId, async (conn) => {
+    const [rows] = await conn.query(
+      `SELECT id, full_name, email, phone, institution, department, position, country, orcid, bio, photo_path, status
+       FROM users WHERE id = ? LIMIT 1 FOR UPDATE`,
+      [targetUserId],
+    )
+    const user = (rows as Array<Record<string, unknown>>)[0]
+    if (!user) throw new NotFoundError('This user does not exist.')
+
+    const [adminRows] = await conn.query(
+      `SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'admin' LIMIT 1`,
+      [targetUserId],
+    )
+    if ((adminRows as unknown[]).length > 0) {
+      throw new BadRequestError('An administrator account cannot be anonymised — remove admin access first.')
+    }
+
+    const placeholderEmail = `anon+${generateToken().slice(0, 16)}@anonymized.invalid`
+    await conn.query(
+      `UPDATE users SET full_name = 'Anonymised user', email = ?, ${ANONYMIZED_PROFILE_COLUMNS.map((c) => `${c} = NULL`).join(', ')},
+              status = 'deactivated', anonymized_at = NOW(3)
+       WHERE id = ?`,
+      [placeholderEmail, targetUserId],
+    )
+    await conn.query('UPDATE auth_sessions SET revoked_at = NOW(3) WHERE user_id = ? AND revoked_at IS NULL', [
+      targetUserId,
+    ])
+    await insertAuditLog(conn, {
+      actorUserId,
+      action: 'user.anonymize',
+      entityType: 'users',
+      entityId: targetUserId,
+      oldValues: { ...user, password_hash: undefined },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+}
+
+export async function archiveConference(
+  actorUserId: string,
+  conferenceId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
     const [result] = await conn.query(
       'UPDATE conferences SET deleted_at = NOW(3) WHERE id = ? AND deleted_at IS NULL',
@@ -393,11 +777,17 @@ export async function archiveConference(actorUserId: string, conferenceId: strin
       action: 'conference.archive',
       entityType: 'conferences',
       entityId: conferenceId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
 
-export async function restoreConference(actorUserId: string, conferenceId: string): Promise<void> {
+export async function restoreConference(
+  actorUserId: string,
+  conferenceId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
     const [result] = await conn.query(
       'UPDATE conferences SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL',
@@ -412,6 +802,8 @@ export async function restoreConference(actorUserId: string, conferenceId: strin
       action: 'conference.restore',
       entityType: 'conferences',
       entityId: conferenceId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
     })
   })
 }
@@ -421,13 +813,46 @@ async function scalarCount(sql: string): Promise<number> {
   return Number((rows as Array<{ count: number }>)[0]?.count ?? 0)
 }
 
+async function getRecentAuditLog(limit: number): Promise<AuditLogRow[]> {
+  const [rows] = await pool.query(
+    `SELECT a.id, a.occurred_at, a.actor_user_id, u.full_name AS actor_name, a.conference_id, a.action,
+            a.entity_type, a.entity_id, a.old_values, a.new_values
+     FROM audit_logs a
+     LEFT JOIN users u ON u.id = a.actor_user_id
+     ORDER BY a.occurred_at DESC
+     LIMIT ?`,
+    [limit],
+  )
+  return rows as AuditLogRow[]
+}
+
 export async function getDashboardCounts() {
-  const [byStatus, archivedConferences, totalUsers, suspendedUsers, pendingRoleRequests] = await Promise.all([
+  const [
+    byStatus,
+    archivedConferences,
+    totalUsers,
+    suspendedUsers,
+    pendingRoleRequests,
+    totalSubmissions,
+    activeRegistrations,
+    failedEmails24h,
+    queuedEmails,
+    recentActions,
+    dbHealth,
+    diskSpace,
+  ] = await Promise.all([
     pool.query(`SELECT status, COUNT(*) AS count FROM conferences WHERE deleted_at IS NULL GROUP BY status`),
     scalarCount(`SELECT COUNT(*) AS count FROM conferences WHERE deleted_at IS NOT NULL`),
     scalarCount(`SELECT COUNT(*) AS count FROM users`),
     scalarCount(`SELECT COUNT(*) AS count FROM users WHERE status = 'suspended'`),
     scalarCount(`SELECT COUNT(*) AS count FROM role_requests WHERE status = 'pending'`),
+    scalarCount(`SELECT COUNT(*) AS count FROM submissions WHERE deleted_at IS NULL`),
+    scalarCount(`SELECT COUNT(*) AS count FROM registrations WHERE active_flag = 1`),
+    scalarCount(`SELECT COUNT(*) AS count FROM email_logs WHERE status = 'failed' AND queued_at >= NOW(3) - INTERVAL 24 HOUR`),
+    scalarCount(`SELECT COUNT(*) AS count FROM email_logs WHERE status = 'queued'`),
+    getRecentAuditLog(10),
+    pingDatabase(),
+    getStorageDiskSpace(),
   ])
 
   return {
@@ -436,6 +861,16 @@ export async function getDashboardCounts() {
     total_users: totalUsers,
     suspended_users: suspendedUsers,
     pending_role_requests: pendingRoleRequests,
+    total_submissions: totalSubmissions,
+    active_registrations: activeRegistrations,
+    recent_actions: recentActions,
+    health: {
+      database: dbHealth,
+      email_mode: env.EMAIL_MODE,
+      failed_emails_24h: failedEmails24h,
+      queued_emails: queuedEmails,
+      storage_disk: diskSpace,
+    },
   }
 }
 

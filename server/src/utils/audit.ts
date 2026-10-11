@@ -1,4 +1,12 @@
 import type { PoolConnection } from 'mysql2/promise'
+import type { Request } from 'express'
+
+/** The caller's ip/user-agent, threaded from the route handler down into an insertAuditLog call. Defaults to {} for callers with no HTTP request (tests calling a service function directly, internal jobs). */
+export type AuditContext = { ipAddress?: string | null; userAgent?: string | null }
+
+export function auditContextFrom(req: Request): AuditContext {
+  return { ipAddress: req.ip ?? null, userAgent: req.get('user-agent') ?? null }
+}
 
 type AuditEntry = {
   actorUserId: string | null

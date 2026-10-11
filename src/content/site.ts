@@ -208,7 +208,6 @@ export const SITE = {
         ],
       },
     },
-    bottomLine: (year: number) => `© ${year} Conference Management System · Banepa, Nepal`,
   },
 }
 

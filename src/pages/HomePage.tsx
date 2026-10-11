@@ -11,6 +11,7 @@ import { FaqAccordion } from '../components/landing/FaqAccordion'
 import { Reveal } from '../components/landing/Reveal'
 import { BackToTopButton } from '../components/landing/BackToTopButton'
 import { SITE } from '../content/site'
+import { usePlatformSettings } from '../lib/platformSettings'
 
 type Conference = {
   id: string
@@ -116,6 +117,13 @@ const WHY_ICONS = [
 ]
 
 export function HomePage() {
+  const platformSettings = usePlatformSettings()
+  const heroHeadline = platformSettings?.hero_headline ?? SITE.hero.headline
+  const heroSubheadline = platformSettings?.hero_subheadline ?? SITE.hero.subheadline
+  const faqItems = platformSettings?.faq_items ?? SITE.faq.items
+  const contactEmail = platformSettings?.support_email ?? SITE.contactEmail
+  const contactGmailHref = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(contactEmail)}`
+
   const [conferences, setConferences] = useState<Conference[]>([])
   const [openDeadlines, setOpenDeadlines] = useState<Set<string>>(new Set())
   const [trackCount, setTrackCount] = useState<number | null>(null)
@@ -335,8 +343,8 @@ export function HomePage() {
         <div className="absolute inset-0 -z-10" style={{ backgroundColor: 'rgba(42,14,7,0.55)' }} aria-hidden="true" />
         <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10 px-4 pb-16 pt-8 sm:px-6 lg:flex-row lg:items-center lg:pb-24 lg:pt-12">
           <div className="w-full text-center lg:w-1/2 lg:text-left">
-            <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">{SITE.hero.headline}</h1>
-            <p className="mt-4 text-lg text-white/80">{SITE.hero.subheadline}</p>
+            <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">{heroHeadline}</h1>
+            <p className="mt-4 text-lg text-white/80">{heroSubheadline}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <button
                 type="button"
@@ -595,7 +603,7 @@ export function HomePage() {
           <Reveal>
           <h2 className="text-center text-2xl font-semibold sm:text-3xl">{SITE.faq.heading}</h2>
           <div className="mt-8">
-            <FaqAccordion items={SITE.faq.items} />
+            <FaqAccordion items={faqItems} />
           </div>
           </Reveal>
         </div>
@@ -614,7 +622,7 @@ export function HomePage() {
           <h2 className="text-2xl font-semibold sm:text-3xl">{SITE.contactBand.heading}</h2>
           <p className="max-w-xl text-white/80">{SITE.contactBand.description}</p>
           <a
-            href={SITE.contactGmailHref}
+            href={contactGmailHref}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-2 rounded-md bg-white px-5 py-2.5 font-medium text-landing-navy-900 hover:opacity-90"

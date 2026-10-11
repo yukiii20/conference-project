@@ -8,11 +8,16 @@ On Windows, install "MySQL Community Server 8.x" with MySQL Installer (includes 
     mysql -u root -p < 01_schema.sql
     mysql -u root -p < 02_reference_data.sql
     mysql -u root -p < 03_triggers.sql
+    mysql -u root -p < 04_admin_extensions.sql
 
 (MySQL Workbench: File > Open SQL Script, open each file, click the lightning icon.)
 
 Creates database `conference_cms` with 48 tables, 10 roles, 21 permissions,
 7 deadline types, 21 email templates and 14 triggers.
+
+`04_admin_extensions.sql` adds `platform_settings` (key-value platform-wide
+settings, edited from `/super-admin`) and `users.anonymized_at` (set when an
+account is anonymised via the admin privacy action). Safe to re-run.
 
 ## Create the application user (never let the app connect as root)
     CREATE USER 'cms_app'@'localhost' IDENTIFIED BY '<strong password>';

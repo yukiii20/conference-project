@@ -11,6 +11,7 @@ import { conferencesManageRouter } from './modules/conferences/manage.routes.js'
 import { conferencesPublicExtrasRouter } from './modules/conferences/publicExtras.routes.js'
 import { conferenceRoleRequestsRouter, roleRequestsRouter } from './modules/roleRequests/routes.js'
 import { adminRouter } from './modules/admin/routes.js'
+import { platformSettingsAdminRouter, platformSettingsPublicRouter } from './modules/platformSettings/routes.js'
 import { adminEmailsRouter, emailsConferenceRouter } from './modules/emails/routes.js'
 import { deadlinesRouter } from './modules/deadlines/routes.js'
 import { tracksRouter } from './modules/tracks/routes.js'
@@ -54,6 +55,28 @@ function requireMatchingOrigin(req: Request, res: Response, next: NextFunction):
   next()
 }
 
+/**
+ * An admin browsing a conference's convenor portal via "View as admin" sends
+ * this header on every request made from that view — set once by the admin
+ * clicking in, never by a convenor's own session. Rejecting every write
+ * while it's present (regardless of what permission check the route would
+ * otherwise pass — admins pass all of them) is what makes that view actually
+ * read-only, not just a frontend convention the admin could bypass by hand.
+ */
+const ADMIN_VIEW_AS_HEADER = 'x-admin-view-as'
+
+function blockWritesInAdminViewAsMode(req: Request, res: Response, next: NextFunction): void {
+  if (SAFE_METHODS.has(req.method)) {
+    next()
+    return
+  }
+  if (req.get(ADMIN_VIEW_AS_HEADER)) {
+    res.status(403).json({ error: { message: 'This is a read-only admin view. Sign in as the convenor to make changes.' } })
+    return
+  }
+  next()
+}
+
 function parseTrustProxySetting(value: string): boolean | number | string {
   if (value === 'true') return true
   if (value === 'false') return false
@@ -91,6 +114,7 @@ export function createApp() {
   app.use(cookieParser())
   app.use(express.json({ limit: '100kb' }))
   app.use(requireMatchingOrigin)
+  app.use(blockWritesInAdminViewAsMode)
 
   app.use('/files/public', express.static(PUBLIC_DIR, { maxAge: '7d', immutable: true }))
 
@@ -133,8 +157,10 @@ export function createApp() {
   app.use('/api/submissions', submissionsRouter)
   app.use('/api/reviewer', reviewerRouter)
   app.use('/api/role-requests', roleRequestsRouter)
+  app.use('/api', platformSettingsPublicRouter)
   app.use('/api/admin', adminRouter)
   app.use('/api/admin', adminEmailsRouter)
+  app.use('/api/admin', platformSettingsAdminRouter)
   app.use('/api/me', meRouter)
   app.use('/api/announcements', announcementsRouter)
 

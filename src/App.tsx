@@ -16,6 +16,7 @@ import { SetPasswordPage } from './pages/SetPasswordPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage'
 import { SuperAdminPage } from './pages/SuperAdminPage'
+import { AdminViewAsPage } from './pages/AdminViewAsPage'
 import { ConvenorPage } from './pages/ConvenorPage'
 import { AuthorPage } from './pages/AuthorPage'
 import { ReviewerPage } from './pages/ReviewerPage'
@@ -43,6 +44,14 @@ export default function App() {
             element={
               <SuperAdminRoute>
                 <SuperAdminPage />
+              </SuperAdminRoute>
+            }
+          />
+          <Route
+            path="/super-admin/view-as/:conferenceId/*"
+            element={
+              <SuperAdminRoute>
+                <AdminViewAsPage />
               </SuperAdminRoute>
             }
           />

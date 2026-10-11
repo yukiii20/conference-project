@@ -1,5 +1,21 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
+/**
+ * Set while an admin is browsing a conference's convenor portal in
+ * "View as admin" (read-only) mode — every request carries a header the
+ * server rejects on any write, regardless of the admin's usual permission
+ * bypass. Cleared the moment the admin leaves that view.
+ */
+let adminViewAsActive = false
+
+export function setAdminViewAs(active: boolean): void {
+  adminViewAsActive = active
+}
+
+export function isAdminViewAs(): boolean {
+  return adminViewAsActive
+}
+
 export class ApiError extends Error {
   status: number
   fields?: Record<string, string>
@@ -34,10 +50,14 @@ function buildUrl(path: string, query?: Record<string, string | undefined>): str
  * with the server's { error: { message, fields? } } body on non-2xx.
  */
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {}
+  if (options.body) headers['Content-Type'] = 'application/json'
+  if (adminViewAsActive) headers['X-Admin-View-As'] = '1'
+
   const res = await fetch(buildUrl(path, options.query), {
     method: options.method ?? 'GET',
     credentials: 'include',
-    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: options.body ? JSON.stringify(options.body) : undefined,
   })
 
@@ -54,7 +74,12 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
 
 /** POSTs a multipart/form-data body (file uploads) — never JSON-encoded, so the browser sets its own boundary header. */
 async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
-  const res = await fetch(buildUrl(path), { method: 'POST', credentials: 'include', body: formData })
+  const res = await fetch(buildUrl(path), {
+    method: 'POST',
+    credentials: 'include',
+    headers: adminViewAsActive ? { 'X-Admin-View-As': '1' } : undefined,
+    body: formData,
+  })
 
   const isJson = res.headers.get('content-type')?.includes('application/json')
   const data = isJson ? await res.json().catch(() => null) : null

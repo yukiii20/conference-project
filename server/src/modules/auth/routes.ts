@@ -27,12 +27,13 @@ import {
   verifyLogin,
 } from './service.js'
 import { clearSessionCookie, createSession, getSessionToken, resolveSessionUser, revokeSession } from './session.js'
+import { auditContextFrom } from '../../utils/audit.js'
 
 export const authRouter = Router()
 
 authRouter.post('/register', authRateLimit, validateBody(registerSchema), async (req, res, next) => {
   try {
-    await registerUser(req.body)
+    await registerUser(req.body, auditContextFrom(req))
     res.status(201).json({
       message: "Account created. The conference's convenor must approve it before you can sign in.",
     })
@@ -124,7 +125,13 @@ authRouter.patch('/profile', requireAuth, validateBody(updateProfileSchema), asy
 
 authRouter.post('/change-password', requireAuth, validateBody(changePasswordSchema), async (req, res, next) => {
   try {
-    await changePassword(req.user!.id, req.body.current_password, req.body.new_password, req.user!.sessionId)
+    await changePassword(
+      req.user!.id,
+      req.body.current_password,
+      req.body.new_password,
+      req.user!.sessionId,
+      auditContextFrom(req),
+    )
     res.json({ message: 'Password updated.' })
   } catch (err) {
     next(err)
@@ -148,7 +155,7 @@ authRouter.post(
 
 authRouter.post('/reset-password', authRateLimit, validateBody(resetPasswordSchema), async (req, res, next) => {
   try {
-    await resetPassword(req.body.token, req.body.password)
+    await resetPassword(req.body.token, req.body.password, auditContextFrom(req))
     res.json({ message: 'Password updated. You can now sign in.' })
   } catch (err) {
     next(err)
@@ -157,7 +164,7 @@ authRouter.post('/reset-password', authRateLimit, validateBody(resetPasswordSche
 
 authRouter.post('/accept-invitation', authRateLimit, validateBody(acceptInvitationSchema), async (req, res, next) => {
   try {
-    const { userId } = await acceptInvitation(req.body.token, req.body.password)
+    const { userId } = await acceptInvitation(req.body.token, req.body.password, auditContextFrom(req))
 
     await withTransaction(userId, async (conn) => {
       await createSession(conn, res, {

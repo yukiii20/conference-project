@@ -2,12 +2,12 @@
 -- Conference Management System - TEST database setup
 -- File: database/test-setup.sql
 -- Run ONCE as root (MySQL Workbench: File > Open SQL Script > lightning icon).
--- Creates conference_cms_test from the same 01/02/03 schema files (with the
+-- Creates conference_cms_test from the same 01/02/03/04 schema files (with the
 -- database name substituted) and grants cms_app the same rights on it, so
 -- the Vitest suite in server/tests has a real, trigger-enforcing database
 -- that is never the development database.
 -- Regenerate this file (sed 's/conference_cms/conference_cms_test/g') if
--- 01_schema.sql / 02_reference_data.sql / 03_triggers.sql ever change.
+-- 01_schema.sql / 02_reference_data.sql / 03_triggers.sql / 04_admin_extensions.sql ever change.
 -- =====================================================================
 
 -- =====================================================================
@@ -1470,6 +1470,45 @@ BEGIN
   SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The audit log cannot be changed.';
 END$$
 
+DELIMITER ;
+
+
+-- =====================================================================
+-- Conference Management System - admin panel extensions (MySQL)
+-- File: database/04_admin_extensions.sql  (run after 01/02/03)
+-- Adds:
+--  (1) platform_settings: key-value platform-wide settings, edited from
+--      /super-admin and read by the public home page.
+--  (2) users.anonymized_at: marks a user anonymised via the admin privacy
+--      action. Anonymising also sets status = 'deactivated' (an existing
+--      value, not a new one) — this column exists only so the action is
+--      auditable/queryable without having to infer it from a placeholder
+--      email pattern.
+-- =====================================================================
+USE conference_cms_test;
+
+CREATE TABLE IF NOT EXISTS platform_settings (
+  setting_key   VARCHAR(80)  NOT NULL,
+  setting_value JSON         NOT NULL,
+  updated_by    CHAR(36)     NULL,
+  updated_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (setting_key),
+  CONSTRAINT platform_settings_user_fk FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB COMMENT='Key-value platform-wide settings, edited from /super-admin.';
+
+DELIMITER $$
+DROP PROCEDURE IF EXISTS _add_users_anonymized_at$$
+CREATE PROCEDURE _add_users_anonymized_at()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'anonymized_at'
+  ) THEN
+    ALTER TABLE users ADD COLUMN anonymized_at DATETIME(3) NULL AFTER status;
+  END IF;
+END$$
+CALL _add_users_anonymized_at()$$
+DROP PROCEDURE _add_users_anonymized_at$$
 DELIMITER ;
 
 -- =====================================================================
