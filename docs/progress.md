@@ -13,15 +13,24 @@ Fixed 2 e2e tests broken by the tagline field moving tabs and a second file inpu
 tsc (root+server), build, server tests (309 passed), Playwright (24 passed) all green.
 Screenshots saved locally to test-results/ui-final/ (gitignored, not committed).
 
-## Step 2 - Admin - IN PROGRESS, paused for a database sign-off
-Checked information_schema (read-only): your platform_settings table (key-value design)
-already exists in both conference_cms and conference_cms_test, exactly as you built it.
-The only thing missing is users.anonymized_at. Rewrote database/04_admin_extensions.sql to
-be safe to run again (CREATE TABLE IF NOT EXISTS matching your real schema + a guarded ALTER
-for anonymized_at) and fixed the same wrong schema in database/test-setup.sql and
-database/README.md (they had a stale "singleton row" design from earlier WIP).
-Waiting on you to run database/04_admin_extensions.sql in Workbench against both
-conference_cms and conference_cms_test (same file, change the one USE line for the second
-run), then say "done" so Step 2 can finish. Backend WIP so far: admin/service.ts has new
-functions for unlock/grant-revoke-admin/anonymize/view-as-admin/etc. but routes.ts imports
-them without wiring any routes yet - that's next.
+## Step 2 - Admin - DONE (commit f79ecd5)
+Ran database/04_admin_extensions.sql against both databases (your sign-off) - added
+users.anonymized_at, confirmed platform_settings already matched. Wired up every admin
+route that existed only as an unused service import: unlock, grant/revoke platform admin,
+view-as-admin (server-enforced read-only - a global middleware rejects any write carrying
+the X-Admin-View-As header, on top of a disabled <fieldset> in the frontend), anonymise
+(confirm-by-typed-email dialog), user-detail and conference-stats lookups. Added a system
+health card (DB ping, EMAIL_MODE, failed/queued emails, free disk) and a platform settings
+page (name/support email/footer/hero/FAQ, sanitised, audited) that the public home page and
+footer now read with the old hardcoded site.ts copy as defaults. Threaded real ip/user-agent
+into every admin and auth audit log entry. New SuperAdminPage tabs: Dashboard, Admins,
+Platform settings; Users tab got status badges, locked-until badge, and
+suspend/reactivate/deactivate/unlock/anonymise actions.
+tsc (root+server), build (both), server tests (344 passed), Playwright (28 passed,
+including a new e2e/adminPortal.spec.ts) all green.
+
+## Note for Step 3 (Programme)
+The throwaway e2e servers (backend :4100, frontend :5273, conference_cms_test) share the
+SAME database as `cd server && npm test` - running the Vitest suite wipes the Playwright
+fixtures. Always re-run `cd server && npx tsx tests/e2eSeed.ts` right before `npx playwright
+test` (not just once at the start of a session).
