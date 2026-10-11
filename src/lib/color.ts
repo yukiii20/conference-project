@@ -1,17 +1,34 @@
 export const DEFAULT_CONFERENCE_COLOR = '#2747A0'
 
-// Conference page hero palette (brick). Kept in one place so it's easy to
-// re-theme later. Contrast checked: BRICK vs BRICK_TEXT = 5.9:1, BRICK vs
-// #ffffff = 6.75:1 — both pass WCAG AA (4.5:1) for normal text.
-export const BRICK = '#9C3D27'
-export const BRICK_DARK = '#6E2A1A'
-export const BRICK_TEXT = '#FBEDE7'
-
 function hexToRgb(hex: string): [number, number, number] | null {
   const match = /^#([0-9A-Fa-f]{6})$/.exec(hex)
   if (!match) return null
   const int = parseInt(match[1], 16)
   return [(int >> 16) & 255, (int >> 8) & 255, int & 255]
+}
+
+function clampChannel(v: number): number {
+  return Math.max(0, Math.min(255, Math.round(v)))
+}
+
+function rgbToHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b].map((v) => clampChannel(v).toString(16).padStart(2, '0')).join('')}`
+}
+
+/** Mix a hex color toward black by `amount` (0-1), e.g. for a darker overlay/band shade. */
+export function darken(hex: string, amount: number): string {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  const [r, g, b] = rgb
+  return rgbToHex([r * (1 - amount), g * (1 - amount), b * (1 - amount)])
+}
+
+/** Mix a hex color toward white by `amount` (0-1), e.g. for a lighter tint. */
+export function lighten(hex: string, amount: number): string {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+  const [r, g, b] = rgb
+  return rgbToHex([r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount])
 }
 
 function channelLuminance(c: number): number {

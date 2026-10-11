@@ -114,7 +114,11 @@ test.describe('convenor edits the conference', () => {
 
   test('edits conference details', async ({ page }) => {
     await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
-    await expect(page.getByRole('link', { name: 'Details', exact: true })).toHaveAttribute('aria-current', 'true')
+    await page.getByRole('link', { name: 'Logo and branding', exact: true }).click()
+    await expect(page.getByRole('link', { name: 'Logo and branding', exact: true })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
     await page.locator('#tagline').fill('Updated by Playwright')
     await page.getByRole('button', { name: 'Save' }).first().click()
     await expect(page.getByText('Saved.').first()).toBeVisible()
@@ -123,7 +127,7 @@ test.describe('convenor edits the conference', () => {
   test('uploads a logo', async ({ page }) => {
     await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
     await page.getByRole('link', { name: 'Logo and branding', exact: true }).click()
-    const fileInput = page.locator('input[type="file"]')
+    const fileInput = page.locator('input[type="file"]').first()
     await fileInput.setInputFiles({
       name: 'logo.png',
       mimeType: 'image/png',

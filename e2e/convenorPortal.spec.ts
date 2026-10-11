@@ -109,7 +109,7 @@ test('switching tabs with unsaved changes asks to discard them', async ({ page }
   await signInAsConvenor(page)
   await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
   await expect(page).toHaveURL(/\/convenor\/setup\/details$/)
-  await page.locator('#tagline').fill('An unsaved edit for the discard-changes prompt')
+  await page.locator('#short_name').fill('An unsaved edit for the discard-changes prompt')
 
   let dialogMessage = ''
   page.once('dialog', (dialog) => {

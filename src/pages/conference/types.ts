@@ -5,6 +5,7 @@ export type Conference = {
   slug: string
   code: string
   name: string
+  short_name: string | null
   tagline: string | null
   theme: string | null
   description: string | null

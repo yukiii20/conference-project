@@ -42,6 +42,17 @@ type SectionId = 'conferences' | 'how-it-works' | 'features' | 'faq' | 'contact'
 
 const SECTION_IDS: SectionId[] = ['conferences', 'how-it-works', 'features', 'faq', 'contact']
 
+const HERO_BRICK_PATTERN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40">
+  <rect width="80" height="40" fill="#E9E2DA"/>
+  <rect x="2" y="2" width="36" height="16" rx="3" fill="#C4502F"/>
+  <rect x="42" y="2" width="36" height="16" rx="3" fill="#B5462A"/>
+  <rect x="-18" y="22" width="36" height="16" rx="3" fill="#D0603A"/>
+  <rect x="22" y="22" width="36" height="16" rx="3" fill="#A83E26"/>
+  <rect x="62" y="22" width="36" height="16" rx="3" fill="#C4502F"/>
+</svg>`
+
+const HERO_BRICK_BG = `url("data:image/svg+xml,${encodeURIComponent(HERO_BRICK_PATTERN_SVG)}")`
+
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
   submission_open: 'Abstracts open',
@@ -315,7 +326,13 @@ export function HomePage() {
 
       <main id="main-content">
       {/* ---------------------------------------------------------------- Hero */}
-      <section className="bg-landing-navy-900 text-white">
+      <section className="relative isolate overflow-hidden text-white">
+        <div
+          className="absolute inset-0 -z-10"
+          style={{ backgroundImage: HERO_BRICK_BG, backgroundSize: '80px 40px', backgroundRepeat: 'repeat' }}
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 -z-10" style={{ backgroundColor: 'rgba(42,14,7,0.55)' }} aria-hidden="true" />
         <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10 px-4 pb-16 pt-8 sm:px-6 lg:flex-row lg:items-center lg:pb-24 lg:pt-12">
           <div className="w-full text-center lg:w-1/2 lg:text-left">
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">{SITE.hero.headline}</h1>
@@ -324,13 +341,13 @@ export function HomePage() {
               <button
                 type="button"
                 onClick={() => handleNavigate('conferences')}
-                className="rounded-md bg-white px-5 py-2.5 font-medium text-landing-navy-900 hover:opacity-90"
+                className="rounded-md bg-white px-5 py-2.5 font-medium text-[#7A2E1B] hover:opacity-90"
               >
                 {SITE.hero.primaryCta}
               </button>
               <Link
                 to="/signup"
-                className="rounded-md border border-white/40 px-5 py-2.5 font-medium text-white hover:bg-white/10"
+                className="rounded-md border border-white px-5 py-2.5 font-medium text-white hover:bg-white/10"
               >
                 {SITE.hero.secondaryCta}
               </Link>

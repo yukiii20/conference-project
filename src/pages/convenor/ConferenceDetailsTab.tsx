@@ -1,15 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
-import {
-  conferenceDetailsSchema,
-  brandingSchema,
-  portalTextsSchema,
-  type ConferenceDetailsInput,
-} from '../../lib/validation'
-import { DEFAULT_CONFERENCE_COLOR } from '../../lib/color'
-import { ImageUpload } from '../../components/ImageUpload'
-
-const MAX_BANNER_MB = 3
+import { conferenceDetailsSchema, portalTextsSchema, type ConferenceDetailsInput } from '../../lib/validation'
 
 type ConferenceDetailsData = {
   slug: string
@@ -152,137 +143,6 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
           {saving ? 'Saving…' : 'Save'}
         </button>
       </form>
-    </div>
-  )
-}
-
-function BrandingSection({ conferenceId, data }: { conferenceId: string; data: ConferenceDetailsData }) {
-  const [tagline, setTagline] = useState(data.tagline ?? '')
-  const [primaryColor, setPrimaryColor] = useState(data.primary_color ?? DEFAULT_CONFERENCE_COLOR)
-  const [bannerPath, setBannerPath] = useState<string | null>(data.banner_path)
-  const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [formError, setFormError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setFormError(null)
-    setSaved(false)
-    const parsed = brandingSchema.safeParse({ tagline, primary_color: primaryColor })
-    if (!parsed.success) {
-      setErrors(fieldErrors(parsed.error))
-      return
-    }
-    setErrors({})
-    setSaving(true)
-    try {
-      await api.patch(`/conferences/${conferenceId}`, parsed.data)
-      setSaved(true)
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Could not save this.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="mt-10 max-w-2xl border-t border-line pt-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-ink">Branding</h2>
-        {data.slug ? (
-          <a
-            href={`/c/${data.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background"
-          >
-            View public page
-          </a>
-        ) : null}
-      </div>
-
-      <form onSubmit={handleSave} className="mt-4 space-y-4">
-        {formError ? (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {formError}
-          </div>
-        ) : null}
-        {saved ? (
-          <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
-        ) : null}
-
-        <div>
-          <label htmlFor="tagline" className="block text-sm font-medium text-ink">
-            Tagline
-          </label>
-          <input
-            id="tagline"
-            value={tagline}
-            onChange={(e) => {
-              setTagline(e.target.value)
-              setSaved(false)
-            }}
-            maxLength={200}
-            placeholder="A short line shown under the conference name"
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.tagline ? <p className="mt-1 text-sm text-red-600">{errors.tagline}</p> : null}
-        </div>
-
-        <div>
-          <label htmlFor="primary_color" className="block text-sm font-medium text-ink">
-            Primary colour
-          </label>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              type="color"
-              value={/^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : DEFAULT_CONFERENCE_COLOR}
-              onChange={(e) => {
-                setPrimaryColor(e.target.value)
-                setSaved(false)
-              }}
-              className="h-10 w-14 rounded-md border border-line"
-            />
-            <input
-              id="primary_color"
-              value={primaryColor}
-              onChange={(e) => {
-                setPrimaryColor(e.target.value)
-                setSaved(false)
-              }}
-              placeholder="#2747A0"
-              className="flex-1 rounded-md border border-line px-3 py-2 font-mono uppercase focus:border-button"
-            />
-          </div>
-          {errors.primary_color ? <p className="mt-1 text-sm text-red-600">{errors.primary_color}</p> : null}
-        </div>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-      </form>
-
-      <div className="mt-6">
-        <p className="text-sm font-medium text-ink">Banner image</p>
-        <p className="mt-1 text-xs text-ink/50">PNG, JPG, or WEBP, up to {MAX_BANNER_MB} MB. Shown behind the conference name.</p>
-        <div className="mt-2">
-          <ImageUpload
-            label="banner"
-            currentPath={bannerPath}
-            maxSizeMB={MAX_BANNER_MB}
-            aspect="wide"
-            uploadUrl={`/api/conferences/${conferenceId}/banner`}
-            removeUrl={`/api/conferences/${conferenceId}/banner`}
-            onSaved={setBannerPath}
-            onRemoved={() => setBannerPath(null)}
-          />
-        </div>
-      </div>
     </div>
   )
 }
@@ -540,7 +400,6 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
         </button>
       </form>
 
-      <BrandingSection conferenceId={conferenceId} data={data} />
       <PortalTextsSection conferenceId={conferenceId} data={data} />
     </>
   )

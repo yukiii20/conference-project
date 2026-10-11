@@ -1,13 +1,101 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
+import { brandingSchema } from '../../lib/validation'
+import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } from '../../lib/color'
+import { publicImageUrl } from '../../lib/storage'
 import { ImageUpload } from '../../components/ImageUpload'
 
-const MAX_MB = 2
+const MAX_LOGO_MB = 2
+const MAX_BANNER_MB = 3
+
+type LogoTabData = {
+  slug: string
+  name: string
+  code: string
+  tagline: string | null
+  primary_color: string | null
+  logo_path: string | null
+  banner_path: string | null
+}
+
+function fieldErrors(error: { issues: Array<{ path: PropertyKey[]; message: string }> }): Record<string, string> {
+  const errors: Record<string, string> = {}
+  for (const issue of error.issues) {
+    const key = issue.path[0]
+    if (typeof key === 'string' && !(key in errors)) errors[key] = issue.message
+  }
+  return errors
+}
+
+function LivePreview({
+  name,
+  code,
+  tagline,
+  color,
+  logoUrl,
+  bannerUrl,
+}: {
+  name: string
+  code: string
+  tagline: string
+  color: string
+  logoUrl: string | null
+  bannerUrl: string | null
+}) {
+  const accent = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : DEFAULT_CONFERENCE_COLOR
+  const textColor = bannerUrl ? '#ffffff' : getAccessibleTextColor(accent)
+
+  return (
+    <div className="w-full max-w-sm overflow-hidden rounded-xl border border-line shadow-sm">
+      <div
+        className="relative flex items-center gap-3 px-4 py-6"
+        style={{ backgroundColor: bannerUrl ? undefined : accent }}
+      >
+        {bannerUrl ? (
+          <>
+            <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0" style={{ backgroundColor: hexToRgba(darken(accent, 0.75), 0.65) }} />
+          </>
+        ) : null}
+        <div className="relative flex items-center gap-3">
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded bg-white/90 object-contain p-0.5" />
+          ) : (
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-white/90 text-xs font-semibold"
+              style={{ color: accent }}
+            >
+              {code || '--'}
+            </span>
+          )}
+          <div className="min-w-0" style={{ color: textColor }}>
+            <p className="truncate text-sm font-semibold">{name || 'Conference name'}</p>
+            {tagline ? <p className="truncate text-xs opacity-90">{tagline}</p> : null}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 bg-white px-4 py-2 text-xs">
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: accent }} />
+        <span style={{ color: accent }} className="font-medium">
+          Buttons and links use this colour
+        </span>
+      </div>
+    </div>
+  )
+}
 
 export function LogoTab({ conferenceId }: { conferenceId: string }) {
+  const [data, setData] = useState<LogoTabData | null>(null)
   const [logoPath, setLogoPath] = useState<string | null>(null)
+  const [bannerPath, setBannerPath] = useState<string | null>(null)
+  const [primaryColor, setPrimaryColor] = useState(DEFAULT_CONFERENCE_COLOR)
+  const [tagline, setTagline] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [formError, setFormError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -15,13 +103,17 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
     async function load() {
       setLoading(true)
       try {
-        const data = await api.get<{ conference: { logo_path: string | null } }>(`/conferences/${conferenceId}/details`)
+        const res = await api.get<{ conference: LogoTabData }>(`/conferences/${conferenceId}/details`)
         if (cancelled) return
-        setLogoPath(data.conference.logo_path)
+        setData(res.conference)
+        setLogoPath(res.conference.logo_path)
+        setBannerPath(res.conference.banner_path)
+        setPrimaryColor(res.conference.primary_color ?? DEFAULT_CONFERENCE_COLOR)
+        setTagline(res.conference.tagline ?? '')
         setLoadError(null)
       } catch (err) {
         if (cancelled) return
-        setLoadError(err instanceof ApiError ? err.message : 'Could not load the logo.')
+        setLoadError(err instanceof ApiError ? err.message : 'Could not load branding.')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -33,26 +125,156 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
     }
   }, [conferenceId])
 
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    setSaved(false)
+    const parsed = brandingSchema.safeParse({ tagline, primary_color: primaryColor })
+    if (!parsed.success) {
+      setErrors(fieldErrors(parsed.error))
+      return
+    }
+    setErrors({})
+    setSaving(true)
+    try {
+      await api.patch(`/conferences/${conferenceId}`, parsed.data)
+      setSaved(true)
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not save this.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return <p className="mt-6 text-sm text-ink/60">Loading…</p>
   }
 
-  if (loadError) {
-    return <p className="mt-6 text-sm text-red-600">{loadError}</p>
+  if (loadError || !data) {
+    return <p className="mt-6 text-sm text-red-600">{loadError ?? 'Could not load branding.'}</p>
   }
 
   return (
-    <div className="mt-6 max-w-md">
-      <ImageUpload
-        label="logo"
-        currentPath={logoPath}
-        maxSizeMB={MAX_MB}
-        aspect="square"
-        uploadUrl={`/api/conferences/${conferenceId}/logo`}
-        removeUrl={`/api/conferences/${conferenceId}/logo`}
-        onSaved={setLogoPath}
-        onRemoved={() => setLogoPath(null)}
-      />
+    <div className="mt-6 flex flex-col gap-10 lg:flex-row">
+      <div className="max-w-md flex-1 space-y-8">
+        <div>
+          <p className="text-sm font-medium text-ink">Logo</p>
+          <p className="mt-1 text-xs text-ink/50">
+            Square image, up to {MAX_LOGO_MB} MB. Shown top-left on the conference page.
+          </p>
+          <div className="mt-2">
+            <ImageUpload
+              label="logo"
+              currentPath={logoPath}
+              maxSizeMB={MAX_LOGO_MB}
+              aspect="square"
+              uploadUrl={`/api/conferences/${conferenceId}/logo`}
+              removeUrl={`/api/conferences/${conferenceId}/logo`}
+              onSaved={setLogoPath}
+              onRemoved={() => setLogoPath(null)}
+            />
+          </div>
+        </div>
+
+        <form onSubmit={handleSave} className="space-y-4 border-t border-line pt-6">
+          {formError ? (
+            <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {formError}
+            </div>
+          ) : null}
+          {saved ? (
+            <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
+          ) : null}
+
+          <div>
+            <label htmlFor="tagline" className="block text-sm font-medium text-ink">
+              Tagline
+            </label>
+            <input
+              id="tagline"
+              value={tagline}
+              onChange={(e) => {
+                setTagline(e.target.value)
+                setSaved(false)
+              }}
+              maxLength={200}
+              placeholder="A short line shown under the conference name"
+              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            />
+            {errors.tagline ? <p className="mt-1 text-sm text-red-600">{errors.tagline}</p> : null}
+          </div>
+
+          <div>
+            <label htmlFor="primary_color" className="block text-sm font-medium text-ink">
+              Primary colour
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="color"
+                value={/^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : DEFAULT_CONFERENCE_COLOR}
+                onChange={(e) => {
+                  setPrimaryColor(e.target.value)
+                  setSaved(false)
+                }}
+                className="h-10 w-14 rounded-md border border-line"
+              />
+              <input
+                id="primary_color"
+                value={primaryColor}
+                onChange={(e) => {
+                  setPrimaryColor(e.target.value)
+                  setSaved(false)
+                }}
+                placeholder="#2747A0"
+                className="flex-1 rounded-md border border-line px-3 py-2 font-mono uppercase focus:border-button"
+              />
+            </div>
+            {errors.primary_color ? <p className="mt-1 text-sm text-red-600">{errors.primary_color}</p> : null}
+            <p className="mt-1 text-xs text-ink/50">Used for buttons, links, and the conference page background.</p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </form>
+
+        <div className="border-t border-line pt-6">
+          <p className="text-sm font-medium text-ink">Banner image</p>
+          <p className="mt-1 text-xs text-ink/50">
+            PNG, JPG, or WEBP, up to {MAX_BANNER_MB} MB. Shown behind the conference name.
+          </p>
+          <div className="mt-2">
+            <ImageUpload
+              label="banner"
+              currentPath={bannerPath}
+              maxSizeMB={MAX_BANNER_MB}
+              aspect="wide"
+              uploadUrl={`/api/conferences/${conferenceId}/banner`}
+              removeUrl={`/api/conferences/${conferenceId}/banner`}
+              onSaved={setBannerPath}
+              onRemoved={() => setBannerPath(null)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1">
+        <p className="text-sm font-medium text-ink">Live preview</p>
+        <div className="mt-2">
+          <LivePreview
+            name={data.name}
+            code={data.code}
+            tagline={tagline}
+            color={primaryColor}
+            logoUrl={publicImageUrl(logoPath)}
+            bannerUrl={publicImageUrl(bannerPath)}
+          />
+        </div>
+      </div>
     </div>
   )
 }

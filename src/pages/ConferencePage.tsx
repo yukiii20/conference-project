@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { publicImageUrl } from '../lib/storage'
 import { formatDateRange, formatKathmandu, formatKathmanduTime, kathmanduDateKey } from '../lib/datetime'
-import { BRICK, BRICK_DARK, BRICK_TEXT, DEFAULT_CONFERENCE_COLOR, getAccessibleTextColor, hexToRgba } from '../lib/color'
+import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } from '../lib/color'
 import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
@@ -274,6 +274,11 @@ export function ConferencePage() {
   const accentText = getAccessibleTextColor(accent)
   const logoUrl = publicImageUrl(conference.logo_path)
   const bannerUrl = publicImageUrl(conference.banner_path)
+  // Over a banner image the overlay is dark regardless of the convenor's colour, so white
+  // text always reads; without a banner the background IS the raw accent, so pick the text
+  // colour the same way the nav does.
+  const heroOverlayColor = darken(accent, 0.75)
+  const heroTextColor = bannerUrl ? '#ffffff' : accentText
   const groupedSchedule = groupByDay(schedule)
   const groupedSupporters = SUPPORTER_TIERS.map((tier) => ({
     tier,
@@ -319,21 +324,29 @@ export function ConferencePage() {
         {bannerUrl ? (
           <>
             <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0" style={{ backgroundColor: hexToRgba(BRICK_DARK, 0.7) }} />
+            <div className="absolute inset-0" style={{ backgroundColor: hexToRgba(heroOverlayColor, 0.65) }} />
           </>
         ) : (
-          <div className="absolute inset-0" style={{ backgroundColor: BRICK }} />
+          <div className="absolute inset-0" style={{ backgroundColor: accent }} />
         )}
         <div
           className="relative mx-auto flex max-w-5xl flex-col items-center gap-8 px-4 py-14 text-center md:flex-row md:items-center md:gap-10 md:text-left"
-          style={{ color: BRICK_TEXT }}
+          style={{ color: heroTextColor }}
         >
           <div className="flex w-full justify-center md:w-auto md:flex-none">
-            <ConferenceBadgeAnimation key={conference.slug} code={conference.code} onDone={() => setIntroDone(true)} />
+            <ConferenceBadgeAnimation
+              key={conference.slug}
+              code={conference.code}
+              name={conference.name}
+              shortName={conference.short_name}
+              logoUrl={logoUrl}
+              color={accent}
+              onDone={() => setIntroDone(true)}
+            />
           </div>
 
           <div className="w-full md:flex-1">
-            <h1 className="text-3xl font-bold text-white sm:text-4xl">{conference.name}</h1>
+            <h1 className="text-3xl font-bold sm:text-4xl">{conference.name}</h1>
             {conference.tagline ? <p className="mt-2 text-lg opacity-90">{conference.tagline}</p> : null}
             {conference.theme ? <p className="mt-1 opacity-80">{conference.theme}</p> : null}
             <p className="mt-4 opacity-90">
@@ -348,22 +361,22 @@ export function ConferencePage() {
             >
               <Link
                 to={signupHref}
-                style={{ backgroundColor: '#ffffff', color: BRICK }}
+                style={{ backgroundColor: '#ffffff', color: accent }}
                 className="rounded-md px-5 py-2.5 font-medium hover:opacity-90"
               >
                 Submit an abstract
               </Link>
               <Link
                 to={signupHref}
-                style={{ borderColor: BRICK_DARK, color: BRICK_TEXT }}
-                className="rounded-md border px-5 py-2.5 font-medium hover:bg-[#6E2A1A]"
+                style={{ borderColor: heroTextColor, color: heroTextColor }}
+                className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
               >
                 Register
               </Link>
               <Link
                 to="/login"
-                style={{ borderColor: BRICK_DARK, color: BRICK_TEXT }}
-                className="rounded-md border px-5 py-2.5 font-medium hover:bg-[#6E2A1A]"
+                style={{ borderColor: heroTextColor, color: heroTextColor }}
+                className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
               >
                 Sign in
               </Link>
