@@ -119,3 +119,20 @@ App Password credentials), and overall look-and-feel across the app (colours, th
 badge animation, certificate PDF design, QR scanning with an actual phone camera - the staff
 check-in page's camera scanner was only exercised via manual search in Playwright, since no
 real camera is available in this environment).
+
+## Post-Step-5 follow-up - camera QR scanner swapped to a cross-browser library
+The user tried the staff check-in page's camera scanner and hit "Camera scanning is not
+supported in this browser" - the native BarcodeDetector API (used at the end of Step 4) only
+works in Chromium browsers, and even there needs an experimental flag enabled on desktop.
+Swapped it for @zxing/browser + @zxing/library, which works in any browser with camera access
+(Chrome, Edge, Firefox, Safari - no flags). Same UI, same checkInByQr backend call, same
+APP_URL/checkin/<token> text extraction - only the camera/decode plumbing changed. This added
+~450 KB to the bundle, all for a page only staff visit, so split CheckInPanel into its own
+lazy-loaded chunk (React.lazy + Suspense, used from both AttendanceTab.tsx and StaffPage.tsx;
+AttendanceDashboard moved to its own file since it has no heavy dependency and stays eager) -
+confirmed via build output the main bundle is back to ~773 KB with zxing isolated in its own
+~481 KB chunk.
+tsc, build, server tests (438 passed) and Playwright (33 passed, including the staff
+manual-check-in flow in registration.spec.ts) all green. Camera scanning itself still can't be
+exercised by an automated test (no real camera in this environment) - still needs the user to
+confirm on a real device.

@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/authContext'
 import { getRoleDefinition } from '../lib/roles'
 import { PortalHeader } from '../components/PortalHeader'
-import { AttendanceDashboard, CheckInPanel } from '../components/attendance/CheckInPanel'
+import { AttendanceDashboard } from '../components/attendance/AttendanceDashboard'
+
+// Lazy: CheckInPanel pulls in the zxing QR-scanning library (~450 KB) that
+// only staff actually visiting this page need.
+const CheckInPanel = lazy(() => import('../components/attendance/CheckInPanel'))
 
 type StaffConference = { id: string; name: string; slug: string }
 
@@ -72,7 +76,9 @@ export function StaffPage() {
               <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
             </div>
             <div className="mt-6">
-              <CheckInPanel conferenceId={conferenceId} />
+              <Suspense fallback={<p className="text-sm text-ink/60">Loading…</p>}>
+                <CheckInPanel conferenceId={conferenceId} />
+              </Suspense>
             </div>
           </>
         )}

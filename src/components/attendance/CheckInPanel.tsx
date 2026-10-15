@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { BrowserQRCodeReader } from '@zxing/browser'
+import type { IScannerControls } from '@zxing/browser'
 import { api, ApiError } from '../../lib/api'
 
 type SearchResult = {
@@ -9,8 +11,6 @@ type SearchResult = {
   category_name: string
   status: string
 }
-
-type BarcodeDetectorCtor = new (options: { formats: string[] }) => { detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>> }
 
 function extractQrToken(decoded: string): string {
   const match = decoded.match(/\/checkin\/([A-Za-z0-9_-]+)$/)
@@ -26,11 +26,15 @@ export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
   const [cameraOn, setCameraOn] = useState(false)
   const [cameraSupported, setCameraSupported] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const scanLoopRef = useRef<number | null>(null)
+  const readerRef = useRef<BrowserQRCodeReader | null>(null)
+  const controlsRef = useRef<IScannerControls | null>(null)
+  // Guards against the continuous decode loop firing the check-in call
+  // again for every subsequent frame while the same QR code is still in
+  // view — one scan stops the camera, so the next person needs a fresh tap.
+  const scannedRef = useRef(false)
 
   useEffect(() => {
-    setCameraSupported(typeof window !== 'undefined' && 'BarcodeDetector' in window && !!navigator.mediaDevices?.getUserMedia)
+    setCameraSupported(typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia)
   }, [])
 
   useEffect(() => {
@@ -87,40 +91,34 @@ export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
     }
   }
 
-  async function startCamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      setCameraOn(true)
-      const Detector = (window as unknown as { BarcodeDetector: BarcodeDetectorCtor }).BarcodeDetector
-      const detector = new Detector({ formats: ['qr_code'] })
-      const loop = async () => {
-        if (!videoRef.current) return
-        try {
-          const codes = await detector.detect(videoRef.current)
-          if (codes.length > 0) {
-            await checkInByQr(extractQrToken(codes[0]!.rawValue))
-          }
-        } catch {
-          // transient decode errors are expected between frames
-        }
-        scanLoopRef.current = window.setTimeout(loop, 600)
-      }
-      loop()
-    } catch {
-      setMessage({ kind: 'error', text: 'Could not access the camera. Use manual search below instead.' })
-    }
+  function stopCamera() {
+    controlsRef.current?.stop()
+    controlsRef.current = null
+    setCameraOn(false)
   }
 
-  function stopCamera() {
-    if (scanLoopRef.current) window.clearTimeout(scanLoopRef.current)
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
-    setCameraOn(false)
+  async function startCamera() {
+    setMessage(null)
+    scannedRef.current = false
+    try {
+      if (!readerRef.current) readerRef.current = new BrowserQRCodeReader()
+      setCameraOn(true)
+      const controls = await readerRef.current.decodeFromConstraints(
+        { video: { facingMode: 'environment' } },
+        videoRef.current!,
+        (result) => {
+          if (result && !scannedRef.current) {
+            scannedRef.current = true
+            stopCamera()
+            checkInByQr(extractQrToken(result.getText()))
+          }
+        },
+      )
+      controlsRef.current = controls
+    } catch {
+      setCameraOn(false)
+      setMessage({ kind: 'error', text: 'Could not access the camera. Use manual search below instead.' })
+    }
   }
 
   useEffect(() => () => stopCamera(), [])
@@ -195,36 +193,4 @@ export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
   )
 }
 
-export function AttendanceDashboard({ conferenceId, refreshKey }: { conferenceId: string; refreshKey: number }) {
-  const [dashboard, setDashboard] = useState<{ registered: number; checked_in_today: number } | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    api
-      .get<{ registered: number; checked_in_today: number }>(`/conferences/${conferenceId}/attendance/dashboard`)
-      .then((data) => {
-        if (!cancelled) setDashboard(data)
-      })
-      .catch(() => {
-        if (!cancelled) setDashboard(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [conferenceId, refreshKey])
-
-  if (!dashboard) return null
-
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-      <div className="rounded-lg border border-line bg-white p-4">
-        <p className="text-xs text-ink/60">Confirmed registrations</p>
-        <p className="mt-1 text-2xl font-semibold text-ink">{dashboard.registered}</p>
-      </div>
-      <div className="rounded-lg border border-line bg-white p-4">
-        <p className="text-xs text-ink/60">Checked in today</p>
-        <p className="mt-1 text-2xl font-semibold text-ink">{dashboard.checked_in_today}</p>
-      </div>
-    </div>
-  )
-}
+export default CheckInPanel

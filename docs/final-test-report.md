@@ -122,11 +122,13 @@ dead-code cleanup, and documentation).
   real token from the UI means decoding a QR code embedded in a downloaded
   PDF, not practical to automate here. See
   `docs/attendance-certificates-test-steps.md` for the manual check.
-- The staff check-in page's camera QR scanner uses the browser's native
-  `BarcodeDetector` API (Chromium/Edge) rather than a bundled JS QR library,
-  to avoid a new frontend dependency; it falls back to a "not supported, use
-  manual search" message on browsers without it (e.g. Firefox, Safari as of
-  this writing). Manual search always works regardless of browser.
+- The staff check-in page's camera QR scanner uses `@zxing/browser` (works
+  in any browser with camera access — Chrome, Edge, Firefox, Safari, no
+  flags needed), not the native `BarcodeDetector` API, which only works in
+  Chromium browsers and needs an experimental flag enabled on desktop. It's
+  lazy-loaded (`React.lazy`) so its ~450 KB only loads for someone who
+  actually opens the Attendance tab or `/staff` — the main bundle is
+  unaffected. Manual search always works too, camera or not.
 - While building the Convenor Portal, `docs/phase4-test-steps.md`'s Playwright
   tests surfaced a pre-existing mobile-width overflow in `PortalHeader` (the
   header bar used by every signed-in portal, not just Convenor) — the avatar/

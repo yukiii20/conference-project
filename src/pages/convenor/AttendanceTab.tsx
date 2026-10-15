@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { registrationCategorySchema } from '../../lib/validation'
-import { AttendanceDashboard, CheckInPanel } from '../../components/attendance/CheckInPanel'
+import { AttendanceDashboard } from '../../components/attendance/AttendanceDashboard'
+
+// Lazy: CheckInPanel pulls in the zxing QR-scanning library (~450 KB) that
+// only the small fraction of visitors who reach this tab actually need.
+const CheckInPanel = lazy(() => import('../../components/attendance/CheckInPanel'))
 
 type Category = {
   id: string
@@ -329,7 +333,9 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
       <div className="mt-10">
         <h3 className="text-lg font-medium text-ink">Check-in</h3>
         <div className="mt-3">
-          <CheckInPanel conferenceId={conferenceId} />
+          <Suspense fallback={<p className="text-sm text-ink/60">Loading…</p>}>
+            <CheckInPanel conferenceId={conferenceId} />
+          </Suspense>
         </div>
       </div>
     </div>
