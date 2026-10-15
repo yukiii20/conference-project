@@ -1,19 +1,21 @@
 # Final test report
 
-Last updated 2026-10-15, covering Phases 1-4 (auth & role requests, conference
-setup, submissions/reviews/decisions, email/notifications/password-reset/
-security), the Convenor Portal Part A (sidebar layout, dashboard, settings,
-people, content, communication, reports), the finishing Step 1 UI pass (brick
-home hero, conference branding by `primary_color`, badge animation, Logo and
-branding tab), finishing Step 2 (super admin: platform admins, user
+Last updated 2026-10-15. This is the final report for the whole project,
+covering Phases 1-4 (auth & role requests, conference setup, submissions/
+reviews/decisions, email/notifications/password-reset/security), the
+Convenor Portal Part A (sidebar layout, dashboard, settings, people,
+content, communication, reports), finishing Step 1 (brick home hero,
+conference branding by `primary_color`, badge animation, Logo and branding
+tab), finishing Step 2 (super admin: platform admins, user
 unlock/deactivate/anonymise, view-as-admin read-only mode, system health
 card, platform settings, audit ip/user-agent), finishing Step 3 (Convenor
 Part B — rooms, time slots, sessions, session chairs, presentations, the
 public programme with PDF/.ics export, the author's "your presentation" view,
-and a dedicated session-chair portal), and finishing Step 4 (Convenor Part C
-— simple free registration with QR tickets, staff/session QR+manual
-check-in, certificate templates and bulk/manual issuing, release gating, and
-public certificate verification).
+and a dedicated session-chair portal), finishing Step 4 (Convenor Part C —
+simple free registration with QR tickets, staff/session QR+manual check-in,
+certificate templates and bulk/manual issuing, release gating, and public
+certificate verification), and finishing Step 5 (final e2e coverage,
+dead-code cleanup, and documentation).
 
 ## Automated test results
 
@@ -25,13 +27,13 @@ public certificate verification).
 | Frontend build | `npm run build` (repo root) → `dist/` | ✅ Pass |
 | Backend unit/integration tests | `cd server && npm test` (Vitest) | ✅ 438/438 passed, 33 test files |
 | Frontend unit tests | `npm test` (repo root, Vitest) | ✅ 21/21 passed |
-| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 30/30 passed |
+| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 33/33 passed |
 | Dependency audit (frontend) | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
 | Dependency audit (backend) | `cd server && npm audit --omit=dev` | ⚠️ 2 moderate (see Known non-blocking items) |
 | Secrets in git history | `git log --all -- "*.env" ".env.local" "server/.env"` | ✅ Empty — no env file ever committed |
-| Supabase removal | `grep -ri supabase src server/src` | ✅ Empty |
+| Supabase removal | `grep -ri supabase src server/src` | ✅ Empty — the legacy `supabase/` and `database_supabase/` folders were deleted in Step 5 (never referenced by any active code) |
 
-## Playwright suite detail (30 tests, ~1.1 min)
+## Playwright suite detail (33 tests, ~1.8 min)
 
 | Spec | Scenario | Result |
 |---|---|---|
@@ -54,6 +56,9 @@ public certificate verification).
 | `adminPortal.spec.ts` | "View as admin" shows a read-only banner and disables save buttons | ✅ |
 | `programme.spec.ts` | Convenor creates a room and a published session, assigns a chair, schedules an accepted paper into it; it shows on the public programme; the session chair signs in at `/session-chair` and marks it presented | ✅ |
 | `registration.spec.ts` | Author registers to attend and gets a confirmed ticket with a QR code; staff signs in at `/staff` and checks them in by manual search; convenor generates and releases a participation certificate; the author downloads the certificate PDF | ✅ |
+| `adminPortal.spec.ts` | Admin creates a conference and invites a convenor for it (stops at the success state — the invite email's raw token is never exposed to the browser by design; the accept-invitation half is covered by `server/tests/convenorInvite.test.ts`) | ✅ |
+| `main.spec.ts` | Forgot-password always shows the same generic confirmation, whether or not the email exists | ✅ |
+| `main.spec.ts` | Visiting `/reset-password` with no token shows a clear "link expired" message, not a crash | ✅ |
 
 ## Manual / spot-checked areas
 
@@ -92,8 +97,6 @@ public certificate verification).
   this app never does; `exceljs` uses it internally for workbook metadata.
   `npm audit fix --force` would downgrade `exceljs` to 3.4.0, a breaking
   change, so it was left as-is.
-- `supabase/` and `database_supabase/` folders remain on disk per instructions
-  — not deleted, ready for the project owner to archive.
 - Real-SMTP sending (as opposed to the mocked-transport tests) was validated
   against the env-validation and startup-failure paths only; an actual Gmail
   send should be spot-checked once real App Password credentials are filled
@@ -102,8 +105,14 @@ public certificate verification).
   with a Windows access-violation exit code (3221226505) or a single test
   timing out under machine load — a different, unrelated test file each time.
   Re-running (or running the named file alone) always passes; this is a local
-  Vitest worker-pool flake, not a product regression — see the 381/381 result
+  Vitest worker-pool flake, not a product regression — see the 438/438 result
   above, obtained on a clean re-run.
+- Step 5 cleanup: removed two genuinely dead frontend files with zero
+  remaining imports (`src/components/auth/AuthCard.tsx`, an embedded
+  sign-in/sign-up card never wired into any page, and
+  `src/pages/convenor/ComingSoonTab.tsx`, whose only two callers — the
+  Attendance and Certificates tabs — are now real screens). Dependency
+  review found no other unused npm packages in either `package.json`.
 - Certificate PDFs (Step 4) approximate the design brief's "script font" for
   the recipient's name with pdfkit's built-in `Times-Italic` at a large size
   — pdfkit ships no script typeface and embedding a custom font file was out
@@ -130,7 +139,11 @@ public certificate verification).
 All automated checks (type checks, builds, unit/integration tests, end-to-end
 tests, dependency audits, secret-history scan, Supabase-removal scan) pass.
 The application is functionally complete for Phases 1-4, the Convenor
-Portal Part A, and finishing Steps 1-4, and ready for the manual click-through
-in `docs/convenor-portal-test-steps.md`, `docs/programme-test-steps.md`,
-`docs/attendance-certificates-test-steps.md` (and the earlier
-`docs/phase3-test-steps.md` / `docs/phase4-test-steps.md`) before going live.
+Portal Part A, and finishing Steps 1-5, and ready for the manual
+click-through in `docs/convenor-portal-test-steps.md`,
+`docs/programme-test-steps.md`, `docs/attendance-certificates-test-steps.md`,
+and `docs/user-guide.md` (and the earlier `docs/phase3-test-steps.md` /
+`docs/phase4-test-steps.md`) before going live. See the project owner's
+required manual checks at the end of `docs/progress.md`'s Step 5 entry —
+real Gmail delivery and overall look-and-feel are the only things that
+genuinely can't be verified by an automated test.

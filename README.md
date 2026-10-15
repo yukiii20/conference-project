@@ -1,10 +1,11 @@
 # Conference Management System
 
 A conference management system: sign-up and convenor approval, conference
-setup, paper submissions, peer review, decisions, email notifications, and
-an admin console. The frontend is React 19 + Vite; the backend is Node/
-Express + MySQL (no Supabase or other third-party backend — everything runs
-on your own database and server).
+setup, paper submissions, peer review and decisions, a full programme
+(rooms, sessions, chairs), free registration with QR check-in, certificates,
+email notifications, and a platform admin console. The frontend is React 19
++ Vite; the backend is Node/Express + MySQL (no Supabase or other
+third-party backend — everything runs on your own database and server).
 
 ## 1. Install dependencies
 
@@ -24,11 +25,15 @@ then the lightning-bolt "run" icon; or `mysql -u root -p < file.sql`):
 mysql -u root -p < database/01_schema.sql
 mysql -u root -p < database/02_reference_data.sql
 mysql -u root -p < database/03_triggers.sql
+mysql -u root -p < database/04_admin_extensions.sql
 ```
 
 This creates the `conference_cms` database with all tables, roles,
 permissions, and the triggers that enforce things like "a submission can
-only move through its allowed statuses."
+only move through its allowed statuses." Run every `database/04_*.sql`
+file, in filename order, if there's more than one by the time you read
+this — each is a small, additive extension, never a change to an earlier
+file.
 
 Create a dedicated application user (never let the app connect as root):
 
@@ -136,9 +141,11 @@ those.
 
 ## How it works, briefly
 
-- **Sign up** (`/signup`): choose a role and a conference; the account is
-  created but can't sign in until that conference's convenor approves the
-  request (Role requests tab).
+- **Sign up** (`/signup`): choose a role (author, reviewer, session chair,
+  staff, or manager) and a conference; the account is created but can't
+  sign in until that conference's convenor approves the request (Role
+  requests tab). Convenor itself is never self-signed-up — a platform admin
+  appoints or invites one.
 - **Submissions** (`/author`): create a draft abstract, submit it inside the
   conference's submission window, track its status, and — once accepted —
   upload a full paper and (later) a camera-ready copy.
@@ -147,12 +154,41 @@ those.
   declared conflict of interest); reviewers accept/decline and submit a
   scored review; the convenor records accept/reject/revision decisions,
   which notify the author by email and in-app notification.
+- **Programme** (`/convenor` → Event → Programme, public page's Programme
+  section): the convenor manages rooms, optional time slots, and sessions
+  (keynote/paper/panel/poster/break, ...), assigns session chairs (from
+  members holding that role), and schedules accepted papers or invited
+  talks into sessions with auto-computed times. The public page shows
+  published sessions with day tabs, a PDF download, and per-session
+  "add to calendar" (.ics). Session chairs get their own portal at
+  `/session-chair` to mark each presentation presented/absent.
+- **Registration and attendance** (public page's Registration section,
+  `/convenor` → Event → Attendance, `/staff`): any signed-in user can
+  register to attend during the registration window — free, with a
+  registration number and a QR-code ticket. Staff (and session chairs, for
+  individual sessions) check attendees in by scanning that QR code or by
+  manual search; the dedicated `/staff` page exists because staff holds
+  neither the convenor nor manager role. Whether registration needs manual
+  payment confirmation, whether per-session check-in is enabled, and the
+  minimum sessions required for a participation certificate are all set in
+  Review settings.
+- **Certificates** (`/convenor` → Event → Certificates): the convenor
+  designs a PDF template per certificate type (participation, presentation,
+  reviewer, session chair, staff, speaker, best paper — background image,
+  signatories with signature images), then issues them in bulk (eligibility
+  computed automatically per type) or manually (best paper, speaker).
+  Certificates are released to recipients after the certificate-release key
+  date or a manual "Release now", and anyone can verify one with no login
+  at `/verify/:token`.
 - **Notifications**: the bell icon in every portal's header shows unread
-  in-app notifications (role approvals, new assignments, decisions, ...),
-  polling every 60 seconds.
+  in-app notifications (role approvals, new assignments, decisions,
+  schedule changes, certificates, ...), polling every 60 seconds.
 - **Admin** (`/super-admin`): create conferences, appoint/invite convenors,
-  manage user accounts (suspend/reactivate, send a password-reset link),
-  and view the audit and email logs.
+  manage user accounts (suspend/reactivate/unlock/anonymise, send a
+  password-reset link), grant/revoke other platform admins, "view as admin"
+  a conference read-only, edit platform-wide settings (site name, support
+  email, home page copy), check system health, and view the audit and
+  email logs.
 
 ## Security notes
 

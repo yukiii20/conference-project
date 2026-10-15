@@ -83,3 +83,39 @@ including the new registration.spec.ts) all green. Found and fixed one real bug 
 the certificate release gate compared a DB timestamp against Node's Date.now(), which could
 race just after "Release now" on a slow machine - moved the opens_at <= now comparison into
 the SQL query itself so it's always measured against the same clock.
+
+## Step 5 - Final check, cleanup and push - DONE
+Static checks clean (tsc root+server, build root+server, npm audit root 0 vulnerabilities,
+server audit unchanged at 2 moderate transitive exceljs/uuid advisories, no safe fix
+available - see docs/final-test-report.md). Checked Step 5's list of e2e scenarios (a-j)
+against the existing suite: most were already covered (programme, registration/certificates,
+submissions/review lifecycle, cross-conference/role isolation, admin/convenor/author 390px).
+Genuinely missing: admin creates a conference + invites a convenor (added to
+e2e/adminPortal.spec.ts, stopping at the success state - researched first and confirmed the
+invite email's raw set-password token is deliberately never exposed anywhere a browser can
+see it, same as the already-covered reviewer-invite flow; the accept-invitation half is
+already covered by server/tests/convenorInvite.test.ts) and forgot/reset password (added two
+browser-only-edge tests to main.spec.ts - request always shows the same generic message, and
+/reset-password with no token shows a clear dead-link state; the token-bearing round trip is
+the same deliberate-redaction situation and is already covered end-to-end by
+server/tests/passwordReset.test.ts, which reads the token straight out of the database the
+way a real inbox would). Cleanup: deleted the dead supabase/ and database_supabase/ folders
+(zero references anywhere in active code, confirmed by grep) and two unused frontend files
+with no remaining imports (AuthCard.tsx, ComingSoonTab.tsx - both orphaned once Step 4 gave
+Attendance/Certificates real screens). No unused npm packages found in either package.json.
+No TODOs/FIXMEs and no console.log of secrets/tokens found in src or server/src. Docs:
+rewrote README.md's "How it works" section to cover Programme/Registration/Certificates and
+every role, fixed both README.md and docs/deploy.md's MySQL setup steps (they stopped at
+03_triggers.sql, missing the now-required 04_admin_extensions.sql), wrote docs/user-guide.md
+(click-by-click per role: author, reviewer, session chair, staff, convenor, manager, admin),
+and updated docs/final-test-report.md and docs/convenor-portal-test-steps.md (the latter's
+Attendance/Certificates row no longer says "Coming soon").
+tsc (root+server), build (both), server tests (438 passed, 33 files), root tests (21 passed),
+Playwright (33 passed, including the 3 new scenarios above) all green.
+
+Still needs a human: real Gmail delivery (only validated via EMAIL_MODE=console/mocked SMTP
+in every automated test - see docs/phase4-test-steps.md Part A5-A7 to spot-check with real
+App Password credentials), and overall look-and-feel across the app (colours, the brick hero,
+badge animation, certificate PDF design, QR scanning with an actual phone camera - the staff
+check-in page's camera scanner was only exercised via manual search in Playwright, since no
+real camera is available in this environment).

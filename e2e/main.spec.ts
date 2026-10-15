@@ -207,6 +207,37 @@ test.describe('authorization boundaries', () => {
   })
 })
 
+// The raw reset token is deliberately never exposed anywhere a browser can
+// see it (not in the API response, not in the admin/convenor email log UI,
+// which strips template_data — only the backend's own console/log in
+// EMAIL_MODE=console carries it). So Playwright covers the two browser-only
+// edges below; the full request -> reset -> old password fails round trip,
+// token expiry/reuse and session revocation are covered end-to-end by
+// server/tests/passwordReset.test.ts, which reads the token straight out of
+// the database the same way a real email client would read it from an inbox.
+test.describe('password reset', () => {
+  test('forgot-password always shows the same generic confirmation', async ({ page }) => {
+    const errors = trackConsoleErrors(page)
+    await page.goto('/forgot-password')
+    await page.locator('#email').fill('nobody-with-this-email@example.com')
+    await page.getByRole('button', { name: 'Send reset link' }).click()
+    await expect(page.getByText(/Check your email/i)).toBeVisible()
+    await expect(
+      page.getByText(/If an account exists for this email, we've sent a reset link\./),
+    ).toBeVisible()
+    expect(errors, `console errors on forgot-password:\n${errors.join('\n')}`).toEqual([])
+  })
+
+  test('reset-password with no token shows a dead-link message, not a crash', async ({ page }) => {
+    const errors = trackConsoleErrors(page)
+    await page.goto('/reset-password')
+    await expect(page.getByText(/Link expired or invalid/i)).toBeVisible()
+    await page.getByRole('link', { name: 'Request a new link' }).click()
+    await expect(page).toHaveURL(/\/forgot-password$/)
+    expect(errors, `console errors on reset-password with no token:\n${errors.join('\n')}`).toEqual([])
+  })
+})
+
 test.describe('responsive', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 

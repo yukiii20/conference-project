@@ -1,9 +1,8 @@
 # Convenor Portal (Part A) manual test steps
 
 The convenor's `/convenor` page (and the manager's `/manager` page, which
-reuses the same screens minus a couple of items) is now a left sidebar with
-its own URL per item — refresh and the back button work, and unbuilt Part B/C
-items show a friendly "Coming soon" panel instead of an error. Pair this with
+reuses the same screens minus a couple of items) is a left sidebar with its
+own URL per item — refresh and the back button work. Pair this with
 `npm run build`, `npm test` (both `server/` and the repo root) and
 `npx playwright test`, which already cover this ground automatically — see
 `docs/final-test-report.md` for the automated results.
@@ -31,7 +30,7 @@ frontend on `http://localhost:5173` (`npm run dev`). You'll want:
 | A3 | Reload the page on a non-dashboard item (e.g. `/convenor/committees`) | Same panel reloads directly — no redirect to a blank or error page. |
 | A4 | Click the browser **back** button after a couple of sidebar clicks | Returns to the previous sidebar item, not out of the app. |
 | A5 | Narrow the browser to 390px wide | The sidebar disappears behind a **Menu** button at the top; tapping it shows the same grouped list; tapping an item opens it and closes the drawer. No horizontal scrollbar on any item. |
-| A6 | Click **Attendance** or **Certificates** | A plain "Coming soon" panel — not an error (these are Part B/C). |
+| A6 | Click **Attendance** or **Certificates** | The real Part C screens — see `docs/attendance-certificates-test-steps.md`. |
 | A7 | If you also have a manager account: sign in as manager → `/manager` | Same sidebar, same URLs (`/manager/...`), but **Members and roles** and **Activity log** are missing — managers hold every permission except `members.manage` and `audit.read`. |
 
 ## Part B — Dashboard

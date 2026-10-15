@@ -65,11 +65,13 @@ cd conference-cms
 mysql -u root -p conference_cms < database/01_schema.sql
 mysql -u root -p conference_cms < database/02_reference_data.sql
 mysql -u root -p conference_cms < database/03_triggers.sql
+mysql -u root -p conference_cms < database/04_admin_extensions.sql
 ```
 
 (Run them against `conference_cms` specifically; the files already
 `USE conference_cms;` internally, but passing it on the command line too
-avoids any ambiguity.)
+avoids any ambiguity. Run every `database/04_*.sql` file, in filename
+order, if there's more than one by the time you read this.)
 
 ## 4. Configure and build the backend
 

@@ -58,6 +58,43 @@ test('admin edits platform settings and the home page reflects them', async ({ p
   await expect(page.getByRole('heading', { name: headline })).toBeVisible()
 })
 
+// The invitation email's raw set-password token is deliberately never
+// exposed anywhere a browser can see it (not in this API's response, and
+// the admin/convenor email log UI strips template_data before it reaches
+// the frontend) — same reasoning as e2e/convenorPortal.spec.ts's "invites a
+// reviewer by email" test, which also stops at the success toast. The
+// token-bearing half (accept-invitation, set password, log in) is covered
+// end-to-end by server/tests/convenorInvite.test.ts.
+test('admin creates a conference and invites a convenor for it', async ({ page }) => {
+  await signInAsAdmin(page)
+  await page.getByRole('button', { name: 'Conferences', exact: true }).click()
+
+  const stamp = Date.now()
+  const name = `E2E New Conference ${stamp}`
+  const code = `E2ENEW${stamp}`.toUpperCase().slice(0, 20)
+  const today = new Date().toISOString().slice(0, 10)
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+
+  await page.getByRole('button', { name: 'New conference' }).click()
+  await page.locator('#new-name').fill(name)
+  await page.locator('#new-short-name').fill(`E2ENew${stamp}`)
+  await page.locator('#new-code').fill(code)
+  await page.locator('#new-start').fill(today)
+  await page.locator('#new-end').fill(tomorrow)
+  await page.getByRole('button', { name: 'Create conference' }).click()
+  await expect(page.getByText('Conference created with default key dates')).toBeVisible()
+  await expect(page.locator('tr', { hasText: name })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Create convenor', exact: true }).click()
+  const convenorEmail = `e2e-new-convenor-${stamp}@example.com`
+  await page.locator('#cc-conference').selectOption({ label: `${name} (${code})` })
+  await page.locator('#cc-name').fill('New Convenor')
+  await page.locator('#cc-email').fill(convenorEmail)
+  await page.locator('#cc-phone').fill('9811111111')
+  await page.getByRole('button', { name: 'Send invitation' }).click()
+  await expect(page.getByText(`Invitation sent to ${convenorEmail}.`)).toBeVisible()
+})
+
 test('view a conference as admin is read-only', async ({ page }) => {
   await signInAsAdmin(page)
   await page.getByRole('button', { name: 'Conferences', exact: true }).click()
