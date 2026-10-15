@@ -132,8 +132,8 @@ function ProgrammePanel({ conference, schedule, accent, onJump }: { conference: 
   }
   const now = Date.now()
   const upcoming = [...schedule]
-    .filter((r) => new Date(r.session_starts_at).getTime() >= now)
-    .sort((a, b) => a.session_starts_at.localeCompare(b.session_starts_at))
+    .filter((r) => new Date(r.starts_at).getTime() >= now)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
     .slice(0, 2)
   return (
     <div>
@@ -144,9 +144,9 @@ function ProgrammePanel({ conference, schedule, accent, onJump }: { conference: 
       {upcoming.length > 0 ? (
         <ul className="mt-2 space-y-1">
           {upcoming.map((r) => (
-            <li key={r.session_id} className="text-xs text-ink/70">
-              <span className="font-medium text-ink">{formatKathmanduTime(r.session_starts_at)}</span> {r.session_title}
-              {r.room_name ? ` · ${r.room_name}` : ''}
+            <li key={r.id} className="text-xs text-ink/70">
+              <span className="font-medium text-ink">{formatKathmanduTime(r.starts_at)}</span> {r.title}
+              {r.room ? ` · ${r.room.name}` : ''}
             </li>
           ))}
         </ul>

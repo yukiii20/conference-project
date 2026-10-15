@@ -45,6 +45,8 @@ const PUBLIC_ROUTES = new Set([
   'conferencesPublicExtrasRouter GET /public-track-count',
   'announcementsRouter GET /public',
   'scheduleRouter GET /:id/sessions/public',
+  'scheduleRouter GET /:id/sessions/public/:sessionId/ics',
+  'scheduleRouter GET /:id/sessions/public/programme.pdf',
   'platformSettingsPublicRouter GET /platform-settings',
 ])
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
+import { formatKathmandu } from '../../lib/datetime'
 import { downloadSubmissionFile, uploadSubmissionFile, validateSubmissionFile, SUBMISSION_FILE_RULES } from '../../lib/submissionFiles'
 import { buildSubmissionSchema, coAuthorSchema, type CoAuthorInput } from '../../lib/validation'
 import {
@@ -168,6 +169,35 @@ export function SubmissionDetail({
       setCanUpload({ abstract: false, full_paper: false, slides: false, camera_ready: false })
     }
   }, [submissionId, load])
+
+  const [presentation, setPresentation] = useState<{
+    session_title: string
+    room_name: string
+    starts_at: string
+    ends_at: string
+  } | null>(null)
+
+  useEffect(() => {
+    if (status !== 'scheduled' && status !== 'presented') {
+      setPresentation(null)
+      return
+    }
+    let cancelled = false
+    api
+      .get<{
+        presentations: Array<{ session_title: string; room_name: string; starts_at: string; ends_at: string; title: string }>
+      }>(`/conferences/${conferenceId}/my-presentations`)
+      .then((data) => {
+        if (cancelled) return
+        setPresentation(data.presentations.find((p) => p.title === core.title) ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setPresentation(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [status, conferenceId, core.title])
 
   function addKeyword() {
     const v = keywordInput.trim()
@@ -389,6 +419,18 @@ export function SubmissionDetail({
         <div className="flex flex-wrap items-center gap-3">
           {submissionCode ? <span className="font-mono text-sm text-ink/60">{submissionCode}</span> : null}
           <span className={statusBadgeClass(status)}>{SUBMISSION_STATUS_LABELS[status] ?? status}</span>
+        </div>
+      ) : null}
+
+      {presentation ? (
+        <div className="rounded-md border border-line bg-white px-4 py-3 text-sm">
+          <p className="font-medium text-ink">Your presentation</p>
+          <p className="mt-1 text-ink/70">
+            {presentation.session_title} · {presentation.room_name}
+          </p>
+          <p className="text-ink/70">
+            {formatKathmandu(presentation.starts_at)} – {formatKathmandu(presentation.ends_at)}
+          </p>
         </div>
       ) : null}
 

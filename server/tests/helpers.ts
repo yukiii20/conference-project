@@ -43,6 +43,8 @@ export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM announcements')
   await pool.query('DELETE FROM committee_members')
   await pool.query('DELETE FROM committees')
+  await pool.query('DELETE FROM presentations')
+  await pool.query('DELETE FROM session_chairs')
   await pool.query('DELETE FROM conference_speakers')
   await pool.query('DELETE FROM reviews')
   await pool.query('DELETE FROM review_assignments')
@@ -59,6 +61,7 @@ export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM conference_deadlines')
   await pool.query('DELETE FROM conference_settings')
   await pool.query('DELETE FROM conference_sessions')
+  await pool.query('DELETE FROM schedule_slots')
   await pool.query('DELETE FROM rooms')
   await pool.query('DELETE FROM conference_tracks')
   await pool.query('DELETE FROM conference_supporters')
@@ -160,6 +163,42 @@ export async function createPendingInviteUser(input: {
   ])
   const [rows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
   return (rows as Array<{ id: string }>)[0]!.id
+}
+
+/**
+ * Inserts a submission directly at whatever status the test needs (the
+ * status-transition trigger only guards UPDATE, not INSERT) — far simpler
+ * than driving it through the full author -> review -> decision flow when a
+ * test (e.g. programme scheduling) only cares that an accepted paper exists.
+ */
+export async function createSubmission(
+  conferenceId: string,
+  trackId: string,
+  createdByUserId: string,
+  overrides: Partial<{ title: string; status: string }> = {},
+): Promise<string> {
+  const title = overrides.title ?? 'Test Submission'
+  await pool.query(
+    `INSERT INTO submissions (conference_id, track_id, title, abstract, status, created_by)
+     VALUES (?, ?, ?, 'Test abstract text.', ?, ?)`,
+    [conferenceId, trackId, title, overrides.status ?? 'accepted', createdByUserId],
+  )
+  const [rows] = await pool.query(
+    'SELECT id FROM submissions WHERE conference_id = ? AND title = ? ORDER BY created_at DESC LIMIT 1',
+    [conferenceId, title],
+  )
+  return (rows as Array<{ id: string }>)[0]!.id
+}
+
+export async function addSubmissionAuthor(
+  submissionId: string,
+  input: { fullName: string; email: string; userId?: string; isCorresponding?: boolean; order?: number },
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO submission_authors (submission_id, user_id, author_order, full_name, email, is_corresponding)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [submissionId, input.userId ?? null, input.order ?? 1, input.fullName, input.email, input.isCorresponding ?? true],
+  )
 }
 
 export async function createTrack(conferenceId: string, name: string, isActive = true): Promise<string> {

@@ -1,13 +1,16 @@
 # Final test report
 
-Last updated 2026-10-11, covering Phases 1-4 (auth & role requests, conference
+Last updated 2026-10-15, covering Phases 1-4 (auth & role requests, conference
 setup, submissions/reviews/decisions, email/notifications/password-reset/
 security), the Convenor Portal Part A (sidebar layout, dashboard, settings,
 people, content, communication, reports), the finishing Step 1 UI pass (brick
 home hero, conference branding by `primary_color`, badge animation, Logo and
-branding tab), and finishing Step 2 (super admin: platform admins, user
+branding tab), finishing Step 2 (super admin: platform admins, user
 unlock/deactivate/anonymise, view-as-admin read-only mode, system health
-card, platform settings, audit ip/user-agent).
+card, platform settings, audit ip/user-agent), and finishing Step 3 (Convenor
+Part B — rooms, time slots, sessions, session chairs, presentations, the
+public programme with PDF/.ics export, the author's "your presentation" view,
+and a dedicated session-chair portal).
 
 ## Automated test results
 
@@ -17,9 +20,9 @@ card, platform settings, audit ip/user-agent).
 | Frontend type safety | `npx tsc --noEmit` (repo root) | ✅ Pass, no errors |
 | Backend build | `cd server && npm run build` → `dist/` | ✅ Pass |
 | Frontend build | `npm run build` (repo root) → `dist/` | ✅ Pass |
-| Backend unit/integration tests | `cd server && npm test` (Vitest) | ✅ 340/340 passed, 30 test files |
+| Backend unit/integration tests | `cd server && npm test` (Vitest) | ✅ 381/381 passed, 31 test files |
 | Frontend unit tests | `npm test` (repo root, Vitest) | ✅ 21/21 passed |
-| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 28/28 passed |
+| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 29/29 passed |
 | Dependency audit (frontend) | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
 | Dependency audit (backend) | `cd server && npm audit --omit=dev` | ⚠️ 2 moderate (see Known non-blocking items) |
 | Secrets in git history | `git log --all -- "*.env" ".env.local" "server/.env"` | ✅ Empty — no env file ever committed |
@@ -46,6 +49,7 @@ card, platform settings, audit ip/user-agent).
 | `adminPortal.spec.ts` | Admin grants and revokes platform admin access | ✅ |
 | `adminPortal.spec.ts` | Admin edits platform settings and the home page reflects them | ✅ |
 | `adminPortal.spec.ts` | "View as admin" shows a read-only banner and disables save buttons | ✅ |
+| `programme.spec.ts` | Convenor creates a room and a published session, assigns a chair, schedules an accepted paper into it; it shows on the public programme; the session chair signs in at `/session-chair` and marks it presented | ✅ |
 
 ## Manual / spot-checked areas
 
@@ -68,6 +72,7 @@ card, platform settings, audit ip/user-agent).
 | Reports and export | CSV/XLSX download for all four report kinds, unknown kind 400s, permission (author 403), confidential-comment visibility gated on `review.read_all` independent of `report.view` | ✅ `server/tests/reports.test.ts` |
 | Activity log | Conference-scoped, filterable by action, convenor-only (manager 403, since `audit.read` is withheld from managers) | ✅ `server/tests/activityLog.test.ts` |
 | Super admin (Step 2) | Unlock a locked-out user, grant/revoke platform admin (last-admin and self protections), anonymise a user (PII cleared, history kept, blocked for admins/self), view-as-admin audit entry + server-side write block even though admins otherwise bypass permission checks, dashboard health card fields, platform settings (sanitised, public endpoint reflects it), audit log records real ip/user-agent | ✅ `server/tests/adminStep2.test.ts` |
+| Programme (Step 3) | Rooms (full field set, deactivate blocked by published future sessions), schedule slots (CRUD, copy day), sessions (CRUD, room-overlap/chair-double-booking/conference-date rejection via the DB triggers), session chairs (candidate list scoped to the `session_chair` role, assign/remove, schedule-change notification), presentations (add paper/speaker, auto-calculated times, reorder, remove, duplicate-schedule rejection, `accepted → scheduled → presented` with unschedule restoring the prior status), warnings (unscheduled papers, chairless sessions), public schedule (published-only), personal "my presentations" view | ✅ `server/tests/programme.test.ts` |
 
 ## Known non-blocking items
 
@@ -87,6 +92,12 @@ card, platform settings, audit ip/user-agent).
   against the env-validation and startup-failure paths only; an actual Gmail
   send should be spot-checked once real App Password credentials are filled
   into `server/.env` (see `docs/phase4-test-steps.md` Part A5-A7).
+- Full `cd server && npm test` runs occasionally report one worker crashing
+  with a Windows access-violation exit code (3221226505) or a single test
+  timing out under machine load — a different, unrelated test file each time.
+  Re-running (or running the named file alone) always passes; this is a local
+  Vitest worker-pool flake, not a product regression — see the 381/381 result
+  above, obtained on a clean re-run.
 - While building the Convenor Portal, `docs/phase4-test-steps.md`'s Playwright
   tests surfaced a pre-existing mobile-width overflow in `PortalHeader` (the
   header bar used by every signed-in portal, not just Convenor) — the avatar/
@@ -98,7 +109,8 @@ card, platform settings, audit ip/user-agent).
 
 All automated checks (type checks, builds, unit/integration tests, end-to-end
 tests, dependency audits, secret-history scan, Supabase-removal scan) pass.
-The application is functionally complete for Phases 1-4 and the Convenor
-Portal Part A, and ready for the manual click-through in
-`docs/convenor-portal-test-steps.md` (and the earlier `docs/phase3-test-steps.md`
-/ `docs/phase4-test-steps.md`) before going live.
+The application is functionally complete for Phases 1-4, the Convenor
+Portal Part A, and finishing Steps 1-3, and ready for the manual click-through
+in `docs/convenor-portal-test-steps.md`, `docs/programme-test-steps.md` (and
+the earlier `docs/phase3-test-steps.md` / `docs/phase4-test-steps.md`) before
+going live.

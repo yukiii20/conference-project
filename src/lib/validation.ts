@@ -260,13 +260,24 @@ export const trackSchema = z.object({
 export type TrackInput = z.input<typeof trackSchema>
 
 /** A2.7 — Programme tab: rooms. */
+export const ROOM_EQUIPMENT = ['projector', 'microphone', 'video_conference', 'whiteboard', 'recording'] as const
+export const ROOM_EQUIPMENT_LABELS: Record<(typeof ROOM_EQUIPMENT)[number], string> = {
+  projector: 'Projector',
+  microphone: 'Microphone',
+  video_conference: 'Video conference',
+  whiteboard: 'Whiteboard',
+  recording: 'Recording',
+}
+
 export const roomSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, 'Room name is required.')
     .max(150, 'Room name must be 150 characters or fewer.'),
+  room_number: optionalTrimmed(40, 'Room number'),
   building: optionalTrimmed(150, 'Building'),
+  floor: optionalTrimmed(40, 'Floor'),
   capacity: z.string().trim().transform((v, ctx) => {
     if (v === '') return null
     const n = Number(v)
@@ -276,9 +287,37 @@ export const roomSchema = z.object({
     }
     return n
   }),
+  equipment: z.array(z.enum(ROOM_EQUIPMENT)).default([]),
+  description: optionalTrimmed(500, 'Description'),
 })
 
 export type RoomInput = z.input<typeof roomSchema>
+
+/** A2.7 — Programme tab: time slots. */
+export const scheduleSlotSchema = z
+  .object({
+    label: z.string().trim().min(1, 'Label is required.').max(100, 'Label must be 100 characters or fewer.'),
+    starts_at: z.string().min(1, 'Start time is required.'),
+    ends_at: z.string().min(1, 'End time is required.'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.ends_at <= data.starts_at) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'End time must be after the start time.',
+        path: ['ends_at'],
+      })
+    }
+  })
+
+export type ScheduleSlotInput = z.input<typeof scheduleSlotSchema>
+
+export const copyDaySchema = z.object({
+  from_date: z.string().min(1, 'Choose a date to copy from.'),
+  to_date: z.string().min(1, 'Choose a date to copy to.'),
+})
+
+export type CopyDayInput = z.input<typeof copyDaySchema>
 
 /** A2.7 — Programme tab: sessions. */
 export const SESSION_TYPES = [
@@ -291,7 +330,7 @@ export const SESSION_TYPES = [
   'closing',
   'break',
 ] as const
-export const SESSION_STATUSES = ['draft', 'published'] as const
+export const SESSION_STATUSES = ['draft', 'published', 'cancelled'] as const
 
 export const sessionSchema = z
   .object({
@@ -303,6 +342,7 @@ export const sessionSchema = z
     session_type: z.enum(SESSION_TYPES),
     track_id: z.string().trim().transform((v) => (v === '' ? null : v)),
     room_id: z.string().min(1, 'Choose a room.').uuid('Choose a room.'),
+    description: optionalTrimmed(2000, 'Description'),
     starts_at: z.string().min(1, 'Start time is required.'),
     ends_at: z.string().min(1, 'End time is required.'),
     status: z.enum(SESSION_STATUSES),

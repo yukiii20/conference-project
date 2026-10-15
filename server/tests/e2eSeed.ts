@@ -20,6 +20,10 @@ export const E2E = {
   adminEmail: 'e2e-admin@example.com',
   convenorEmail: 'e2e-convenor@example.com',
   password: 'Str0ng!Pass1',
+  // Step 3 (programme) fixtures.
+  authorEmail: 'e2e-author@example.com',
+  chairEmail: 'e2e-chair@example.com',
+  acceptedSubmissionTitle: 'E2E Accepted Paper',
 }
 
 async function main() {
@@ -43,6 +47,17 @@ async function main() {
     // submissions, their files, email activity, notifications, ...) — delete
     // in FK-safe order (children before parents), same as tests/helpers.ts's
     // resetDatabase, before the conference row itself can go.
+    // Step 3 (programme) tables — must go before submissions/conference
+    // itself, since presentations/session_chairs reference them.
+    await pool.query('DELETE FROM presentations WHERE conference_id = ?', [existingConferenceId])
+    await pool.query(
+      `DELETE sc FROM session_chairs sc JOIN conference_sessions cs ON cs.id = sc.session_id WHERE cs.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query('DELETE FROM conference_sessions WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM schedule_slots WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM rooms WHERE conference_id = ?', [existingConferenceId])
+
     await pool.query(
       `DELETE r FROM reviews r JOIN review_assignments ra ON ra.id = r.assignment_id WHERE ra.conference_id = ?`,
       [existingConferenceId],
@@ -92,7 +107,12 @@ async function main() {
     await pool.query('DELETE FROM conference_settings WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM conferences WHERE id = ?', [existingConferenceId])
   }
-  await pool.query('DELETE FROM users WHERE email IN (?, ?)', [E2E.adminEmail, E2E.convenorEmail])
+  await pool.query('DELETE FROM users WHERE email IN (?, ?, ?, ?)', [
+    E2E.adminEmail,
+    E2E.convenorEmail,
+    E2E.authorEmail,
+    E2E.chairEmail,
+  ])
 
   await pool.query(
     `INSERT INTO conferences (slug, code, name, start_date, end_date, status, country, timezone, social_links)
@@ -126,10 +146,74 @@ async function main() {
     convenorId,
   ])
 
+  // Step 3 (programme) fixtures: a track, an accepted paper with its author,
+  // and a session-chair-role member — so the programme Playwright spec can
+  // schedule a real accepted paper and sign in as its chair without having
+  // to drive the whole submission/review/decision lifecycle through the UI.
+  await pool.query(`INSERT INTO conference_tracks (conference_id, name, is_active) VALUES (?, 'E2E Track', TRUE)`, [
+    conferenceId,
+  ])
+  const [trackRows] = await pool.query('SELECT id FROM conference_tracks WHERE conference_id = ? AND name = ?', [
+    conferenceId,
+    'E2E Track',
+  ])
+  const trackId = (trackRows as Array<{ id: string }>)[0]!.id
+
+  await pool.query('INSERT INTO users (email, password_hash, full_name, phone) VALUES (?, ?, ?, ?)', [
+    E2E.authorEmail,
+    passwordHash,
+    'E2E Author',
+    '+9779833333333',
+  ])
+  const [authorRows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [E2E.authorEmail])
+  const authorId = (authorRows as Array<{ id: string }>)[0]!.id
+  await pool.query(`INSERT INTO conference_members (conference_id, user_id, role_code) VALUES (?, ?, 'author')`, [
+    conferenceId,
+    authorId,
+  ])
+
+  await pool.query(
+    `INSERT INTO submissions (conference_id, track_id, title, abstract, status, created_by)
+     VALUES (?, ?, ?, 'An abstract for the programme E2E fixture.', 'accepted', ?)`,
+    [conferenceId, trackId, E2E.acceptedSubmissionTitle, authorId],
+  )
+  const [submissionRows] = await pool.query(
+    'SELECT id FROM submissions WHERE conference_id = ? AND title = ? ORDER BY created_at DESC LIMIT 1',
+    [conferenceId, E2E.acceptedSubmissionTitle],
+  )
+  const submissionId = (submissionRows as Array<{ id: string }>)[0]!.id
+  await pool.query(
+    `INSERT INTO submission_authors (submission_id, user_id, author_order, full_name, email, is_corresponding)
+     VALUES (?, ?, 1, 'E2E Author', ?, TRUE)`,
+    [submissionId, authorId, E2E.authorEmail],
+  )
+
+  await pool.query('INSERT INTO users (email, password_hash, full_name, phone) VALUES (?, ?, ?, ?)', [
+    E2E.chairEmail,
+    passwordHash,
+    'E2E Chair',
+    '+9779844444444',
+  ])
+  const [chairRows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [E2E.chairEmail])
+  const chairId = (chairRows as Array<{ id: string }>)[0]!.id
+  await pool.query(
+    `INSERT INTO conference_members (conference_id, user_id, role_code) VALUES (?, ?, 'session_chair')`,
+    [conferenceId, chairId],
+  )
+  // Login (unlike platform-admin bypass) requires an approved role_requests
+  // row for any non-convenor role, not just the conference_members row.
+  await pool.query(
+    `INSERT INTO role_requests (user_id, conference_id, role_code, status, reviewed_by, reviewed_at)
+     VALUES (?, ?, 'session_chair', 'approved', ?, NOW(3))`,
+    [chairId, conferenceId, convenorId],
+  )
+
   console.log(`E2E fixtures seeded in ${connectedDb}:`)
   console.log(`  conference: ${E2E.conferenceSlug} (${conferenceId})`)
   console.log(`  admin: ${E2E.adminEmail}`)
   console.log(`  convenor: ${E2E.convenorEmail}`)
+  console.log(`  author: ${E2E.authorEmail} (accepted paper: ${E2E.acceptedSubmissionTitle})`)
+  console.log(`  session chair: ${E2E.chairEmail}`)
 
   await pool.end()
 }

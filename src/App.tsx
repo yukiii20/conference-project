@@ -21,6 +21,7 @@ import { ConvenorPage } from './pages/ConvenorPage'
 import { AuthorPage } from './pages/AuthorPage'
 import { ReviewerPage } from './pages/ReviewerPage'
 import { StaffPage } from './pages/StaffPage'
+import { SessionChairPage } from './pages/SessionChairPage'
 
 export default function App() {
   return (
@@ -92,6 +93,14 @@ export default function App() {
             element={
               <ProtectedRoute kind="role" role="staff">
                 <StaffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/session-chair"
+            element={
+              <ProtectedRoute kind="role" role="session_chair">
+                <SessionChairPage />
               </ProtectedRoute>
             }
           />

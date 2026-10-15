@@ -34,3 +34,24 @@ The throwaway e2e servers (backend :4100, frontend :5273, conference_cms_test) s
 SAME database as `cd server && npm test` - running the Vitest suite wipes the Playwright
 fixtures. Always re-run `cd server && npx tsx tests/e2eSeed.ts` right before `npx playwright
 test` (not just once at the start of a session).
+
+## Step 3 - Programme (Convenor Part B) - DONE
+Found the backend module (server/src/modules/schedule - rooms, schedule slots, sessions,
+session chairs, presentations, export.ts for PDF/.ics) and most of the public/author-facing
+frontend already built from a prior session that stopped mid-way. Finished what was
+missing: Time slots CRUD + "Copy day" + a slot picker on the session form in
+ProgrammeTab.tsx (frontend only - backend routes already existed); day tabs and a List/Grid
+toggle (grid = rooms as columns, time as rows, coloured by track) on the convenor Sessions
+view, collapsing to List-only below the sm breakpoint; a dedicated session-chair portal
+(`/session-chair`, SessionChairPage.tsx) backed by the existing `/me/chair-sessions` and
+`/sessions/:id/chair-view` endpoints - wired `session_chair`'s role path and added it to the
+login role picker (`src/lib/roles.ts`), which a previous session had left pointing nowhere.
+Extended `server/tests/e2eSeed.ts` with Step 3 fixtures (a track, an accepted paper with its
+author, and a session-chair member) plus FK-safe cleanup for the new programme tables, and
+wrote `e2e/programme.spec.ts`: convenor builds a room/session, assigns the chair, schedules
+the accepted paper, publishes it, it shows on the public programme; the chair signs in and
+marks it presented.
+tsc (root+server), build (both), server tests (381 passed, 31 files), Playwright (29 passed,
+including the new programme.spec.ts) all green. (A couple of individual runs hit a flaky
+Windows Vitest worker crash or timeout under load - a different unrelated file each time;
+re-running always passes, see docs/final-test-report.md.)

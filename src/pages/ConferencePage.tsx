@@ -30,7 +30,7 @@ const TIER_LABELS: Record<SupporterTier, string> = {
 function groupByDay(rows: ScheduleRow[]) {
   const groups = new Map<string, ScheduleRow[]>()
   for (const row of rows) {
-    const key = kathmanduDateKey(row.session_starts_at)
+    const key = kathmanduDateKey(row.starts_at)
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(row)
   }
@@ -38,7 +38,7 @@ function groupByDay(rows: ScheduleRow[]) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, dayRows]) => ({
       key,
-      label: formatKathmandu(dayRows[0].session_starts_at, { dateOnly: true }),
+      label: formatKathmandu(dayRows[0].starts_at, { dateOnly: true }),
       rows: dayRows,
     }))
 }
@@ -121,12 +121,7 @@ export function ConferencePage() {
         .catch(() => ({ schedule: [] as ScheduleRow[] }))
       if (cancelled) return
 
-      const rows = scheduleData.schedule
-      const bySession = new Map<string, ScheduleRow>()
-      for (const row of rows) {
-        if (!bySession.has(row.session_id)) bySession.set(row.session_id, row)
-      }
-      setSchedule(Array.from(bySession.values()).sort((a, b) => a.session_starts_at.localeCompare(b.session_starts_at)))
+      setSchedule([...scheduleData.schedule].sort((a, b) => a.starts_at.localeCompare(b.starts_at)))
 
       setError(null)
       setLoading(false)
@@ -561,7 +556,20 @@ export function ConferencePage() {
         style={sectionStyle}
         className="mx-auto max-w-5xl px-4 py-12"
       >
-        <h2 className="text-2xl font-semibold">Programme</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-semibold">Programme</h2>
+          {groupedSchedule.length > 0 ? (
+            <a
+              href={`/api/conferences/${conference.id}/sessions/public/programme.pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: accent }}
+              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-background"
+            >
+              Download programme (PDF)
+            </a>
+          ) : null}
+        </div>
         {groupedSchedule.length === 0 ? (
           <p className="mt-4 text-sm text-ink/60">The programme will be announced soon.</p>
         ) : (
@@ -569,31 +577,49 @@ export function ConferencePage() {
             {groupedSchedule.map((day) => (
               <div key={day.key}>
                 <h3 className="font-semibold text-ink">{day.label}</h3>
-                <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-white">
-                  <table className="w-full min-w-[560px] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-line text-ink/60">
-                        <th className="px-4 py-2 font-medium">Time</th>
-                        <th className="px-4 py-2 font-medium">Title</th>
-                        <th className="px-4 py-2 font-medium">Type</th>
-                        <th className="px-4 py-2 font-medium">Track</th>
-                        <th className="px-4 py-2 font-medium">Room</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {day.rows.map((row) => (
-                        <tr key={row.session_id}>
-                          <td className="whitespace-nowrap px-4 py-2">
-                            {formatKathmanduTime(row.session_starts_at)} – {formatKathmanduTime(row.session_ends_at)}
-                          </td>
-                          <td className="px-4 py-2">{row.session_title}</td>
-                          <td className="px-4 py-2 capitalize">{row.session_type}</td>
-                          <td className="px-4 py-2">{row.track_name ?? '—'}</td>
-                          <td className="px-4 py-2">{row.room_name ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-3 space-y-3">
+                  {day.rows.map((row) => (
+                    <div key={row.id} className="rounded-lg border border-line bg-white p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-ink">{row.title}</p>
+                          <p className="text-sm text-ink/60">
+                            {formatKathmanduTime(row.starts_at)} – {formatKathmanduTime(row.ends_at)}
+                            {row.room ? ` · ${row.room.name}` : ''}
+                            {row.track ? ` · ${row.track.name}` : ''}
+                            <span className="capitalize"> · {row.session_type}</span>
+                          </p>
+                        </div>
+                        <a
+                          href={`/api/conferences/${conference.id}/sessions/public/${row.id}/ics`}
+                          style={{ color: accent }}
+                          className="shrink-0 text-xs font-medium hover:underline"
+                        >
+                          Add to calendar
+                        </a>
+                      </div>
+                      {row.description ? <p className="mt-2 text-sm text-ink/70">{row.description}</p> : null}
+                      {row.chairs.length > 0 ? (
+                        <p className="mt-2 text-xs text-ink/60">
+                          Chair{row.chairs.length > 1 ? 's' : ''}: {row.chairs.map((c) => c.full_name).join(', ')}
+                        </p>
+                      ) : null}
+                      {row.presentations.length > 0 ? (
+                        <ul className="mt-2 space-y-1 border-t border-line pt-2 text-sm">
+                          {row.presentations.map((p) => (
+                            <li key={p.id}>
+                              <span className="text-ink/50">{formatKathmanduTime(p.starts_at)}</span> {p.title}
+                              {p.authors && p.authors.length > 0 ? (
+                                <span className="text-ink/60"> — {p.authors.join(', ')}</span>
+                              ) : p.speaker_name ? (
+                                <span className="text-ink/60"> — {p.speaker_name}</span>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}

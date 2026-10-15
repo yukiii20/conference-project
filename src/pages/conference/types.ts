@@ -74,14 +74,29 @@ export type ConferenceAnnouncement = {
   created_at: string
 }
 
+export type SchedulePresentation = {
+  id: string
+  title: string
+  starts_at: string
+  ends_at: string
+  presentation_order: number
+  submission_code: string | null
+  authors: string[] | null
+  speaker_name: string | null
+}
+
 export type ScheduleRow = {
-  session_id: string
-  session_title: string
+  id: string
+  title: string
   session_type: string
-  session_starts_at: string
-  session_ends_at: string
-  room_name: string | null
-  track_name: string | null
+  description: string | null
+  starts_at: string
+  ends_at: string
+  status: string
+  room: { id: string; name: string; room_number: string | null; building: string | null } | null
+  track: { id: string; name: string } | null
+  chairs: Array<{ user_id: string; full_name: string; chair_role: 'chair' | 'co_chair' }>
+  presentations: SchedulePresentation[]
 }
 
 export const DEADLINE_LABELS: Record<string, string> = {

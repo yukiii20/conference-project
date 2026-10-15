@@ -11,7 +11,7 @@ export const ROLE_CATALOGUE: readonly RoleDefinition[] = [
   { code: 'admin', label: 'Administrator', path: '/super-admin' },
   { code: 'author', label: 'Author', path: '/author' },
   { code: 'reviewer', label: 'Reviewer', path: '/reviewer' },
-  { code: 'session_chair', label: 'Session Chair', path: null },
+  { code: 'session_chair', label: 'Session Chair', path: '/session-chair' },
   { code: 'staff', label: 'Staff', path: '/staff' },
   { code: 'manager', label: 'Manager', path: '/manager' },
   { code: 'convenor', label: 'Convenor', path: '/convenor' },
@@ -36,6 +36,7 @@ export type SignupRoleCode = (typeof SIGNUP_ROLE_CODES)[number]
 export const LOGIN_ROLE_CODES = [
   'author',
   'reviewer',
+  'session_chair',
   'staff',
   'manager',
   'convenor',
