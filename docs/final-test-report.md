@@ -7,10 +7,13 @@ people, content, communication, reports), the finishing Step 1 UI pass (brick
 home hero, conference branding by `primary_color`, badge animation, Logo and
 branding tab), finishing Step 2 (super admin: platform admins, user
 unlock/deactivate/anonymise, view-as-admin read-only mode, system health
-card, platform settings, audit ip/user-agent), and finishing Step 3 (Convenor
+card, platform settings, audit ip/user-agent), finishing Step 3 (Convenor
 Part B — rooms, time slots, sessions, session chairs, presentations, the
 public programme with PDF/.ics export, the author's "your presentation" view,
-and a dedicated session-chair portal).
+and a dedicated session-chair portal), and finishing Step 4 (Convenor Part C
+— simple free registration with QR tickets, staff/session QR+manual
+check-in, certificate templates and bulk/manual issuing, release gating, and
+public certificate verification).
 
 ## Automated test results
 
@@ -20,15 +23,15 @@ and a dedicated session-chair portal).
 | Frontend type safety | `npx tsc --noEmit` (repo root) | ✅ Pass, no errors |
 | Backend build | `cd server && npm run build` → `dist/` | ✅ Pass |
 | Frontend build | `npm run build` (repo root) → `dist/` | ✅ Pass |
-| Backend unit/integration tests | `cd server && npm test` (Vitest) | ✅ 381/381 passed, 31 test files |
+| Backend unit/integration tests | `cd server && npm test` (Vitest) | ✅ 438/438 passed, 33 test files |
 | Frontend unit tests | `npm test` (repo root, Vitest) | ✅ 21/21 passed |
-| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 29/29 passed |
+| End-to-end tests | `npx playwright test` (throwaway backend :4100 / frontend :5273, test DB) | ✅ 30/30 passed |
 | Dependency audit (frontend) | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
 | Dependency audit (backend) | `cd server && npm audit --omit=dev` | ⚠️ 2 moderate (see Known non-blocking items) |
 | Secrets in git history | `git log --all -- "*.env" ".env.local" "server/.env"` | ✅ Empty — no env file ever committed |
 | Supabase removal | `grep -ri supabase src server/src` | ✅ Empty |
 
-## Playwright suite detail (28 tests, ~1.2 min)
+## Playwright suite detail (30 tests, ~1.1 min)
 
 | Spec | Scenario | Result |
 |---|---|---|
@@ -50,6 +53,7 @@ and a dedicated session-chair portal).
 | `adminPortal.spec.ts` | Admin edits platform settings and the home page reflects them | ✅ |
 | `adminPortal.spec.ts` | "View as admin" shows a read-only banner and disables save buttons | ✅ |
 | `programme.spec.ts` | Convenor creates a room and a published session, assigns a chair, schedules an accepted paper into it; it shows on the public programme; the session chair signs in at `/session-chair` and marks it presented | ✅ |
+| `registration.spec.ts` | Author registers to attend and gets a confirmed ticket with a QR code; staff signs in at `/staff` and checks them in by manual search; convenor generates and releases a participation certificate; the author downloads the certificate PDF | ✅ |
 
 ## Manual / spot-checked areas
 
@@ -73,6 +77,8 @@ and a dedicated session-chair portal).
 | Activity log | Conference-scoped, filterable by action, convenor-only (manager 403, since `audit.read` is withheld from managers) | ✅ `server/tests/activityLog.test.ts` |
 | Super admin (Step 2) | Unlock a locked-out user, grant/revoke platform admin (last-admin and self protections), anonymise a user (PII cleared, history kept, blocked for admins/self), view-as-admin audit entry + server-side write block even though admins otherwise bypass permission checks, dashboard health card fields, platform settings (sanitised, public endpoint reflects it), audit log records real ip/user-agent | ✅ `server/tests/adminStep2.test.ts` |
 | Programme (Step 3) | Rooms (full field set, deactivate blocked by published future sessions), schedule slots (CRUD, copy day), sessions (CRUD, room-overlap/chair-double-booking/conference-date rejection via the DB triggers), session chairs (candidate list scoped to the `session_chair` role, assign/remove, schedule-change notification), presentations (add paper/speaker, auto-calculated times, reorder, remove, duplicate-schedule rejection, `accepted → scheduled → presented` with unschedule restoring the prior status), warnings (unscheduled papers, chairless sessions), public schedule (published-only), personal "my presentations" view | ✅ `server/tests/programme.test.ts` |
+| Registration and attendance (Step 4) | Categories (auto-created "general" on first look), registration window enforcement, pending-vs-confirmed by payment setting, one active registration per user, cancel-then-reregister, qr_token never returned by any list/detail endpoint, staff manual check-in (author 403), once-per-day check-in, cancelled/wrong-conference rejection, dashboard counts | ✅ `server/tests/registration.test.ts` |
+| Certificates (Step 4) | Eligibility per type (participation needs a confirmed registration + check-in + optional minimum-sessions; reviewer needs a submitted review; session_chair needs a completed published session; best-paper issues to a chosen submission's linked authors), re-running only fills gaps (no duplicates), download gated to the recipient-after-release or `certificate.manage`-anytime, public verify shows valid/revoked, unknown token returns null | ✅ `server/tests/certificates.test.ts` |
 
 ## Known non-blocking items
 
@@ -98,6 +104,20 @@ and a dedicated session-chair portal).
   Re-running (or running the named file alone) always passes; this is a local
   Vitest worker-pool flake, not a product regression — see the 381/381 result
   above, obtained on a clean re-run.
+- Certificate PDFs (Step 4) approximate the design brief's "script font" for
+  the recipient's name with pdfkit's built-in `Times-Italic` at a large size
+  — pdfkit ships no script typeface and embedding a custom font file was out
+  of scope; swap one in later if the exact look matters.
+- `/verify/:token`'s valid/revoked behaviour is exercised end-to-end by
+  `server/tests/certificates.test.ts` rather than by Playwright — reaching a
+  real token from the UI means decoding a QR code embedded in a downloaded
+  PDF, not practical to automate here. See
+  `docs/attendance-certificates-test-steps.md` for the manual check.
+- The staff check-in page's camera QR scanner uses the browser's native
+  `BarcodeDetector` API (Chromium/Edge) rather than a bundled JS QR library,
+  to avoid a new frontend dependency; it falls back to a "not supported, use
+  manual search" message on browsers without it (e.g. Firefox, Safari as of
+  this writing). Manual search always works regardless of browser.
 - While building the Convenor Portal, `docs/phase4-test-steps.md`'s Playwright
   tests surfaced a pre-existing mobile-width overflow in `PortalHeader` (the
   header bar used by every signed-in portal, not just Convenor) — the avatar/
@@ -110,7 +130,7 @@ and a dedicated session-chair portal).
 All automated checks (type checks, builds, unit/integration tests, end-to-end
 tests, dependency audits, secret-history scan, Supabase-removal scan) pass.
 The application is functionally complete for Phases 1-4, the Convenor
-Portal Part A, and finishing Steps 1-3, and ready for the manual click-through
-in `docs/convenor-portal-test-steps.md`, `docs/programme-test-steps.md` (and
-the earlier `docs/phase3-test-steps.md` / `docs/phase4-test-steps.md`) before
-going live.
+Portal Part A, and finishing Steps 1-4, and ready for the manual click-through
+in `docs/convenor-portal-test-steps.md`, `docs/programme-test-steps.md`,
+`docs/attendance-certificates-test-steps.md` (and the earlier
+`docs/phase3-test-steps.md` / `docs/phase4-test-steps.md`) before going live.

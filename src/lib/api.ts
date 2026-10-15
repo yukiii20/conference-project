@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
+export const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
 /**
  * Set while an admin is browsing a conference's convenor portal in

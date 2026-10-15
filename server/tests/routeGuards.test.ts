@@ -23,6 +23,8 @@ import { speakersRouter } from '../src/modules/speakers/routes.js'
 import { emailTemplatesRouter } from '../src/modules/emailTemplates/routes.js'
 import { reportsRouter } from '../src/modules/reports/routes.js'
 import { activityLogRouter } from '../src/modules/activityLog/routes.js'
+import { registrationRouter } from '../src/modules/registration/routes.js'
+import { certificatesRouter, certificatesPublicRouter } from '../src/modules/certificates/routes.js'
 
 const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
 
@@ -48,6 +50,7 @@ const PUBLIC_ROUTES = new Set([
   'scheduleRouter GET /:id/sessions/public/:sessionId/ics',
   'scheduleRouter GET /:id/sessions/public/programme.pdf',
   'platformSettingsPublicRouter GET /platform-settings',
+  'certificatesPublicRouter GET /verify/:token',
 ])
 
 type NamedRouter = { name: string; router: import('express').Router }
@@ -83,6 +86,9 @@ const ROUTERS: NamedRouter[] = [
   { name: 'emailTemplatesRouter', router: emailTemplatesRouter },
   { name: 'reportsRouter', router: reportsRouter },
   { name: 'activityLogRouter', router: activityLogRouter },
+  { name: 'registrationRouter', router: registrationRouter },
+  { name: 'certificatesRouter', router: certificatesRouter },
+  { name: 'certificatesPublicRouter', router: certificatesPublicRouter },
 ]
 
 type RouteEntry = { key: string; middlewareNames: string[] }

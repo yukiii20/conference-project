@@ -45,6 +45,15 @@ export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM committees')
   await pool.query('DELETE FROM presentations')
   await pool.query('DELETE FROM session_chairs')
+  await pool.query('DELETE FROM certificates')
+  await pool.query('DELETE FROM certificate_templates')
+  await pool.query('DELETE FROM session_attendance')
+  await pool.query('DELETE FROM conference_attendance')
+  await pool.query('DELETE FROM payment_webhook_events')
+  await pool.query('DELETE FROM payments')
+  await pool.query('DELETE FROM registrations')
+  await pool.query('DELETE FROM registration_fees')
+  await pool.query('DELETE FROM registration_categories')
   await pool.query('DELETE FROM conference_speakers')
   await pool.query('DELETE FROM reviews')
   await pool.query('DELETE FROM review_assignments')
@@ -224,15 +233,24 @@ export async function upsertConferenceSettings(
     max_abstract_words: 300,
     max_file_size_mb: 20,
     authors_see_review_comments: true,
+    registration_requires_payment: true,
+    session_attendance_enabled: false,
+    certificate_min_sessions: null,
+    default_currency: 'NPR',
   }
   const merged = { ...defaults, ...overrides }
   await pool.query(
     `INSERT INTO conference_settings
-       (conference_id, review_mode, reviews_required, max_submissions_per_author, max_abstract_words, max_file_size_mb, authors_see_review_comments)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+       (conference_id, review_mode, reviews_required, max_submissions_per_author, max_abstract_words, max_file_size_mb,
+        authors_see_review_comments, registration_requires_payment, session_attendance_enabled, certificate_min_sessions, default_currency)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE review_mode = VALUES(review_mode), reviews_required = VALUES(reviews_required),
        max_submissions_per_author = VALUES(max_submissions_per_author), max_abstract_words = VALUES(max_abstract_words),
-       max_file_size_mb = VALUES(max_file_size_mb), authors_see_review_comments = VALUES(authors_see_review_comments)`,
+       max_file_size_mb = VALUES(max_file_size_mb), authors_see_review_comments = VALUES(authors_see_review_comments),
+       registration_requires_payment = VALUES(registration_requires_payment),
+       session_attendance_enabled = VALUES(session_attendance_enabled),
+       certificate_min_sessions = VALUES(certificate_min_sessions),
+       default_currency = VALUES(default_currency)`,
     [
       conferenceId,
       merged.review_mode,
@@ -241,6 +259,10 @@ export async function upsertConferenceSettings(
       merged.max_abstract_words,
       merged.max_file_size_mb,
       merged.authors_see_review_comments,
+      merged.registration_requires_payment,
+      merged.session_attendance_enabled,
+      merged.certificate_min_sessions,
+      merged.default_currency,
     ],
   )
 }

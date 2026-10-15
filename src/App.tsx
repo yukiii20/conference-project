@@ -22,6 +22,7 @@ import { AuthorPage } from './pages/AuthorPage'
 import { ReviewerPage } from './pages/ReviewerPage'
 import { StaffPage } from './pages/StaffPage'
 import { SessionChairPage } from './pages/SessionChairPage'
+import { VerifyCertificatePage } from './pages/VerifyCertificatePage'
 
 export default function App() {
   return (
@@ -104,6 +105,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/verify/:token" element={<VerifyCertificatePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>

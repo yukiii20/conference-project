@@ -359,6 +359,55 @@ export const sessionSchema = z
 
 export type SessionInput = z.input<typeof sessionSchema>
 
+/** A2.9 — Attendance tab: registration categories. */
+export const registrationCategorySchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9_]{2,40}$/, 'Code must be 2-40 lowercase letters, digits or underscores.'),
+  name: z.string().trim().min(1, 'Name is required.').max(100, 'Name must be 100 characters or fewer.'),
+  description: optionalTrimmed(500, 'Description'),
+  is_active: z.boolean().default(true),
+  display_order: z.coerce.number().int().default(0),
+})
+export type RegistrationCategoryInput = z.input<typeof registrationCategorySchema>
+
+/** A2.9 — Certificates tab: templates. */
+export const CERTIFICATE_TYPES = [
+  'participation',
+  'presentation',
+  'speaker',
+  'reviewer',
+  'session_chair',
+  'staff',
+  'best_paper',
+] as const
+export const AUTO_CERTIFICATE_TYPES = ['participation', 'presentation', 'reviewer', 'session_chair', 'staff'] as const
+
+export const certificateTemplateSchema = z.object({
+  certificate_type: z.enum(CERTIFICATE_TYPES),
+  name: z.string().trim().min(1, 'Name is required.').max(200, 'Name must be 200 characters or fewer.'),
+  layout: z.object({
+    name: z.object({
+      y: z.coerce.number().min(0).max(1000),
+      font_size: z.coerce.number().min(8).max(200),
+      color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.'),
+    }),
+  }),
+  signatories: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(150),
+        title: z.string().trim().min(1).max(150),
+        signature_path: z.string().trim().nullable(),
+      }),
+    )
+    .max(2),
+  is_active: z.boolean().default(true),
+})
+export type CertificateTemplateInput = z.input<typeof certificateTemplateSchema>
+
 export function slugify(value: string) {
   return value
     .toLowerCase()
@@ -614,6 +663,14 @@ export const reviewSettingsSchema = z.object({
   max_file_size_mb: z.coerce.number().int().min(1, 'At least 1.').max(100, 'At most 100.'),
   allowed_file_types: z.array(z.string().trim().toLowerCase().min(1).max(20)).min(1, 'Allow at least one file type.'),
   authors_see_review_comments: z.boolean(),
+  registration_requires_payment: z.boolean(),
+  session_attendance_enabled: z.boolean(),
+  certificate_min_sessions: z.coerce.number().int().positive().nullable(),
+  default_currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, 'Enter a 3-letter currency code, e.g. NPR.'),
 })
 export type ReviewSettingsInput = z.input<typeof reviewSettingsSchema>
 

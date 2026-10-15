@@ -12,6 +12,7 @@ export const SECTIONS = [
   { id: 'speakers', label: 'Speakers' },
   { id: 'supporters', label: 'Supporters' },
   { id: 'programme', label: 'Programme' },
+  { id: 'registration', label: 'Registration' },
   { id: 'location', label: 'Location' },
   { id: 'key-dates', label: 'Key dates' },
 ] as const

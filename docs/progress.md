@@ -55,3 +55,31 @@ tsc (root+server), build (both), server tests (381 passed, 31 files), Playwright
 including the new programme.spec.ts) all green. (A couple of individual runs hit a flaky
 Windows Vitest worker crash or timeout under load - a different unrelated file each time;
 re-running always passes, see docs/final-test-report.md.)
+
+## Step 4 - Registration, attendance, certificates (Convenor Part C) - DONE
+Checked first: no backend module existed yet for registration_categories/registrations/
+conference_attendance/session_attendance/certificate_templates/certificates - all six tables
+already existed in the schema (file database/01_schema.sql), so no schema change was needed.
+Built two new backend modules: server/src/modules/registration (categories, free
+registration with payment-setting-driven pending/confirmed, one-active-registration DB
+constraint, cancel, admin list/search/confirm/cancel/export CSV, QR/manual check-in once per
+day, optional per-session check-in, attendance dashboard) and server/src/modules/certificates
+(templates with one-active-per-type, background/signature image upload, pdfkit-generated A4
+landscape PDF per the brief's double-border/corner-accent/seal design, per-type eligibility
+rules, re-run-safe bulk issuing, manual best-paper/speaker issuing, release gating via the
+existing certificate_release key date or a manual override, revoke, public verify). Extended
+the existing Review settings tab/endpoint with the four new conference_settings columns
+(registration_requires_payment, session_attendance_enabled, certificate_min_sessions,
+default_currency) rather than building a separate settings page. Frontend: AttendanceTab.tsx
+and CertificatesTab.tsx wired into the Event section's two remaining Coming-soon tabs; a
+RegistrationPanel on the public conference page (register / ticket with QR / cancel / my
+certificates); a public /verify/:token page; and — since staff has neither the convenor nor
+manager role and so cannot reach the convenor portal at all — rebuilt /staff from a placeholder
+into a real check-in page (manual search always works; camera scanning uses the browser's
+native BarcodeDetector API where available, no new JS dependency). Added qrcode (server) for
+QR generation; no new frontend dependency.
+tsc (root+server), build (both), server tests (438 passed, 33 files), Playwright (30 passed,
+including the new registration.spec.ts) all green. Found and fixed one real bug along the way:
+the certificate release gate compared a DB timestamp against Node's Date.now(), which could
+race just after "Release now" on a slow machine - moved the opens_at <= now comparison into
+the SQL query itself so it's always measured against the same clock.

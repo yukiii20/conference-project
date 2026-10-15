@@ -36,6 +36,18 @@ export function zonedWallTimeToUtc(
   return new Date(guess - offset)
 }
 
+/** 'YYYY-MM-DD' for the given instant (default: now) as measured in `timeZone` — used for attendance day keys. */
+export function localDateKey(timeZone: string, instant: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(instant)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
 /**
  * The inclusive UTC window spanning the whole of `startDate` through the
  * whole of `endDate` (both 'YYYY-MM-DD') as measured in `timeZone`.

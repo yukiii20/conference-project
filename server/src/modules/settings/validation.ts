@@ -10,5 +10,13 @@ export const updateSettingsSchema = z.object({
     .array(z.string().trim().toLowerCase().min(1).max(20))
     .min(1, 'Allow at least one file type.'),
   authors_see_review_comments: z.boolean(),
+  registration_requires_payment: z.boolean(),
+  session_attendance_enabled: z.boolean(),
+  certificate_min_sessions: z.number().int().positive().nullable(),
+  default_currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, 'Enter a 3-letter currency code, e.g. NPR.'),
 })
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>

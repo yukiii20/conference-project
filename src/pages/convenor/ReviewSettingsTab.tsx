@@ -10,6 +10,10 @@ type Settings = {
   max_file_size_mb: number
   allowed_file_types: string[]
   authors_see_review_comments: boolean
+  registration_requires_payment: boolean
+  session_attendance_enabled: boolean
+  certificate_min_sessions: number | null
+  default_currency: string
 }
 
 const REVIEW_MODE_LABELS: Record<Settings['review_mode'], string> = {
@@ -183,6 +187,51 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
         />
         Authors can see reviewers' comments (never confidential comments or reviewer names)
       </label>
+
+      <div className="border-t border-line pt-5">
+        <h3 className="text-sm font-semibold text-ink">Registration, attendance and certificates</h3>
+
+        <label className="mt-3 flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={form.registration_requires_payment}
+            onChange={(e) => setForm({ ...form, registration_requires_payment: e.target.checked })}
+          />
+          Registration requires payment (leaves new registrations "pending" until confirmed manually)
+        </label>
+
+        <label className="mt-3 flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={form.session_attendance_enabled}
+            onChange={(e) => setForm({ ...form, session_attendance_enabled: e.target.checked })}
+          />
+          Enable per-session attendance check-in
+        </label>
+
+        <div className="mt-3">
+          <label className="block text-sm font-medium text-ink">Minimum sessions for a participation certificate</label>
+          <p className="mt-1 text-xs text-ink/50">Leave blank to require only a conference check-in.</p>
+          <input
+            type="number"
+            min={1}
+            value={form.certificate_min_sessions ?? ''}
+            onChange={(e) => setForm({ ...form, certificate_min_sessions: e.target.value ? Number(e.target.value) : null })}
+            className="mt-1 w-32 rounded-md border border-line px-3 py-2 focus:border-button"
+          />
+        </div>
+
+        <div className="mt-3">
+          <label className="block text-sm font-medium text-ink">Default currency</label>
+          <input
+            value={form.default_currency}
+            onChange={(e) => setForm({ ...form, default_currency: e.target.value })}
+            maxLength={3}
+            className="mt-1 w-24 rounded-md border border-line px-3 py-2 uppercase focus:border-button"
+          />
+          {errors.default_currency ? <p className="mt-1 text-sm text-red-600">{errors.default_currency}</p> : null}
+        </div>
+      </div>
 
       <button
         type="submit"

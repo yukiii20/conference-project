@@ -24,6 +24,8 @@ export const E2E = {
   authorEmail: 'e2e-author@example.com',
   chairEmail: 'e2e-chair@example.com',
   acceptedSubmissionTitle: 'E2E Accepted Paper',
+  // Step 4 (registration/attendance/certificates) fixtures.
+  staffEmail: 'e2e-staff@example.com',
 }
 
 async function main() {
@@ -57,6 +59,23 @@ async function main() {
     await pool.query('DELETE FROM conference_sessions WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM schedule_slots WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM rooms WHERE conference_id = ?', [existingConferenceId])
+
+    // Step 4 (registration/attendance/certificates) tables.
+    await pool.query('DELETE FROM certificates WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM certificate_templates WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM session_attendance WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM conference_attendance WHERE conference_id = ?', [existingConferenceId])
+    await pool.query(
+      `DELETE pwe FROM payment_webhook_events pwe JOIN payments p ON p.id = pwe.payment_id WHERE p.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query('DELETE FROM payments WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM registrations WHERE conference_id = ?', [existingConferenceId])
+    await pool.query(
+      `DELETE rf FROM registration_fees rf JOIN registration_categories rc ON rc.id = rf.category_id WHERE rc.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query('DELETE FROM registration_categories WHERE conference_id = ?', [existingConferenceId])
 
     await pool.query(
       `DELETE r FROM reviews r JOIN review_assignments ra ON ra.id = r.assignment_id WHERE ra.conference_id = ?`,
@@ -107,11 +126,12 @@ async function main() {
     await pool.query('DELETE FROM conference_settings WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM conferences WHERE id = ?', [existingConferenceId])
   }
-  await pool.query('DELETE FROM users WHERE email IN (?, ?, ?, ?)', [
+  await pool.query('DELETE FROM users WHERE email IN (?, ?, ?, ?, ?)', [
     E2E.adminEmail,
     E2E.convenorEmail,
     E2E.authorEmail,
     E2E.chairEmail,
+    E2E.staffEmail,
   ])
 
   await pool.query(
@@ -121,7 +141,17 @@ async function main() {
   )
   const [rows] = await pool.query('SELECT id FROM conferences WHERE slug = ? LIMIT 1', [E2E.conferenceSlug])
   const conferenceId = (rows as Array<{ id: string }>)[0]!.id
-  await pool.query('INSERT INTO conference_settings (conference_id) VALUES (?)', [conferenceId])
+  // registration_requires_payment = FALSE so the Step 4 e2e spec's
+  // "register to attend" goes straight to confirmed, no manual step needed.
+  await pool.query(
+    'INSERT INTO conference_settings (conference_id, registration_requires_payment) VALUES (?, FALSE)',
+    [conferenceId],
+  )
+  await pool.query(
+    `INSERT INTO conference_deadlines (conference_id, deadline_type, opens_at, closes_at)
+     VALUES (?, 'registration', DATE_SUB(NOW(3), INTERVAL 1 DAY), DATE_ADD(NOW(3), INTERVAL 30 DAY))`,
+    [conferenceId],
+  )
 
   await pool.query('INSERT INTO users (email, password_hash, full_name, phone) VALUES (?, ?, ?, ?)', [
     E2E.adminEmail,
@@ -171,6 +201,11 @@ async function main() {
     conferenceId,
     authorId,
   ])
+  await pool.query(
+    `INSERT INTO role_requests (user_id, conference_id, role_code, status, reviewed_by, reviewed_at)
+     VALUES (?, ?, 'author', 'approved', ?, NOW(3))`,
+    [authorId, conferenceId, convenorId],
+  )
 
   await pool.query(
     `INSERT INTO submissions (conference_id, track_id, title, abstract, status, created_by)
@@ -208,12 +243,32 @@ async function main() {
     [chairId, conferenceId, convenorId],
   )
 
+  // Step 4 (registration/attendance/certificates) fixture: a staff member who can check people in.
+  await pool.query('INSERT INTO users (email, password_hash, full_name, phone) VALUES (?, ?, ?, ?)', [
+    E2E.staffEmail,
+    passwordHash,
+    'E2E Staff',
+    '+9779855555555',
+  ])
+  const [staffRows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [E2E.staffEmail])
+  const staffId = (staffRows as Array<{ id: string }>)[0]!.id
+  await pool.query(`INSERT INTO conference_members (conference_id, user_id, role_code) VALUES (?, ?, 'staff')`, [
+    conferenceId,
+    staffId,
+  ])
+  await pool.query(
+    `INSERT INTO role_requests (user_id, conference_id, role_code, status, reviewed_by, reviewed_at)
+     VALUES (?, ?, 'staff', 'approved', ?, NOW(3))`,
+    [staffId, conferenceId, convenorId],
+  )
+
   console.log(`E2E fixtures seeded in ${connectedDb}:`)
   console.log(`  conference: ${E2E.conferenceSlug} (${conferenceId})`)
   console.log(`  admin: ${E2E.adminEmail}`)
   console.log(`  convenor: ${E2E.convenorEmail}`)
   console.log(`  author: ${E2E.authorEmail} (accepted paper: ${E2E.acceptedSubmissionTitle})`)
   console.log(`  session chair: ${E2E.chairEmail}`)
+  console.log(`  staff: ${E2E.staffEmail}`)
 
   await pool.end()
 }

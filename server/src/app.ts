@@ -29,6 +29,8 @@ import { speakersRouter } from './modules/speakers/routes.js'
 import { emailTemplatesRouter } from './modules/emailTemplates/routes.js'
 import { reportsRouter } from './modules/reports/routes.js'
 import { activityLogRouter } from './modules/activityLog/routes.js'
+import { registrationRouter } from './modules/registration/routes.js'
+import { certificatesRouter, certificatesPublicRouter } from './modules/certificates/routes.js'
 import { PUBLIC_DIR } from './storage/paths.js'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -154,6 +156,9 @@ export function createApp() {
   app.use('/api/conferences', emailTemplatesRouter)
   app.use('/api/conferences', reportsRouter)
   app.use('/api/conferences', activityLogRouter)
+  app.use('/api/conferences', registrationRouter)
+  app.use('/api/conferences', certificatesRouter)
+  app.use('/api', certificatesPublicRouter)
   app.use('/api/submissions', submissionsRouter)
   app.use('/api/reviewer', reviewerRouter)
   app.use('/api/role-requests', roleRequestsRouter)

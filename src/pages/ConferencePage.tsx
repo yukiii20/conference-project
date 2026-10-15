@@ -6,6 +6,7 @@ import { formatDateRange, formatKathmandu, formatKathmanduTime, kathmanduDateKey
 import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } from '../lib/color'
 import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
+import { RegistrationPanel } from './conference/RegistrationPanel'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
 import {
   DEADLINE_LABELS,
@@ -625,6 +626,20 @@ export function ConferencePage() {
             ))}
           </div>
         )}
+      </section>
+
+      <section
+        id="registration"
+        ref={(el) => {
+          sectionRefs.current.registration = el
+        }}
+        style={sectionStyle}
+        className="mx-auto max-w-3xl px-4 py-12"
+      >
+        <h2 className="text-2xl font-semibold">Registration</h2>
+        <div className="mt-4">
+          <RegistrationPanel conferenceId={conference.id} accent={accent} />
+        </div>
       </section>
 
       <section

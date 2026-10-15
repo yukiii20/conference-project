@@ -12,6 +12,10 @@ const COLUMNS = [
   'max_file_size_mb',
   'allowed_file_types',
   'authors_see_review_comments',
+  'registration_requires_payment',
+  'session_attendance_enabled',
+  'certificate_min_sessions',
+  'default_currency',
 ] as const
 
 export type SettingsRow = Record<(typeof COLUMNS)[number], unknown>
@@ -43,7 +47,8 @@ export async function updateSettings(
       `UPDATE conference_settings
        SET review_mode = ?, reviews_required = ?, max_submissions_per_author = ?,
            max_abstract_words = ?, max_file_size_mb = ?, allowed_file_types = ?,
-           authors_see_review_comments = ?
+           authors_see_review_comments = ?, registration_requires_payment = ?,
+           session_attendance_enabled = ?, certificate_min_sessions = ?, default_currency = ?
        WHERE conference_id = ?`,
       [
         input.review_mode,
@@ -53,6 +58,10 @@ export async function updateSettings(
         input.max_file_size_mb,
         JSON.stringify(input.allowed_file_types),
         input.authors_see_review_comments,
+        input.registration_requires_payment,
+        input.session_attendance_enabled,
+        input.certificate_min_sessions,
+        input.default_currency,
         conferenceId,
       ],
     )
