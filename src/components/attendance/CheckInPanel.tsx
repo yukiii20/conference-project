@@ -139,13 +139,21 @@ export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
         <p className="text-sm font-medium text-ink">Scan a QR code</p>
         {cameraSupported ? (
           <div className="mt-2">
+            {/* Always mounted (just hidden when off) so videoRef.current is a
+                real DOM node before startCamera ever calls decodeFromConstraints
+                — attaching the stream to a ref that doesn't exist yet is what
+                caused a black box with no picture. */}
+            <video
+              ref={videoRef}
+              className={`w-full max-w-sm rounded-md bg-black ${cameraOn ? '' : 'hidden'}`}
+              muted
+              autoPlay
+              playsInline
+            />
             {cameraOn ? (
-              <div>
-                <video ref={videoRef} className="w-full max-w-sm rounded-md bg-black" muted playsInline />
-                <button type="button" onClick={stopCamera} className="mt-2 rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background">
-                  Stop camera
-                </button>
-              </div>
+              <button type="button" onClick={stopCamera} className="mt-2 rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background">
+                Stop camera
+              </button>
             ) : (
               <button
                 type="button"
