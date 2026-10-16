@@ -454,7 +454,7 @@ function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise
         {errors.name ? <p className="mt-1 text-sm text-red-600">{errors.name}</p> : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="new-short-name" className="block text-sm font-medium text-ink">
             Short name
@@ -496,7 +496,7 @@ function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise
         {errors.slug ? <p className="mt-1 text-sm text-red-600">{errors.slug}</p> : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="new-start" className="block text-sm font-medium text-ink">
             Start date
@@ -527,7 +527,7 @@ function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label htmlFor="new-city" className="block text-sm font-medium text-ink">
             City
@@ -1151,8 +1151,8 @@ function AnonymizeConfirmDialog({
   const matches = profile.email != null && typedEmail.trim().toLowerCase() === profile.email.toLowerCase()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-lg">
         <h2 className="text-lg font-semibold text-ink">Anonymise this user?</h2>
         <p className="mt-2 text-sm text-ink/70">
           This permanently replaces {profile.full_name ?? 'this user'}'s name, email, phone and profile photo with

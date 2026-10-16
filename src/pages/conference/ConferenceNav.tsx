@@ -459,7 +459,11 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
           {conference.name}
         </a>
 
-        <div className="hidden items-center gap-x-4 gap-y-2 text-sm md:flex">
+        {/* 10 fixed section links plus Sign in/Register need ~1066px to lay out
+            in one row without wrapping — that doesn't fit until the xl
+            breakpoint, so the mobile drawer below has to cover md/lg too,
+            not just small screens, or this row overflows at 768-1024px. */}
+        <div className="hidden items-center gap-x-4 gap-y-2 text-sm xl:flex">
           {SECTIONS.map((s) => (
             <NavItem
               key={s.id}
@@ -487,7 +491,7 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
           </Link>
         </div>
 
-        <div className="relative md:hidden">
+        <div className="relative xl:hidden">
           <button
             type="button"
             aria-expanded={mobileOpen}

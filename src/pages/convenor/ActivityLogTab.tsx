@@ -30,7 +30,13 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
   useEffect(() => {
     api
       .get<{ members: Member[] }>(`/conferences/${conferenceId}/members`)
-      .then((d) => setMembers(d.members))
+      // One row per role — someone holding two roles (e.g. reviewer and
+      // session chair) otherwise shows up twice in this "filter by person"
+      // list, with two options sharing the same key and value.
+      .then((d) => {
+        const seen = new Set<string>()
+        setMembers(d.members.filter((m) => (seen.has(m.user_id) ? false : (seen.add(m.user_id), true))))
+      })
       .catch(() => setMembers([]))
   }, [conferenceId])
 

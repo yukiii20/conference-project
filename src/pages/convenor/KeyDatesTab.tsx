@@ -153,7 +153,7 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
               </div>
 
               {t.is_window ? (
-                <div className="mt-3 grid grid-cols-2 gap-4">
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs font-medium text-ink/60">Opens</label>
                     <input

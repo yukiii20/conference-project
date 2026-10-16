@@ -141,7 +141,7 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
           {errors.address ? <p className="mt-1 text-sm text-red-600">{errors.address}</p> : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="city" className="block text-sm font-medium text-ink">
               City

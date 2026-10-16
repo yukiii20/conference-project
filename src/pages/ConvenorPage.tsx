@@ -171,6 +171,8 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
           <button
             type="button"
             onClick={() => setMobileNavOpen((v) => !v)}
+            aria-expanded={mobileNavOpen}
+            aria-controls="convenor-sidebar"
             className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background md:hidden"
           >
             {mobileNavOpen ? 'Close menu' : 'Menu'}
@@ -206,7 +208,7 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
         ) : null}
 
         <div className="mt-6 flex flex-col gap-6 md:flex-row">
-          <aside className={`shrink-0 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}>
+          <aside id="convenor-sidebar" className={`shrink-0 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}>
             <ConvenorSidebar
               base={base}
               isManager={isManagerPortal}

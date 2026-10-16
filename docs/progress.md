@@ -136,3 +136,73 @@ tsc, build, server tests (438 passed) and Playwright (33 passed, including the s
 manual-check-in flow in registration.spec.ts) all green. Camera scanning itself still can't be
 exercised by an automated test (no real camera in this environment) - still needs the user to
 confirm on a real device.
+
+## Step 6 - Role portals and My certificates - DONE
+Found substantial prior-session WIP already in place (portal section components, sidebar
+config, RegistrationsList extraction, backend /me/certificates and session-chair isolation)
+and finished it: built the shared `/portal` shell (`PortalPage.tsx`) that every non-convenor/
+manager/admin role now lands on - one sidebar computed per visitor from the roles they hold in
+the currently-selected conference (cross-conference for session chair), a conference switcher,
+mobile drawer nav matching the convenor portal's pattern, the shared Dashboard/My ticket/My
+certificates/Notifications sections plus role sections (My submissions, My reviews, My
+sessions, Check-in desk). Old single-role URLs (/author, /reviewer, /staff, /session-chair)
+now redirect into /portal/<section>, query string preserved; updated the two backend
+notification linkPath values and the login redirect table to point there directly instead of
+round-tripping through the redirect. Deleted the five now-superseded files (AuthorPage,
+ReviewerPage, StaffPage, SessionChairPage, the already-orphaned SimpleRolePage). Added a
+"recent check-ins" list (new /attendance/recent endpoint + RecentCheckins.tsx) to the staff
+check-in desk, wired to refresh after every check-in alongside the counts (previously static).
+Extended server/tests/e2eSeed.ts with reviewer and manager fixtures, and gave the session-chair
+fixture a second role (reviewer) to exercise the "sees both sections in one sidebar" case.
+New e2e/portal.spec.ts: per-role login-to-dashboard-to-every-sidebar-page at desktop and 390px
+for author/reviewer/session_chair/staff/manager, the two-role sidebar check, the old-URL
+redirect, and a full register-check-in-issue-release-download certificate flow through the
+portal's own My ticket/My certificates screens with a throwaway author (kept separate from the
+shared e2e-author fixture registration.spec.ts already uses, since a conference only allows one
+active registration per user). Updated existing e2e specs' post-login URL assertions
+(main/notifications/submissions/registration/programme.spec.ts) for the new /portal landing.
+tsc (root+server), build (both), server tests (445 passed), root tests (21 passed), Playwright
+(46 passed, full suite + new portal.spec.ts) all green.
+
+## Post-Step-6 follow-up - certificate template upload fields renamed and restyled
+Relabelled the certificate template form's three image fields (Certificate background / First
+signature / Second signature, each with its size/format helper text) and replaced their plain
+`<input type="file">` with the existing shared `ImageUpload` component (already used by
+supporter logos and speaker photos) for a styled Upload/Replace button, thumbnail preview, and
+a Remove button. Remove needed a real backend endpoint neither image type had before (only
+upload existed) - added `DELETE .../background` and `DELETE .../signatories/:index/signature`
+(service functions `removeTemplateBackground`/`removeSignatorySignature`, same
+null-the-path-and-delete-the-old-file shape as the existing supporter-logo DELETE route; no
+schema change). Extended `ImageUpload` itself with optional `uploadButtonText`/
+`replaceButtonText` overrides (so "Upload background" flips to "Replace image", not "Replace
+certificate background") and a kept-after-upload filename display, backward compatible with
+its existing Supporters/Speakers/Profile-photo callers.
+tsc, build, server tests, root tests, and Playwright all green (see the Step 6 entry above and
+the responsive-audit entry below, run together with this change in the same final verification
+pass).
+
+## Responsive UI/UX audit - DONE (docs/responsive-ui-audit.md)
+Full audit and fix pass across every route/role for mobile-first responsiveness, per the user's
+detailed brief. Found the shared layouts already had solid foundations from earlier steps
+(mobile drawer nav, every table in its own overflow-x-auto wrapper, consistent modal sizing,
+prefers-reduced-motion respected) - fixed what was actually broken rather than rebuilding:
+(1) the public conference page's desktop nav overflowed by up to 298px at 768-1024px because it
+switched on at the md: breakpoint with ~1066px of content - bumped both the desktop nav and the
+mobile hamburger to xl: so they stay in sync; (2) PortalPage's conferenceId started null and
+only resolved via a useEffect, so a direct visit to a role-gated route like /portal/author
+bounced to the dashboard before the effect ran - fixed with a synchronous lazy useState
+initializer; (3) seven form grids (KeyDatesTab, ConferenceDetailsTab, LocationTab, ProgrammeTab,
+CertificatesTab, SuperAdminPage x3) used a bare grid-cols-2/3 with no narrow-screen fallback,
+riskiest around datetime-local inputs - stacked to one column below sm:; (4) one modal lacked
+the max-h-full/overflow-y-auto safety net the other two already had; (5) the two sidebar "Menu"
+toggles lacked aria-expanded/aria-controls. Added e2e/responsive.spec.ts: 42 tests checking
+document-level horizontal overflow across public pages, convenor (all 7 sections), manager,
+every super-admin tab, and the shared portal (all 4 roles + My ticket/My certificates), at
+320/375/390/430/768/1024/1440px. Captured and visually inspected screenshots (not just
+overflow-checked) for home/conference-detail/convenor/staff/super-admin at representative
+widths.
+tsc (root+server), build (both), server tests (441/445 - one pre-existing unrelated Windows
+Vitest worker crash, documented in final-test-report.md, confirmed by re-running that file
+alone), root tests (21 passed), Playwright (88/88, full suite + responsive.spec.ts) all green.
+See docs/responsive-ui-audit.md for the full findings, screenshots-inspected list, and honestly
+disclosed remaining limitations (1920px and real-device/real-camera testing not covered).
