@@ -255,4 +255,38 @@ describe('attendance check-in', () => {
     expect(dashboard.body.registered).toBe(1)
     expect(dashboard.body.checked_in_today).toBe(1)
   })
+
+  it('lets staff and session chairs search registrations, but not a plain author', async () => {
+    const conferenceId = await createConference()
+    await openRegistration(conferenceId)
+    const { registrationId } = await registerAndConfirm(conferenceId, 'search-attendee@example.com')
+
+    const { agent: staffAgent } = await loginAs(conferenceId, 'search-staff@example.com', 'staff')
+    const staffRes = await staffAgent.get(`/api/conferences/${conferenceId}/registrations/search?q=search-attendee`)
+    expect(staffRes.status).toBe(200)
+    expect(staffRes.body.registrations.some((r: { id: string }) => r.id === registrationId)).toBe(true)
+
+    const { agent: authorAgent } = await loginAs(conferenceId, 'search-author@example.com', 'author')
+    const authorRes = await authorAgent.get(`/api/conferences/${conferenceId}/registrations/search?q=search-attendee`)
+    expect(authorRes.status).toBe(403)
+
+    // A session chair with no attendance.record permission can still search,
+    // since they need to find people to check into their own session.
+    await pool.query(`INSERT INTO rooms (conference_id, name, equipment) VALUES (?, 'Hall A', JSON_ARRAY())`, [conferenceId])
+    const [roomRows] = await pool.query('SELECT id FROM rooms WHERE conference_id = ? LIMIT 1', [conferenceId])
+    const roomId = (roomRows as Array<{ id: string }>)[0]!.id
+    await pool.query(
+      `INSERT INTO conference_sessions (conference_id, room_id, title, session_type, starts_at, ends_at, status)
+       VALUES (?, ?, 'Talk', 'paper', DATE_ADD(NOW(3), INTERVAL 1 HOUR), DATE_ADD(NOW(3), INTERVAL 2 HOUR), 'published')`,
+      [conferenceId, roomId],
+    )
+    const [sessionRows] = await pool.query('SELECT id FROM conference_sessions WHERE conference_id = ? LIMIT 1', [conferenceId])
+    const sessionId = (sessionRows as Array<{ id: string }>)[0]!.id
+    const { agent: chairAgent, userId: chairId } = await loginAs(conferenceId, 'search-chair@example.com', 'session_chair')
+    await pool.query(`INSERT INTO session_chairs (session_id, user_id, chair_role) VALUES (?, ?, 'chair')`, [sessionId, chairId])
+
+    const chairRes = await chairAgent.get(`/api/conferences/${conferenceId}/registrations/search?q=search-attendee`)
+    expect(chairRes.status).toBe(200)
+    expect(chairRes.body.registrations.some((r: { id: string }) => r.id === registrationId)).toBe(true)
+  })
 })

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api, ApiError } from '../lib/api'
-import { formatKathmandu } from '../lib/datetime'
-import { getRoleDefinition } from '../lib/roles'
-import { PortalHeader } from '../components/PortalHeader'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { api, ApiError } from '../../../lib/api'
+import { formatKathmandu } from '../../../lib/datetime'
+
+// Lazy for the same reason as the staff check-in page — zxing (~450 KB)
+// only needs to load for a chair who actually opens this panel.
+const CheckInPanel = lazy(() => import('../../../components/attendance/CheckInPanel'))
 
 type ChairSession = {
   conference_id: string
@@ -45,6 +47,7 @@ function MarkAttendancePanel({
   const [detail, setDetail] = useState<SessionDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [showCheckIn, setShowCheckIn] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -138,19 +141,31 @@ function MarkAttendancePanel({
               ))}
             </ul>
           )}
+
+          <div className="mt-5 border-t border-line pt-4">
+            <button
+              type="button"
+              onClick={() => setShowCheckIn((v) => !v)}
+              className="text-sm font-medium text-button hover:underline"
+            >
+              {showCheckIn ? 'Hide session check-in' : 'Check attendees into this session'}
+            </button>
+            {showCheckIn ? (
+              <div className="mt-3">
+                <Suspense fallback={<p className="text-sm text-ink/60">Loading…</p>}>
+                  <CheckInPanel conferenceId={conferenceId} scope={{ type: 'session', sessionId }} />
+                </Suspense>
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-/**
- * Cross-conference "My sessions" list for anyone holding the session_chair
- * role, backed by GET /api/me/chair-sessions. Identity comes only from the
- * shared auth context — this page itself never reads roles client-side to
- * decide access; ProtectedRoute already gated the route.
- */
-export function SessionChairPage() {
+/** Cross-conference "My sessions" — every session this chair is assigned to, everywhere, via GET /api/me/chair-sessions. */
+export function SessionChairSection() {
   const [sessions, setSessions] = useState<ChairSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -174,56 +189,48 @@ export function SessionChairPage() {
   }, [load])
 
   return (
-    <div className="min-h-screen bg-background text-ink">
-      <PortalHeader roleLabel={getRoleDefinition('session_chair')?.label ?? 'Session Chair'} />
+    <div className="mt-6 max-w-3xl">
+      <h2 className="text-lg font-medium text-ink">My sessions</h2>
 
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        <h1 className="text-2xl font-semibold">My sessions</h1>
+      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
 
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-
-        {open ? (
-          <div className="mt-6">
-            <MarkAttendancePanel
-              conferenceId={open.conferenceId}
-              sessionId={open.sessionId}
-              onBack={() => setOpen(null)}
-            />
-          </div>
-        ) : loading ? (
-          <p className="mt-6 text-sm text-ink/60">Loading…</p>
-        ) : sessions.length === 0 ? (
-          <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-            You are not assigned to chair any sessions yet.
-          </p>
-        ) : (
-          <ul className="mt-6 space-y-3">
-            {sessions.map((s) => (
-              <li
-                key={s.session_id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-4"
+      {open ? (
+        <div className="mt-4">
+          <MarkAttendancePanel conferenceId={open.conferenceId} sessionId={open.sessionId} onBack={() => setOpen(null)} />
+        </div>
+      ) : loading ? (
+        <p className="mt-4 text-sm text-ink/60">Loading…</p>
+      ) : sessions.length === 0 ? (
+        <p className="mt-4 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
+          You are not assigned to chair any sessions yet.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {sessions.map((s) => (
+            <li
+              key={s.session_id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-4"
+            >
+              <div>
+                <p className="font-medium text-ink">{s.title}</p>
+                <p className="text-sm text-ink/60">
+                  {s.conference_name} · {s.room_name}
+                </p>
+                <p className="text-sm text-ink/60">
+                  {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen({ conferenceId: s.conference_id, sessionId: s.session_id })}
+                className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90"
               >
-                <div>
-                  <p className="font-medium text-ink">{s.title}</p>
-                  <p className="text-sm text-ink/60">
-                    {s.conference_name} · {s.room_name}
-                  </p>
-                  <p className="text-sm text-ink/60">
-                    {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setOpen({ conferenceId: s.conference_id, sessionId: s.session_id })}
-                  className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-                >
-                  Mark attendance
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </main>
+                Mark attendance
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

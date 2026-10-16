@@ -102,7 +102,7 @@ test.describe('author sign-up -> convenor approval -> author login', () => {
 
   test('author can log in after approval', async ({ page }) => {
     await signIn(page, authorEmail, FIXTURE.password, 'author')
-    await expect(page).toHaveURL(/\/author/)
+    await expect(page).toHaveURL(/\/portal/)
   })
 })
 

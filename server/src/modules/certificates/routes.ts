@@ -16,6 +16,8 @@ import {
   previewEligibleCount,
   previewTemplatePdf,
   releaseNow,
+  removeSignatorySignature,
+  removeTemplateBackground,
   revokeCertificate,
   setSignatorySignature,
   setTemplateBackground,
@@ -88,6 +90,19 @@ certificatesRouter.post(
   },
 )
 
+certificatesRouter.delete(
+  '/:id/certificate-templates/:templateId/background',
+  requireConferencePermission('certificate.manage'),
+  async (req, res, next) => {
+    try {
+      await removeTemplateBackground(req.user!.id, req.params.id!, req.params.templateId!, auditContextFrom(req))
+      res.json({ message: 'Removed.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
 certificatesRouter.post(
   '/:id/certificate-templates/:templateId/signatories/:index/signature',
   requireConferencePermission('certificate.manage'),
@@ -100,6 +115,20 @@ certificatesRouter.post(
       const index = Number(req.params.index)
       await setSignatorySignature(req.user!.id, req.params.id!, req.params.templateId!, index, processed, auditContextFrom(req))
       res.json({ message: 'Signature uploaded.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+certificatesRouter.delete(
+  '/:id/certificate-templates/:templateId/signatories/:index/signature',
+  requireConferencePermission('certificate.manage'),
+  async (req, res, next) => {
+    try {
+      const index = Number(req.params.index)
+      await removeSignatorySignature(req.user!.id, req.params.id!, req.params.templateId!, index, auditContextFrom(req))
+      res.json({ message: 'Removed.' })
     } catch (err) {
       next(err)
     }

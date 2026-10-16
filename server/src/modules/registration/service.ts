@@ -296,13 +296,17 @@ export type AdminRegistrationRow = {
 // in a list response (only the owner's own QR-image endpoint reads it).
 export async function listRegistrations(
   conferenceId: string,
-  filter: { search?: string; status?: string } = {},
+  filter: { search?: string; status?: string; categoryId?: string } = {},
 ): Promise<AdminRegistrationRow[]> {
   const conditions = ['r.conference_id = ?']
   const params: unknown[] = [conferenceId]
   if (filter.status) {
     conditions.push('r.status = ?')
     params.push(filter.status)
+  }
+  if (filter.categoryId) {
+    conditions.push('r.category_id = ?')
+    params.push(filter.categoryId)
   }
   if (filter.search) {
     conditions.push('(u.full_name LIKE ? OR u.email LIKE ? OR r.registration_number LIKE ?)')
@@ -571,6 +575,30 @@ async function assertSessionAttendanceEnabled(conn: PoolConnection, conferenceId
   if (!enabled) throw new ConflictError('Session attendance is not enabled for this conference.')
 }
 
+/**
+ * attendance.record (staff/convenor/manager), or a chair of any session in
+ * this conference — chairs need to search for someone to check into their
+ * own session, but don't know which registration matches until they search,
+ * so this can't be scoped to one specific session the way the actual
+ * check-in call below is.
+ */
+export async function assertCanSearchRegistrations(userId: string, conferenceId: string): Promise<void> {
+  try {
+    await assertConferencePermission(userId, conferenceId, 'attendance.record')
+    return
+  } catch {
+    // fall through to the chair check below
+  }
+  const [rows] = await pool.query(
+    `SELECT 1 FROM session_chairs sc JOIN conference_sessions cs ON cs.id = sc.session_id
+     WHERE cs.conference_id = ? AND sc.user_id = ? LIMIT 1`,
+    [conferenceId, userId],
+  )
+  if ((rows as unknown[]).length === 0) {
+    throw new ForbiddenError('You do not have permission to do this.')
+  }
+}
+
 /** attendance.record (staff/convenor/manager), or a chair of this specific session. */
 export async function assertCanRecordSessionAttendance(userId: string, conferenceId: string, sessionId: string): Promise<void> {
   try {
@@ -705,4 +733,27 @@ export async function getAttendanceDashboard(conferenceId: string): Promise<Atte
       count: Number(r.n),
     })),
   }
+}
+
+export type RecentCheckinRow = {
+  id: string
+  full_name: string
+  registration_number: string
+  method: 'qr' | 'manual'
+  checked_in_at: string
+}
+
+/** Most recent conference-wide check-ins (not session check-ins), newest first — for the check-in desk's "recent check-ins" list. */
+export async function listRecentCheckins(conferenceId: string, limit = 20): Promise<RecentCheckinRow[]> {
+  const [rows] = await pool.query(
+    `SELECT ca.id, u.full_name, r.registration_number, ca.method, ca.checked_in_at
+     FROM conference_attendance ca
+     JOIN registrations r ON r.id = ca.registration_id
+     JOIN users u ON u.id = ca.user_id
+     WHERE ca.conference_id = ?
+     ORDER BY ca.checked_in_at DESC
+     LIMIT ?`,
+    [conferenceId, limit],
+  )
+  return rows as RecentCheckinRow[]
 }

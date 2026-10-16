@@ -100,7 +100,8 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
 
   // 3. Author creates a draft and submits it.
   await signIn(page, authorEmail, FIXTURE.password, 'author')
-  await expect(page).toHaveURL(/\/author/)
+  await expect(page).toHaveURL(/\/portal/)
+  await page.locator('nav').getByRole('link', { name: 'My submissions' }).click()
   await page.getByRole('button', { name: 'New abstract' }).click()
   await page.locator('select').first().selectOption({ label: trackName })
   await page.locator('form').getByRole('textbox').nth(0).fill(title)
@@ -123,7 +124,8 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
 
   // 5. Reviewer accepts the assignment and submits a review.
   await signIn(page, reviewerEmail, FIXTURE.password, 'reviewer')
-  await expect(page).toHaveURL(/\/reviewer/)
+  await expect(page).toHaveURL(/\/portal/)
+  await page.locator('nav').getByRole('link', { name: 'My reviews' }).click()
   await page.getByRole('button', { name: 'Accept' }).click()
   await page.getByRole('button', { name: 'Write review' }).click()
   await page.locator('textarea').first().fill('Solid work overall, recommend accepting with minor edits.')
@@ -141,7 +143,8 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
 
   // 7. Author uploads the full paper now that the submission is accepted.
   await signIn(page, authorEmail, FIXTURE.password, 'author')
-  await expect(page).toHaveURL(/\/author/)
+  await expect(page).toHaveURL(/\/portal/)
+  await page.locator('nav').getByRole('link', { name: 'My submissions' }).click()
   await page.getByText(title).click()
   // File input order on the page: abstract (0), full paper (1), slides (2).
   await page.locator('input[type="file"]').nth(1).setInputFiles({

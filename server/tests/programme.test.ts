@@ -541,8 +541,25 @@ describe('personal views', () => {
       .post(`/api/conferences/${conferenceId}/sessions/${session.body.id}/chairs`)
       .send({ user_id: chairId, chair_role: 'chair' })
 
+    // A second session chaired by someone else must not leak into this chair's list.
+    const otherSession = await agent.post(`/api/conferences/${conferenceId}/sessions`).send({
+      title: 'Someone Else\'s Session',
+      session_type: 'paper',
+      track_id: null,
+      room_id: roomId,
+      description: null,
+      starts_at: soon(5).toISOString(),
+      ends_at: soon(6).toISOString(),
+      status: 'published',
+    })
+    const { userId: otherChairId } = await loginAs(conferenceId, 'chairlist-other-chair@example.com', 'session_chair')
+    await agent
+      .post(`/api/conferences/${conferenceId}/sessions/${otherSession.body.id}/chairs`)
+      .send({ user_id: otherChairId, chair_role: 'chair' })
+
     const res = await chairAgent.get('/api/me/chair-sessions')
     expect(res.status).toBe(200)
     expect(res.body.sessions.some((s: { session_id: string }) => s.session_id === session.body.id)).toBe(true)
+    expect(res.body.sessions.some((s: { session_id: string }) => s.session_id === otherSession.body.id)).toBe(false)
   })
 })

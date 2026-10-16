@@ -67,6 +67,7 @@ describe('B1 convenor submissions overview', () => {
     const { agent: convenorAgent } = await makeMember(conferenceId, 'b1-convenor@example.com', 'convenor')
     const { agent: reviewerAgent } = await makeMember(conferenceId, 'b1-reviewer@example.com', 'reviewer')
     const { agent: authorAgent } = await makeMember(conferenceId, 'b1-other-author@example.com', 'author')
+    const { agent: staffAgent } = await makeMember(conferenceId, 'b1-staff@example.com', 'staff')
 
     const list = await convenorAgent.get(`/api/conferences/${conferenceId}/submissions`)
     expect(list.status).toBe(200)
@@ -76,6 +77,11 @@ describe('B1 convenor submissions overview', () => {
     expect(reviewerList.status).toBe(403)
     const authorList = await authorAgent.get(`/api/conferences/${conferenceId}/submissions`)
     expect(authorList.status).toBe(403)
+    // Staff (registration.read_all + attendance.record only) must never see papers or reviews.
+    const staffList = await staffAgent.get(`/api/conferences/${conferenceId}/submissions`)
+    expect(staffList.status).toBe(403)
+    const staffDetail = await staffAgent.get(`/api/conferences/${conferenceId}/submissions/${id}`)
+    expect(staffDetail.status).toBe(403)
   })
 })
 

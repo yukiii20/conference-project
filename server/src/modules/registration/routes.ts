@@ -8,6 +8,7 @@ import { NotFoundError } from '../../utils/errors.js'
 import {
   adminCancelRegistration,
   assertCanRecordSessionAttendance,
+  assertCanSearchRegistrations,
   cancelMyRegistration,
   checkinByQrToken,
   checkinByRegistrationId,
@@ -19,6 +20,7 @@ import {
   getMyRegistration,
   getMyRegistrationQrToken,
   listCategories,
+  listRecentCheckins,
   listRegistrations,
   register,
   searchRegistrations,
@@ -122,7 +124,8 @@ registrationRouter.get('/:id/registrations', requireConferencePermission('regist
   try {
     const search = typeof req.query.search === 'string' ? req.query.search : undefined
     const status = typeof req.query.status === 'string' ? req.query.status : undefined
-    res.json({ registrations: await listRegistrations(req.params.id!, { search, status }) })
+    const categoryId = typeof req.query.category_id === 'string' ? req.query.category_id : undefined
+    res.json({ registrations: await listRegistrations(req.params.id!, { search, status, categoryId }) })
   } catch (err) {
     next(err)
   }
@@ -172,9 +175,10 @@ registrationRouter.delete(
 // -------------------------------------------------------------- Attendance
 registrationRouter.get(
   '/:id/registrations/search',
-  requireConferencePermission('attendance.record'),
+  requireAuth,
   async (req, res, next) => {
     try {
+      await assertCanSearchRegistrations(req.user!.id, req.params.id!)
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
       if (!q) {
         res.json({ registrations: [] })
@@ -231,6 +235,14 @@ registrationRouter.post(
 registrationRouter.get('/:id/attendance/dashboard', requireConferencePermission('attendance.record'), async (req, res, next) => {
   try {
     res.json(await getAttendanceDashboard(req.params.id!))
+  } catch (err) {
+    next(err)
+  }
+})
+
+registrationRouter.get('/:id/attendance/recent', requireConferencePermission('attendance.record'), async (req, res, next) => {
+  try {
+    res.json({ checkins: await listRecentCheckins(req.params.id!) })
   } catch (err) {
     next(err)
   }

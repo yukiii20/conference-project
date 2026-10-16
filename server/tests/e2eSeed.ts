@@ -26,6 +26,9 @@ export const E2E = {
   acceptedSubmissionTitle: 'E2E Accepted Paper',
   // Step 4 (registration/attendance/certificates) fixtures.
   staffEmail: 'e2e-staff@example.com',
+  // Step 6 (role portals) fixtures.
+  reviewerEmail: 'e2e-reviewer@example.com',
+  managerEmail: 'e2e-manager@example.com',
 }
 
 async function main() {
@@ -126,12 +129,14 @@ async function main() {
     await pool.query('DELETE FROM conference_settings WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM conferences WHERE id = ?', [existingConferenceId])
   }
-  await pool.query('DELETE FROM users WHERE email IN (?, ?, ?, ?, ?)', [
+  await pool.query('DELETE FROM users WHERE email IN (?, ?, ?, ?, ?, ?, ?)', [
     E2E.adminEmail,
     E2E.convenorEmail,
     E2E.authorEmail,
     E2E.chairEmail,
     E2E.staffEmail,
+    E2E.reviewerEmail,
+    E2E.managerEmail,
   ])
 
   await pool.query(
@@ -242,6 +247,18 @@ async function main() {
      VALUES (?, ?, 'session_chair', 'approved', ?, NOW(3))`,
     [chairId, conferenceId, convenorId],
   )
+  // Also a reviewer in the same conference — a deliberate second role on one
+  // fixture, so the shared portal's "multiple roles in one sidebar" e2e
+  // scenario doesn't need its own throwaway account.
+  await pool.query(`INSERT INTO conference_members (conference_id, user_id, role_code) VALUES (?, ?, 'reviewer')`, [
+    conferenceId,
+    chairId,
+  ])
+  await pool.query(
+    `INSERT INTO role_requests (user_id, conference_id, role_code, status, reviewed_by, reviewed_at)
+     VALUES (?, ?, 'reviewer', 'approved', ?, NOW(3))`,
+    [chairId, conferenceId, convenorId],
+  )
 
   // Step 4 (registration/attendance/certificates) fixture: a staff member who can check people in.
   await pool.query('INSERT INTO users (email, password_hash, full_name, phone) VALUES (?, ?, ?, ?)', [
@@ -262,6 +279,46 @@ async function main() {
     [staffId, conferenceId, convenorId],
   )
 
+  // Step 6 (role portals) fixtures: a reviewer and a manager, so the shared
+  // portal's Playwright spec doesn't need to drive a signup/approval flow
+  // just to get a signed-in reviewer, and a manager exists to sign into the
+  // convenor-shell /manager portal.
+  await pool.query('INSERT INTO users (email, password_hash, full_name, phone) VALUES (?, ?, ?, ?)', [
+    E2E.reviewerEmail,
+    passwordHash,
+    'E2E Reviewer',
+    '+9779866666666',
+  ])
+  const [reviewerRows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [E2E.reviewerEmail])
+  const reviewerId = (reviewerRows as Array<{ id: string }>)[0]!.id
+  await pool.query(`INSERT INTO conference_members (conference_id, user_id, role_code) VALUES (?, ?, 'reviewer')`, [
+    conferenceId,
+    reviewerId,
+  ])
+  await pool.query(
+    `INSERT INTO role_requests (user_id, conference_id, role_code, status, reviewed_by, reviewed_at)
+     VALUES (?, ?, 'reviewer', 'approved', ?, NOW(3))`,
+    [reviewerId, conferenceId, convenorId],
+  )
+
+  await pool.query('INSERT INTO users (email, password_hash, full_name, phone) VALUES (?, ?, ?, ?)', [
+    E2E.managerEmail,
+    passwordHash,
+    'E2E Manager',
+    '+9779877777777',
+  ])
+  const [managerRows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [E2E.managerEmail])
+  const managerId = (managerRows as Array<{ id: string }>)[0]!.id
+  await pool.query(`INSERT INTO conference_members (conference_id, user_id, role_code) VALUES (?, ?, 'manager')`, [
+    conferenceId,
+    managerId,
+  ])
+  await pool.query(
+    `INSERT INTO role_requests (user_id, conference_id, role_code, status, reviewed_by, reviewed_at)
+     VALUES (?, ?, 'manager', 'approved', ?, NOW(3))`,
+    [managerId, conferenceId, convenorId],
+  )
+
   console.log(`E2E fixtures seeded in ${connectedDb}:`)
   console.log(`  conference: ${E2E.conferenceSlug} (${conferenceId})`)
   console.log(`  admin: ${E2E.adminEmail}`)
@@ -269,6 +326,8 @@ async function main() {
   console.log(`  author: ${E2E.authorEmail} (accepted paper: ${E2E.acceptedSubmissionTitle})`)
   console.log(`  session chair: ${E2E.chairEmail}`)
   console.log(`  staff: ${E2E.staffEmail}`)
+  console.log(`  reviewer: ${E2E.reviewerEmail}`)
+  console.log(`  manager: ${E2E.managerEmail}`)
 
   await pool.end()
 }

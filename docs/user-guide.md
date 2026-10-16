@@ -13,8 +13,28 @@ role.
   password, and the role you want to use (the same account can hold more
   than one role). Forgot your password? Click **Forgotten your password?**
   on the sign-in page and follow the email.
-- **The bell icon** in the top bar of any portal shows your notifications —
-  click it to see what's new and mark things read.
+- **Your portal**: author, reviewer, session chair, and staff all share one
+  portal at `/portal` — a left sidebar (tap **Menu** on a phone), a
+  conference switcher if you're involved with more than one, the
+  notification bell, and your profile menu, all in the top bar. The sidebar
+  only shows the sections your roles unlock — hold two roles (say author
+  and reviewer) and you see both sections in the same sidebar, no
+  switching portals. Old links like `/author` or `/staff` still work; they
+  just forward you into `/portal`.
+- **Dashboard**: your roles, upcoming key dates (shown in Kathmandu time),
+  and a to-do list — "1 review due in 3 days", "Upload your full paper",
+  "Registration is open", and so on. Click any item to jump straight to it.
+- **My ticket**: register to attend a conference you're involved with,
+  see your registration status, and your QR-code ticket — download it as
+  a PNG or show the page itself to staff at check-in. Cancel any time
+  before the event.
+- **My certificates**: every certificate issued to you, across every
+  conference, once the organisers release it (a revoked one still shows,
+  marked **Revoked**). **Download PDF** or **Copy verify link** to hand
+  someone a link they can check without signing in.
+- **The bell icon** in the top bar shows your notifications — click it to
+  see what's new and mark things read; **Notifications** in the sidebar
+  shows the full list.
 - **Your profile**: click your name/avatar → Profile to update your name,
   phone, or photo; Change password to set a new one.
 
@@ -26,10 +46,10 @@ role.
    **Sign up**, choose **Author**, and fill in your details. You can't sign
    in until the convenor approves your request — you'll get an email/
    notification when that happens.
-2. **Write a submission**: once signed in at `/author`, click **New
-   submission**, choose a track, and fill in the title, abstract, and
-   keywords. Add co-authors by email — mark one person as the
-   "corresponding author" (the one who gets status emails).
+2. **Write a submission**: sign in, and in your portal's sidebar open **My
+   submissions**. Click **New abstract**, choose a track, and fill in the
+   title, abstract, and keywords. Add co-authors by email — mark one
+   person as the "corresponding author" (the one who gets status emails).
 3. **Submit it**: while it's still open (check the conference's key dates),
    click **Submit**. You'll get a submission code by email. You can edit or
    withdraw a submission before it's reviewed.
@@ -40,13 +60,13 @@ role.
    camera-ready version) from the submission's page.
 6. **If you're presenting**: once the convenor schedules your paper into a
    session, your submission page shows the day, time, and room.
-7. **Register to attend**: on the conference's public page, scroll to
-   **Registration**, pick a category, and click **Register to attend**.
-   You'll get a registration number and a QR-code ticket — download it or
-   just keep the page open to show staff at check-in.
+7. **Register to attend**: open **My ticket** in your portal, pick a
+   category, and click **Register to attend**. You'll get a registration
+   number and a QR-code ticket — download it or just keep the page open to
+   show staff at check-in.
 8. **Your certificate**: after the event, once the convenor releases
-   certificates, a **Download** link appears next to your certificate on
-   the same Registration section of the conference page.
+   certificates, open **My certificates** in your portal and click
+   **Download PDF**.
 
 ---
 
@@ -55,10 +75,10 @@ role.
 1. **Sign up or get invited**: either sign up choosing **Reviewer** and
    wait for convenor approval, or the convenor invites you directly by
    email (you'll set a password via the link, no approval wait).
-2. **See your assignments**: sign in choosing **Reviewer**, land on
-   `/reviewer`. Each assignment shows the paper (without the authors'
-   names or affiliations, if the conference uses blind review) and a due
-   date.
+2. **See your assignments**: sign in choosing **Reviewer**, and open **My
+   reviews** in your portal's sidebar. Each assignment shows the paper
+   (without the authors' names or affiliations, if the conference uses
+   blind review) and a due date.
 3. **Accept or decline**: if you have a conflict of interest or can't
    review it, decline with a reason. Otherwise accept it.
 4. **Write your review**: score the paper on the criteria shown, write
@@ -72,26 +92,30 @@ role.
 
 1. **Get the role**: the convenor adds you as a session chair (Members and
    roles) — this role has no public sign-up, you must already be a member.
-2. **Sign in**: choose **Session Chair** at sign-in. You land on
-   `/session-chair`, "My sessions" — every session you chair, across every
-   conference you're involved with.
+2. **Sign in**: choose **Session Chair** at sign-in, and open **My
+   sessions** in your portal's sidebar — every session you chair, across
+   every conference you're involved with.
 3. **Mark attendance**: open a session, and for each presentation click
-   **Presented** or **Absent** as it happens.
+   **Presented** or **Absent** as it happens. If the conference tracks
+   session-level attendance, you can also check attendees into your own
+   session from the same screen.
 
 ---
 
 ## Staff
 
 1. **Get the role**: the convenor adds you as staff (Members and roles).
-2. **Sign in**: choose **Staff** at sign-in. You land on `/staff`, the
-   check-in page.
+2. **Sign in**: choose **Staff** at sign-in, and open **Check-in desk** in
+   your portal's sidebar.
 3. **Check people in**: either scan an attendee's ticket QR code with
    **Start camera** (if your browser/device supports it), or type their
    name, email, or registration number into **Manual search** and click
    **Check in**. A big green confirmation (or a clear red reason) shows
    immediately. Someone can only be checked in once per day.
-4. **Numbers**: the same page shows how many people are confirmed to
-   attend and how many have checked in today.
+4. **Numbers**: the same screen shows how many people are confirmed to
+   attend and how many have checked in today. Below it, a read-only
+   **Registrations** list lets you search, filter, and export a CSV — you
+   can't see papers, reviews, or any admin settings.
 
 ---
 

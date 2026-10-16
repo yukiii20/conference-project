@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './lib/authContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { SuperAdminRoute } from './components/SuperAdminRoute'
@@ -18,11 +18,15 @@ import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage'
 import { SuperAdminPage } from './pages/SuperAdminPage'
 import { AdminViewAsPage } from './pages/AdminViewAsPage'
 import { ConvenorPage } from './pages/ConvenorPage'
-import { AuthorPage } from './pages/AuthorPage'
-import { ReviewerPage } from './pages/ReviewerPage'
-import { StaffPage } from './pages/StaffPage'
-import { SessionChairPage } from './pages/SessionChairPage'
+import { PortalPage } from './pages/PortalPage'
 import { VerifyCertificatePage } from './pages/VerifyCertificatePage'
+import { OLD_PORTAL_REDIRECTS } from './pages/portal/sidebarConfig'
+
+/** Old single-role URLs (bookmarked, or baked into stored notification link_path values) — kept working, query string and all. */
+function OldPortalRedirect({ to }: { to: string }) {
+  const location = useLocation()
+  return <Navigate to={`${to}${location.search}`} replace />
+}
 
 export default function App() {
   return (
@@ -74,37 +78,17 @@ export default function App() {
             }
           />
           <Route
-            path="/author"
+            path="/portal/*"
             element={
-              <ProtectedRoute kind="role" role="author">
-                <AuthorPage />
+              <ProtectedRoute kind="authenticated">
+                <PortalPage />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/reviewer"
-            element={
-              <ProtectedRoute kind="role" role="reviewer">
-                <ReviewerPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/staff"
-            element={
-              <ProtectedRoute kind="role" role="staff">
-                <StaffPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/session-chair"
-            element={
-              <ProtectedRoute kind="role" role="session_chair">
-                <SessionChairPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Old single-role URLs from before the shared /portal shell existed. */}
+          {Object.entries(OLD_PORTAL_REDIRECTS).map(([oldPath, newPath]) => (
+            <Route key={oldPath} path={oldPath} element={<OldPortalRedirect to={newPath} />} />
+          ))}
           <Route path="/verify/:token" element={<VerifyCertificatePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

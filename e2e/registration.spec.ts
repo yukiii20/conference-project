@@ -37,7 +37,8 @@ test('author registers and gets a ticket, staff checks them in, convenor issues 
 
   // 2. Staff signs in and checks the author in by manual search.
   await signIn(page, FIXTURE.staffEmail, 'staff')
-  await expect(page).toHaveURL(/\/staff/)
+  await expect(page).toHaveURL(/\/portal/)
+  await page.locator('nav').getByRole('link', { name: 'Check-in desk' }).click()
   await page.getByPlaceholder('Name, email or registration number').fill('E2E Author')
   const resultRow = page.locator('li', { hasText: 'E2E Author' })
   await expect(resultRow).toBeVisible()

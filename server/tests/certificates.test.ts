@@ -255,3 +255,54 @@ describe('certificate download and verification', () => {
     expect(res.body.result).toBeNull()
   })
 })
+
+describe('GET /me/certificates (cross-conference)', () => {
+  it('only lists released certificates, shows revoked ones, never another user\'s, across every conference', async () => {
+    const conferenceA = await createConference()
+    const conferenceB = await createConference()
+    await upsertConferenceSettings(conferenceA)
+    await upsertConferenceSettings(conferenceB)
+
+    const { agent: convenorA } = await loginAs(conferenceA, 'cross-cert-convenor-a@example.com', 'convenor')
+    const { agent: convenorB } = await loginAs(conferenceB, 'cross-cert-convenor-b@example.com', 'convenor')
+
+    const attendee = await createUser({ email: 'cross-cert-attendee@example.com', password: 'Str0ng!Pass' })
+    const stranger = await createUser({ email: 'cross-cert-stranger@example.com', password: 'Str0ng!Pass' })
+
+    // Conference A: issued but not released — must NOT appear.
+    await registerAndCheckIn(conferenceA, attendee)
+    await convenorA.post(`/api/conferences/${conferenceA}/certificates/generate`).send({ certificate_type: 'participation' })
+
+    // Conference B: issued and released — must appear.
+    await registerAndCheckIn(conferenceB, attendee)
+    await convenorB.post(`/api/conferences/${conferenceB}/certificates/generate`).send({ certificate_type: 'participation' })
+    await convenorB.post(`/api/conferences/${conferenceB}/certificates/release-now`)
+
+    const attendeeCookie = await createDirectSession(attendee)
+    const attendeeAgent = cookieAgent(attendeeCookie)
+    const mine = await attendeeAgent.get('/api/me/certificates')
+    expect(mine.status).toBe(200)
+    expect(mine.body.certificates).toHaveLength(1)
+    expect(mine.body.certificates[0].conference_id).toBe(conferenceB)
+    expect(mine.body.certificates[0].status).toBe('issued')
+    expect(mine.body.certificates[0].verification_token).toBeTruthy()
+
+    // Revoke the released one — it should still show, now as revoked.
+    const certId = mine.body.certificates[0].id as string
+    await convenorB.patch(`/api/conferences/${conferenceB}/certificates/${certId}/revoke`).send({ reason: 'Test revoke.' })
+    const afterRevoke = await attendeeAgent.get('/api/me/certificates')
+    expect(afterRevoke.body.certificates).toHaveLength(1)
+    expect(afterRevoke.body.certificates[0].status).toBe('revoked')
+
+    // A different user never sees the attendee's certificates.
+    const strangerCookie = await createDirectSession(stranger)
+    const strangerAgent = cookieAgent(strangerCookie)
+    const strangerView = await strangerAgent.get('/api/me/certificates')
+    expect(strangerView.body.certificates).toHaveLength(0)
+  })
+
+  it('requires a session', async () => {
+    const res = await request(app).get('/api/me/certificates')
+    expect(res.status).toBe(401)
+  })
+})

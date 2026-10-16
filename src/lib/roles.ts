@@ -7,12 +7,15 @@ export type RoleDefinition = {
   path: string | null
 }
 
+// author/reviewer/session_chair/staff all land on the same shared portal
+// (its sidebar shows only the sections each visitor's roles unlock) rather
+// than a role-specific silo — see src/pages/PortalPage.tsx.
 export const ROLE_CATALOGUE: readonly RoleDefinition[] = [
   { code: 'admin', label: 'Administrator', path: '/super-admin' },
-  { code: 'author', label: 'Author', path: '/author' },
-  { code: 'reviewer', label: 'Reviewer', path: '/reviewer' },
-  { code: 'session_chair', label: 'Session Chair', path: '/session-chair' },
-  { code: 'staff', label: 'Staff', path: '/staff' },
+  { code: 'author', label: 'Author', path: '/portal' },
+  { code: 'reviewer', label: 'Reviewer', path: '/portal' },
+  { code: 'session_chair', label: 'Session Chair', path: '/portal' },
+  { code: 'staff', label: 'Staff', path: '/portal' },
   { code: 'manager', label: 'Manager', path: '/manager' },
   { code: 'convenor', label: 'Convenor', path: '/convenor' },
 ] as const

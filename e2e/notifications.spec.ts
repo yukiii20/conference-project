@@ -50,7 +50,7 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
 
   // 4. The author sees an unread notification.
   await signIn(page, authorEmail, FIXTURE.password, 'author')
-  await expect(page).toHaveURL(/\/author/)
+  await expect(page).toHaveURL(/\/portal/)
   const bellButton = page.getByRole('button', { name: /Notifications/ })
   await expect(bellButton).toBeVisible()
   await expect(bellButton.getByText('1')).toBeVisible()

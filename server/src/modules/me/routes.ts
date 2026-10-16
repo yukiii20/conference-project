@@ -16,6 +16,7 @@ import {
 } from './service.js'
 import { updateMyProfileSchema } from './validation.js'
 import { listMyChairSessions } from '../schedule/service.js'
+import { listMyCertificatesEverywhere } from '../certificates/service.js'
 
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024
 const PHOTO_SIZE = 512
@@ -93,6 +94,14 @@ meRouter.post('/notifications/read-all', requireAuth, async (req, res, next) => 
 meRouter.get('/chair-sessions', requireAuth, async (req, res, next) => {
   try {
     res.json({ sessions: await listMyChairSessions(req.user!.id) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+meRouter.get('/certificates', requireAuth, async (req, res, next) => {
+  try {
+    res.json({ certificates: await listMyCertificatesEverywhere(req.user!.id) })
   } catch (err) {
     next(err)
   }

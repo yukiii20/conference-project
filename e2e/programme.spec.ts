@@ -78,7 +78,8 @@ test('convenor builds a session, publishes it, it appears on the public programm
 
   // 5. The session chair signs in, finds the session, and marks it presented.
   await signIn(page, FIXTURE.chairEmail, 'session_chair')
-  await expect(page).toHaveURL(/\/session-chair/)
+  await expect(page).toHaveURL(/\/portal/)
+  await page.locator('nav').getByRole('link', { name: 'My sessions' }).click()
   await expect(page.getByText(sessionTitle)).toBeVisible()
   const sessionCard = page.locator('li', { hasText: sessionTitle })
   await sessionCard.getByRole('button', { name: 'Mark attendance' }).click()

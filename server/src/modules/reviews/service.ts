@@ -332,7 +332,7 @@ export async function assignReviewer(
       type: 'review',
       title: 'New review assignment',
       body: `You've been asked to review "${titleRow.title}" (${titleRow.submission_code ?? ''}), due ${dueAt.toLocaleDateString()}.`,
-      linkPath: '/reviewer',
+      linkPath: '/portal/reviewer',
       entityType: 'review_assignments',
       entityId: id,
     })
@@ -525,7 +525,7 @@ export async function recordDecision(
           type: input.decision === 'accepted' ? 'acceptance' : input.decision === 'rejected' ? 'rejection' : 'review',
           title: 'Decision recorded',
           body: `"${titleRow.title}" (${titleRow.submission_code ?? ''}) was ${decisionLabel}.`,
-          linkPath: '/author',
+          linkPath: '/portal/author',
           entityType: 'submission_decisions',
           entityId: decisionId,
         })

@@ -5,6 +5,8 @@ import { useAuth } from '../lib/authContext'
 type Props =
   | { kind: 'convenor'; children: React.ReactNode }
   | { kind: 'role'; role: string; children: React.ReactNode }
+  /** Any signed-in user, regardless of which roles they hold — used by the shared /portal shell, which shows only the sections each visitor's own roles grant. */
+  | { kind: 'authenticated'; children: React.ReactNode }
 
 /**
  * Re-checks access every time this route is mounted (i.e. on every
@@ -16,7 +18,7 @@ type Props =
 export function ProtectedRoute(props: Props) {
   const { refresh } = useAuth()
   const [state, setState] = useState<'checking' | 'ok' | 'denied'>('checking')
-  const roleKey = props.kind === 'role' ? props.role : 'convenor'
+  const roleKey = props.kind === 'role' ? props.role : props.kind === 'convenor' ? 'convenor' : null
 
   useEffect(() => {
     let cancelled = false
@@ -25,7 +27,7 @@ export function ProtectedRoute(props: Props) {
       setState('checking')
       const data = await refresh()
       if (cancelled) return
-      const ok = data?.roles.some((r) => r.role_code === roleKey) ?? false
+      const ok = roleKey === null ? Boolean(data?.user) : (data?.roles.some((r) => r.role_code === roleKey) ?? false)
       setState(ok ? 'ok' : 'denied')
     }
 

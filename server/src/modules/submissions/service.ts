@@ -567,7 +567,7 @@ export async function submitSubmission(userId: string, submissionId: string): Pr
             type: 'submission',
             title: 'Submission received',
             body: `"${title}" (${submissionCode}) was received.`,
-            linkPath: '/author',
+            linkPath: '/portal/author',
             entityType: 'submissions',
             entityId: submissionId,
           })

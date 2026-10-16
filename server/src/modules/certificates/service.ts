@@ -233,6 +233,69 @@ export async function setSignatorySignature(
   })
 }
 
+export async function removeTemplateBackground(
+  actorUserId: string,
+  conferenceId: string,
+  templateId: string,
+  ctx: AuditContext = {},
+): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const [rows] = await conn.query(
+      'SELECT background_path FROM certificate_templates WHERE id = ? AND conference_id = ? LIMIT 1 FOR UPDATE',
+      [templateId, conferenceId],
+    )
+    const current = (rows as Array<{ background_path: string | null }>)[0]
+    if (!current) throw new NotFoundError('This certificate template does not exist.')
+
+    await conn.query('UPDATE certificate_templates SET background_path = NULL WHERE id = ?', [templateId])
+    await deletePublicFile(current.background_path)
+
+    await insertAuditLog(conn, {
+      actorUserId,
+      conferenceId,
+      action: 'certificate_template.remove_background',
+      entityType: 'certificate_templates',
+      entityId: templateId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    })
+  })
+}
+
+export async function removeSignatorySignature(
+  actorUserId: string,
+  conferenceId: string,
+  templateId: string,
+  index: number,
+  ctx: AuditContext = {},
+): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const template = await getTemplate(conferenceId, templateId)
+    if (index < 0 || index > 1) throw new BadRequestError('There can only be two signatories.')
+    const signatories = [...template.signatories]
+    if (index >= signatories.length) return
+
+    const previousPath = signatories[index]!.signature_path
+    signatories[index] = { ...signatories[index]!, signature_path: null }
+
+    await conn.query('UPDATE certificate_templates SET signatories = ? WHERE id = ? AND conference_id = ?', [
+      JSON.stringify(signatories),
+      templateId,
+      conferenceId,
+    ])
+    await deletePublicFile(previousPath)
+    await insertAuditLog(conn, {
+      actorUserId,
+      conferenceId,
+      action: 'certificate_template.remove_signature',
+      entityType: 'certificate_templates',
+      entityId: templateId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    })
+  })
+}
+
 // -----------------------------------------------------------------------
 // Eligibility
 // -----------------------------------------------------------------------
@@ -566,6 +629,13 @@ export type CertificateRow = {
   revoked_reason: string | null
 }
 
+export type MyCertificateRow = CertificateRow & {
+  verification_token: string
+  conference_id: string
+  conference_name: string
+  conference_slug: string
+}
+
 export async function listCertificates(conferenceId: string): Promise<CertificateRow[]> {
   const [rows] = await pool.query(
     `SELECT id, recipient_name, certificate_type, certificate_number, issued_at, status, revoked_reason
@@ -575,13 +645,42 @@ export async function listCertificates(conferenceId: string): Promise<Certificat
   return rows as CertificateRow[]
 }
 
-export async function listMyCertificates(conferenceId: string, userId: string): Promise<CertificateRow[]> {
+// A recipient only ever sees a certificate once it's released (or it's been
+// revoked, which can only happen after issuing — revoked ones still show,
+// just as "Revoked") — never an issued-but-not-yet-released one, which
+// would otherwise dead-end at a 403 if they tried to download it.
+const RELEASED_OR_REVOKED_JOIN = `
+  LEFT JOIN conference_deadlines cd
+    ON cd.conference_id = c.conference_id AND cd.deadline_type = 'certificate_release' AND cd.opens_at <= NOW(3)`
+const RELEASED_OR_REVOKED_WHERE = `(c.status = 'revoked' OR cd.id IS NOT NULL)`
+
+export async function listMyCertificates(conferenceId: string, userId: string): Promise<MyCertificateRow[]> {
   const [rows] = await pool.query(
-    `SELECT id, recipient_name, certificate_type, certificate_number, issued_at, status, revoked_reason
-     FROM certificates WHERE conference_id = ? AND recipient_user_id = ? ORDER BY issued_at DESC`,
+    `SELECT c.id, c.recipient_name, c.certificate_type, c.certificate_number, c.issued_at, c.status, c.revoked_reason,
+            c.verification_token, c.conference_id, co.name AS conference_name, co.slug AS conference_slug
+     FROM certificates c
+     JOIN conferences co ON co.id = c.conference_id
+     ${RELEASED_OR_REVOKED_JOIN}
+     WHERE c.conference_id = ? AND c.recipient_user_id = ? AND ${RELEASED_OR_REVOKED_WHERE}
+     ORDER BY c.issued_at DESC`,
     [conferenceId, userId],
   )
-  return rows as CertificateRow[]
+  return rows as MyCertificateRow[]
+}
+
+/** Cross-conference — every released (or revoked) certificate this user holds, anywhere. */
+export async function listMyCertificatesEverywhere(userId: string): Promise<MyCertificateRow[]> {
+  const [rows] = await pool.query(
+    `SELECT c.id, c.recipient_name, c.certificate_type, c.certificate_number, c.issued_at, c.status, c.revoked_reason,
+            c.verification_token, c.conference_id, co.name AS conference_name, co.slug AS conference_slug
+     FROM certificates c
+     JOIN conferences co ON co.id = c.conference_id
+     ${RELEASED_OR_REVOKED_JOIN}
+     WHERE c.recipient_user_id = ? AND ${RELEASED_OR_REVOKED_WHERE}
+     ORDER BY c.issued_at DESC`,
+    [userId],
+  )
+  return rows as MyCertificateRow[]
 }
 
 /**

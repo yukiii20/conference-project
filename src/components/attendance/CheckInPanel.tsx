@@ -17,8 +17,31 @@ function extractQrToken(decoded: string): string {
   return match ? match[1]! : decoded.trim()
 }
 
-/** Shared by the convenor/manager Attendance tab and the staff check-in page — same backend, same UI either way. */
-export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
+export type CheckInScope = { type: 'conference' } | { type: 'session'; sessionId: string }
+
+function endpointsFor(conferenceId: string, scope: CheckInScope) {
+  const base = scope.type === 'session' ? `/conferences/${conferenceId}/sessions/${scope.sessionId}` : `/conferences/${conferenceId}`
+  return { qr: `${base}/checkin`, manual: `${base}/checkin/manual` }
+}
+
+/**
+ * Shared by the convenor/manager Attendance tab, the staff check-in page,
+ * and (session-scoped) the session chair's "check attendees into this
+ * session" panel — same backend shape either way, just a different base
+ * URL. The conference-wide check-in response includes a registration
+ * number; the session-scoped one doesn't (a session isn't the place that
+ * number means anything), so the confirmation message adapts.
+ */
+export function CheckInPanel({
+  conferenceId,
+  scope = { type: 'conference' },
+  onCheckedIn,
+}: {
+  conferenceId: string
+  scope?: CheckInScope
+  /** Called after a successful check-in — lets a parent (e.g. the staff check-in desk) refresh its counts/recent-check-ins list. */
+  onCheckedIn?: () => void
+}) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
@@ -32,6 +55,8 @@ export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
   // again for every subsequent frame while the same QR code is still in
   // view — one scan stops the camera, so the next person needs a fresh tap.
   const scannedRef = useRef(false)
+
+  const endpoints = endpointsFor(conferenceId, scope)
 
   useEffect(() => {
     setCameraSupported(typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia)
@@ -59,16 +84,21 @@ export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
     }
   }, [conferenceId, query])
 
+  function describe(res: { full_name: string; registration_number?: string }): string {
+    return res.registration_number ? `Checked in: ${res.full_name} (${res.registration_number})` : `Checked in: ${res.full_name}`
+  }
+
   async function checkIn(registrationId: string) {
     setBusy(true)
     setMessage(null)
     try {
-      const res = await api.post<{ full_name: string; registration_number: string }>(`/conferences/${conferenceId}/checkin/manual`, {
+      const res = await api.post<{ full_name: string; registration_number?: string }>(endpoints.manual, {
         registration_id: registrationId,
       })
-      setMessage({ kind: 'ok', text: `Checked in: ${res.full_name} (${res.registration_number})` })
+      setMessage({ kind: 'ok', text: describe(res) })
       setQuery('')
       setResults([])
+      onCheckedIn?.()
     } catch (err) {
       setMessage({ kind: 'error', text: err instanceof ApiError ? err.message : 'Could not check this person in.' })
     } finally {
@@ -80,10 +110,9 @@ export function CheckInPanel({ conferenceId }: { conferenceId: string }) {
     setBusy(true)
     setMessage(null)
     try {
-      const res = await api.post<{ full_name: string; registration_number: string }>(`/conferences/${conferenceId}/checkin`, {
-        qr_token: token,
-      })
-      setMessage({ kind: 'ok', text: `Checked in: ${res.full_name} (${res.registration_number})` })
+      const res = await api.post<{ full_name: string; registration_number?: string }>(endpoints.qr, { qr_token: token })
+      setMessage({ kind: 'ok', text: describe(res) })
+      onCheckedIn?.()
     } catch (err) {
       setMessage({ kind: 'error', text: err instanceof ApiError ? err.message : 'Could not check this person in.' })
     } finally {
