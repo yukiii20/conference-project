@@ -24,6 +24,10 @@ type ImageUploadProps = {
   accept?: string[]
   /** Optional transform applied to the file (after validation, before upload) — e.g. crop/resize an avatar. */
   transformFile?: (file: File) => Promise<File>
+  /** Button text while no image is set. Defaults to `Upload ${label}`. */
+  uploadButtonText?: string
+  /** Button text once an image is set. Defaults to `Replace ${label}`. */
+  replaceButtonText?: string
 }
 
 async function parseJsonSafely(res: Response): Promise<{ error?: { message?: string }; path?: string } | null> {
@@ -48,6 +52,8 @@ export function ImageUpload({
   size = 'md',
   accept = DEFAULT_ACCEPT,
   transformFile,
+  uploadButtonText,
+  replaceButtonText,
 }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -55,6 +61,10 @@ export function ImageUpload({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  // The server only ever stores a randomised path, never the original
+  // filename — this is the only place that name is known, so it's kept
+  // around (unlike `preview`) for as long as this image stays current.
+  const [fileName, setFileName] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const previewObjectUrl = useRef<string | null>(null)
 
@@ -105,6 +115,7 @@ export function ImageUpload({
 
       onSaved(data.path)
       setSuccess(`${capitalize(label)} updated.`)
+      setFileName(file.name)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.')
     } finally {
@@ -129,6 +140,7 @@ export function ImageUpload({
       }
       onRemoved()
       setSuccess(`${capitalize(label)} removed.`)
+      setFileName(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not remove this image.')
     } finally {
@@ -182,40 +194,52 @@ export function ImageUpload({
     </div>
   )
 
+  const resolvedUploadText = uploadButtonText ?? `Upload ${label}`
+  const resolvedReplaceText = replaceButtonText ?? `Replace ${label}`
+  // The server only ever returns a randomised storage path, never the
+  // original filename, so once a page reload drops `fileName` this falls
+  // back to that path's own basename rather than showing nothing at all.
+  const displayName = fileName ?? (currentPath ? currentPath.split('/').pop() ?? null : null)
+
   const controls = (
-    <div className="flex flex-wrap items-center gap-2">
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept.join(',')}
-        onChange={onInputChange}
-        disabled={busy}
-        className="hidden"
-      />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        aria-label={hasImage ? `Replace ${label}` : `Upload ${label}`}
-        className={`rounded-md bg-button font-medium text-white hover:opacity-90 disabled:opacity-50 ${
-          size === 'sm' ? 'px-3 py-1 text-xs' : 'px-3 py-1.5 text-sm'
-        }`}
-      >
-        {uploading ? 'Uploading…' : hasImage ? `Replace ${label}` : `Upload ${label}`}
-      </button>
-      {currentPath ? (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept.join(',')}
+          onChange={onInputChange}
+          disabled={busy}
+          className="hidden"
+        />
+        {/* The button's own visible text (Upload.../Replace...) is its accessible
+            name and updates with state, so no separate aria-label is needed — same
+            keyboard-focusable trigger pattern as the supporter-logo/speaker-photo uploaders. */}
         <button
           type="button"
-          onClick={handleRemove}
+          onClick={() => inputRef.current?.click()}
           disabled={busy}
-          aria-label={`Remove ${label}`}
-          className={`rounded-md border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 ${
+          className={`rounded-md bg-button font-medium text-white hover:opacity-90 disabled:opacity-50 ${
             size === 'sm' ? 'px-3 py-1 text-xs' : 'px-3 py-1.5 text-sm'
           }`}
         >
-          {removing ? 'Removing…' : 'Remove'}
+          {uploading ? 'Uploading…' : hasImage ? resolvedReplaceText : resolvedUploadText}
         </button>
-      ) : null}
+        {currentPath ? (
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={busy}
+            aria-label={`Remove ${label}`}
+            className={`rounded-md border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 ${
+              size === 'sm' ? 'px-3 py-1 text-xs' : 'px-3 py-1.5 text-sm'
+            }`}
+          >
+            {removing ? 'Removing…' : 'Remove'}
+          </button>
+        ) : null}
+      </div>
+      {hasImage && displayName ? <p className="truncate text-xs text-ink/50">{displayName}</p> : null}
     </div>
   )
 

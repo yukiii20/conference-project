@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { AUTO_CERTIFICATE_TYPES, CERTIFICATE_TYPES, certificateTemplateSchema } from '../../lib/validation'
+import { ImageUpload } from '../../components/ImageUpload'
 
 type Signatory = { name: string; title: string; signature_path: string | null }
 type Template = {
@@ -105,28 +106,6 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
     }
   }
 
-  async function uploadBackground(templateId: string, file: File) {
-    const fd = new FormData()
-    fd.append('file', file)
-    try {
-      await api.upload(`/conferences/${conferenceId}/certificate-templates/${templateId}/background`, fd)
-      await load()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not upload this image.')
-    }
-  }
-
-  async function uploadSignature(templateId: string, index: number, file: File) {
-    const fd = new FormData()
-    fd.append('file', file)
-    try {
-      await api.upload(`/conferences/${conferenceId}/certificate-templates/${templateId}/signatories/${index}/signature`, fd)
-      await load()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not upload this signature.')
-    }
-  }
-
   function setSignatory(index: number, field: 'name' | 'title', value: string) {
     setForm((p) => {
       const signatories = [...p.signatories]
@@ -176,7 +155,7 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
       <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-dashed border-line bg-white p-4">
         <p className="font-medium text-ink">{editingId ? 'Edit template' : 'Add a template'}</p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <select
             value={form.certificate_type}
             onChange={(e) => setForm((p) => ({ ...p, certificate_type: e.target.value as (typeof CERTIFICATE_TYPES)[number] }))}
@@ -198,7 +177,7 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
 
         <div>
           <p className="text-xs font-medium text-ink/60">Recipient name position</p>
-          <div className="mt-1 grid grid-cols-3 gap-2">
+          <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <input
               type="number"
               value={form.layout.name.y}
@@ -225,7 +204,7 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
         <div>
           <p className="text-xs font-medium text-ink/60">Signatories (up to 2)</p>
           {[0, 1].map((i) => (
-            <div key={i} className="mt-1 grid grid-cols-2 gap-2">
+            <div key={i} className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input
                 value={form.signatories[i]?.name ?? ''}
                 onChange={(e) => setSignatory(i, 'name', e.target.value)}
@@ -263,31 +242,51 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
         </div>
 
         {editingTemplate ? (
-          <div className="border-t border-line pt-3">
-            <p className="text-xs font-medium text-ink/60">Background image (A4 landscape)</p>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) uploadBackground(editingTemplate.id, file)
-              }}
-              className="mt-1 text-sm"
-            />
-            {[0, 1].map((i) => (
-              <div key={i} className="mt-2">
-                <p className="text-xs font-medium text-ink/60">Signature {i + 1} image</p>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) uploadSignature(editingTemplate.id, i, file)
-                  }}
-                  className="mt-1 text-sm"
+          <div className="space-y-4 border-t border-line pt-3">
+            <div>
+              <p className="text-xs font-medium text-ink/60">Certificate background</p>
+              <p className="text-xs text-ink/40">PNG or JPG, A4 landscape, at least 2480 x 1754 px</p>
+              <div className="mt-2">
+                <ImageUpload
+                  label="certificate background"
+                  currentPath={editingTemplate.background_path}
+                  uploadUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/background`}
+                  removeUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/background`}
+                  onSaved={() => load()}
+                  onRemoved={() => load()}
+                  maxSizeMB={5}
+                  aspect="square"
+                  size="sm"
+                  uploadButtonText="Upload background"
+                  replaceButtonText="Replace image"
                 />
               </div>
-            ))}
+            </div>
+
+            {([0, 1] as const).map((i) => {
+              const positionLabel = i === 0 ? 'First signature' : 'Second signature'
+              return (
+                <div key={i}>
+                  <p className="text-xs font-medium text-ink/60">{positionLabel}</p>
+                  <p className="text-xs text-ink/40">Transparent PNG, about 600 x 200 px</p>
+                  <div className="mt-2">
+                    <ImageUpload
+                      label={positionLabel.toLowerCase()}
+                      currentPath={editingTemplate.signatories[i]?.signature_path ?? null}
+                      uploadUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/signatories/${i}/signature`}
+                      removeUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/signatories/${i}/signature`}
+                      onSaved={() => load()}
+                      onRemoved={() => load()}
+                      maxSizeMB={2}
+                      aspect="square"
+                      size="sm"
+                      uploadButtonText={`Upload ${positionLabel.toLowerCase()}`}
+                      replaceButtonText="Replace image"
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : null}
       </form>
