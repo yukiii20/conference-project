@@ -181,6 +181,48 @@ tsc, build, server tests, root tests, and Playwright all green (see the Step 6 e
 the responsive-audit entry below, run together with this change in the same final verification
 pass).
 
+## Step 7 - Consistent UI and role check - DONE
+UI audit (`docs/ui-audit.md`): confirmed `src/components/ui/` didn't exist at all - every
+button/input/card/badge/confirm/loading pattern was hand-duplicated 20-50+ times. Built the
+shared library (Button, Input/Select/Textarea/Checkbox, FormField, Card, PageHeader, Tabs,
+Table+Pagination, Badge/StatusChip, Modal/ConfirmDialog, Toast/ToastProvider, Spinner/Skeleton,
+EmptyState/ErrorState, Alert, a small hand-written icon set - no new npm dependency) and one
+status->colour map (`src/lib/status.ts`) replacing 4 independent, disagreeing implementations.
+Replaced all 18 `window.confirm()` calls across 14 files with the shared `ConfirmDialog` (one
+exception, `DirtyGuard.tsx`'s navigation guard, kept native and documented - it needs a
+synchronous answer, which a React modal can't give without restructuring every sidebar nav
+link). Replaced 5 duplicated "Saved." banners with the shared toast (same wording, so existing
+e2e assertions kept passing) and added missing success/error toasts to `RoleRequestsTab`'s
+approve/reject. Added `EmptyState` with a next action to 3 list pages that only said "no
+results" with no CTA. Fixed the 3 small sizing bugs the audit flagged (an undocumented
+third button size in `CommitteesTab`, two below-40px touch targets in `ProgrammeTab`, and
+`PortalHeader`'s on-colour buttons using a different radius/height than the rest of the app).
+Role-matrix (`docs/role-matrix.md`), built from the real `role_permissions` seed data and every
+route's actual middleware, found only 2 issues (the permission system from Steps 2-6 was
+already solid): (1) a manager-visible "Role requests" tab and sidebar badge that always 403'd
+since managers lack `members.manage` - fixed by hiding the tab (`hideForManager: true`,
+matching the sibling `members` tab) and zeroing the badge/attention-card count for managers;
+(2) `ImageUpload`'s drag-and-drop zone wasn't covered by the admin view-as `<fieldset disabled>`
+(which only reaches real form controls) - added a small `AdminViewAsContext` so it can ignore
+drops itself, on top of the already-correct server-side `blockWritesInAdminViewAsMode`. No
+schema changes needed. Mobile (390px): already thoroughly covered by the prior responsive audit;
+re-confirmed via the existing `responsive.spec.ts` (42 checks) still passing after every change.
+Updated `e2e/submissions.spec.ts`, `main.spec.ts`, `notifications.spec.ts`, `portal.spec.ts`,
+`adminPortal.spec.ts` to click through the new `ConfirmDialog`s instead of relying on a
+native-dialog auto-accept handler; found and fixed one genuine pre-existing flaky test along the
+way (`portal.spec.ts`'s two-roles-in-one-sidebar test was missing the same `expectNotBlank()`
+wait every other test in that file uses before reading the sidebar - confirmed via `git stash`
+that it failed identically on the pre-Step-7 code, so not a regression).
+tsc (root+server), build (both), server tests (445/445), root tests (21/21), Playwright
+(88/88) all green. Screenshots captured into `test-results/ui-after/` (24 shots: home,
+conference page, login, every portal role, manager, convenor dashboard/members/submissions,
+super admin, at 1280px and 390px) - gitignored, not committed; no matching "before" set exists
+(the previous session's responsive-ui-audit screenshots are the closest prior baseline).
+Not done: a full file-by-file migration of every remaining one-off button/input/card to the new
+shared components - the audit's own "already consistent, migrate for maintainability only" rows
+(auth pages, table headers, card containers) were left as-is since they're not visually broken,
+prioritising the rows that were actual bugs instead of a cosmetic-only refactor of ~30-50 files.
+
 ## Responsive UI/UX audit - DONE (docs/responsive-ui-audit.md)
 Full audit and fix pass across every route/role for mobile-first responsiveness, per the user's
 detailed brief. Found the shared layouts already had solid foundations from earlier steps

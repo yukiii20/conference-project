@@ -17,7 +17,6 @@ async function signIn(page: Page, email: string, password: string, role: string)
 }
 
 test('role approval notifies the author (bell badge + dropdown) and shows up in both email log views', async ({ page }) => {
-  page.on('dialog', (dialog) => dialog.accept())
   const stamp = Date.now()
   const authorEmail = `e2e-notif-author-${stamp}@example.com`
 
@@ -41,6 +40,7 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
   const row = page.locator('li', { hasText: authorEmail })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Approve' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Approve' }).click()
   await expect(row).toHaveCount(0)
 
   // 3. Convenor's own "Email log" tab lists queued/sent email activity.

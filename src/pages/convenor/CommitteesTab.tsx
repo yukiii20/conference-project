@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { COMMITTEE_MEMBER_ROLES, COMMITTEE_TYPES, committeeSchema, type CommitteeInput } from '../../lib/validation'
+import { Button, Input, Select } from '../../components/ui'
 
 type CommitteeMember = {
   id: string
@@ -84,18 +85,18 @@ function MemberAddForm({ conferenceId, committeeId, onAdded }: { conferenceId: s
     <form onSubmit={handleAdd} className="mt-3 rounded-md border border-dashed border-line bg-background/40 p-3">
       {error ? <p className="mb-2 text-xs text-red-600">{error}</p> : null}
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <Input
           value={emailLookup}
           onChange={(e) => setEmailLookup(e.target.value)}
           placeholder="Find by email…"
-          className="rounded-md border border-line px-2 py-1 text-xs focus:border-button"
+          className="w-auto"
         />
-        <button type="button" onClick={handleLookup} className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background">
+        <Button type="button" variant="secondary" size="sm" onClick={handleLookup}>
           Look up
-        </button>
+        </Button>
         {foundUser ? (
-          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">
-            {foundUser.full_name} ✕{' '}
+          <span className="flex min-h-10 items-center gap-1 rounded-full bg-green-100 px-3 text-sm text-green-800">
+            {foundUser.full_name}
             <button type="button" onClick={() => setFoundUser(null)} className="underline">
               clear
             </button>
@@ -103,40 +104,30 @@ function MemberAddForm({ conferenceId, committeeId, onAdded }: { conferenceId: s
         ) : null}
       </div>
       {!foundUser ? (
-        <input
+        <Input
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Or type a name"
-          className="mt-2 w-full rounded-md border border-line px-2 py-1 text-xs focus:border-button"
+          className="mt-2 w-full"
         />
       ) : null}
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <input
-          value={affiliation}
-          onChange={(e) => setAffiliation(e.target.value)}
-          placeholder="Affiliation"
-          className="rounded-md border border-line px-2 py-1 text-xs focus:border-button"
-        />
-        <input
+        <Input value={affiliation} onChange={(e) => setAffiliation(e.target.value)} placeholder="Affiliation" />
+        <Input
           value={country}
           onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 2))}
           placeholder="Country (e.g. NP)"
-          className="rounded-md border border-line px-2 py-1 text-xs focus:border-button"
         />
-        <select
-          value={memberRole}
-          onChange={(e) => setMemberRole(e.target.value as (typeof COMMITTEE_MEMBER_ROLES)[number])}
-          className="rounded-md border border-line px-2 py-1 text-xs focus:border-button"
-        >
+        <Select value={memberRole} onChange={(e) => setMemberRole(e.target.value as (typeof COMMITTEE_MEMBER_ROLES)[number])}>
           {COMMITTEE_MEMBER_ROLES.map((r) => (
             <option key={r} value={r}>
               {r.replace('_', '-')}
             </option>
           ))}
-        </select>
-        <button type="submit" disabled={busy} className="rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50">
-          {busy ? 'Adding…' : 'Add member'}
-        </button>
+        </Select>
+        <Button type="submit" size="sm" loading={busy}>
+          Add member
+        </Button>
       </div>
     </form>
   )

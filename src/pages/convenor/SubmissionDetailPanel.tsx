@@ -2,14 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { Avatar } from '../../components/Avatar'
 import { downloadSubmissionFile } from '../../lib/submissionFiles'
-import { assignReviewerSchema, decisionSchema, DECISIONS, DECISION_STAGES } from '../../lib/validation'
+import { assignReviewerSchema, decisionSchema, DECISIONS, DECISION_STAGES, type DecisionInput } from '../../lib/validation'
 import {
   DECISION_LABELS,
   FILE_KIND_LABELS,
   RECOMMENDATION_LABELS,
   SUBMISSION_STATUS_LABELS,
-  statusBadgeClass,
 } from '../../lib/submissionDisplay'
+import { StatusChip } from '../../components/ui/Badge'
+import { ConfirmDialog } from '../../components/ui/Modal'
 
 type Submission = {
   id: string
@@ -102,6 +103,7 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
   const [decisionComments, setDecisionComments] = useState('')
   const [decisionError, setDecisionError] = useState<string | null>(null)
   const [decisionSaving, setDecisionSaving] = useState(false)
+  const [pendingDecision, setPendingDecision] = useState<DecisionInput | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -160,7 +162,7 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
     downloadSubmissionFile(submissionId, fileId)
   }
 
-  async function handleDecision(e: React.FormEvent) {
+  function handleDecision(e: React.FormEvent) {
     e.preventDefault()
     setDecisionError(null)
     setNotice(null)
@@ -170,20 +172,26 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
       return
     }
     if (!submission) return
+    setPendingDecision(parsed.data)
+  }
 
-    const completedCount = assignments.filter((a) => a.review_status === 'submitted').length
-    let confirmMessage = `Record decision "${DECISION_LABELS[parsed.data.decision]}" for stage "${parsed.data.stage}"?`
-    if (completedCount < assignments.length) {
-      confirmMessage += ` Only ${completedCount} of ${assignments.length} assigned reviews have been submitted.`
-    }
-    if (!window.confirm(confirmMessage)) return
+  const completedCount = assignments.filter((a) => a.review_status === 'submitted').length
+  const pendingDecisionMessage = pendingDecision
+    ? completedCount < assignments.length
+      ? `Only ${completedCount} of ${assignments.length} assigned reviews have been submitted.`
+      : "This records the convenor's decision for this stage."
+    : ''
 
+  async function confirmDecision() {
+    if (!pendingDecision) return
+    const parsed = pendingDecision
+    setPendingDecision(null)
     setDecisionSaving(true)
     try {
       await api.post(`/conferences/${conferenceId}/submissions/${submissionId}/decisions`, {
-        stage: parsed.data.stage,
-        decision: parsed.data.decision,
-        comments_to_author: parsed.data.comments_to_author,
+        stage: parsed.stage,
+        decision: parsed.decision,
+        comments_to_author: parsed.comments_to_author,
       })
       setDecisionComments('')
       setNotice('Decision saved.')
@@ -211,7 +219,7 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
       <div className="rounded-lg border border-line bg-white p-5">
         <div className="flex flex-wrap items-center gap-3">
           {submission.submission_code ? <span className="font-mono text-sm text-ink/60">{submission.submission_code}</span> : null}
-          <span className={statusBadgeClass(submission.status)}>{SUBMISSION_STATUS_LABELS[submission.status] ?? submission.status}</span>
+          <StatusChip status={submission.status} labels={SUBMISSION_STATUS_LABELS} />
         </div>
         <h2 className="mt-2 text-lg font-semibold text-ink">{submission.title}</h2>
         <p className="mt-3 whitespace-pre-line text-sm text-ink/80">{submission.abstract}</p>
@@ -392,6 +400,21 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
           {decisionSaving ? 'Saving…' : 'Save decision'}
         </button>
       </form>
+
+      <ConfirmDialog
+        open={pendingDecision !== null}
+        title={
+          pendingDecision
+            ? `Record decision "${DECISION_LABELS[pendingDecision.decision]}" for stage "${pendingDecision.stage}"?`
+            : ''
+        }
+        message={pendingDecisionMessage}
+        confirmLabel="Save decision"
+        confirmVariant="primary"
+        busy={decisionSaving}
+        onConfirm={confirmDecision}
+        onCancel={() => setPendingDecision(null)}
+      />
     </div>
   )
 }

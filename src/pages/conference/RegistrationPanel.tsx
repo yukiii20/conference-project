@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { useAuth } from '../../lib/authContext'
+import { ConfirmDialog } from '../../components/ui/Modal'
 
 type Category = { id: string; code: string; name: string; is_active: boolean }
 type MyRegistration = {
@@ -83,8 +84,10 @@ export function RegistrationPanel({ conferenceId, accent }: { conferenceId: stri
     }
   }
 
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+
   async function cancel() {
-    if (!window.confirm('Cancel your registration?')) return
+    setConfirmingCancel(false)
     setBusy(true)
     setError(null)
     try {
@@ -171,9 +174,9 @@ export function RegistrationPanel({ conferenceId, accent }: { conferenceId: stri
                 </a>
                 <button
                   type="button"
-                  onClick={cancel}
+                  onClick={() => setConfirmingCancel(true)}
                   disabled={busy}
-                  className="block rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  className="block min-h-10 rounded-md border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
                 >
                   Cancel registration
                 </button>
@@ -182,6 +185,16 @@ export function RegistrationPanel({ conferenceId, accent }: { conferenceId: stri
           ) : null}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingCancel}
+        title="Cancel your registration?"
+        message="You can register again later if space is still available."
+        confirmLabel="Cancel registration"
+        busy={busy}
+        onConfirm={cancel}
+        onCancel={() => setConfirmingCancel(false)}
+      />
 
       {certificates.length > 0 ? (
         <div className="rounded-lg border border-line bg-white p-5">

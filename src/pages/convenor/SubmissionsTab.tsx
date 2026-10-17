@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
-import { SUBMISSION_STATUS_LABELS, statusBadgeClass } from '../../lib/submissionDisplay'
+import { SUBMISSION_STATUS_LABELS } from '../../lib/submissionDisplay'
+import { StatusChip } from '../../components/ui/Badge'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { SubmissionDetailPanel } from './SubmissionDetailPanel'
 
 type Track = { id: string; name: string }
@@ -103,9 +105,21 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
       {loading ? (
         <p className="mt-6 text-sm text-ink/60">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          No submissions match.
-        </p>
+        <div className="mt-6 rounded-lg border border-dashed border-line bg-white">
+          <EmptyState
+            title="No submissions match."
+            message={statusFilter || trackFilter ? 'Try a different status or track filter.' : 'No one has submitted yet.'}
+            actionLabel={statusFilter || trackFilter ? 'Clear filters' : undefined}
+            onAction={
+              statusFilter || trackFilter
+                ? () => {
+                    setStatusFilter('')
+                    setTrackFilter('')
+                  }
+                : undefined
+            }
+          />
+        </div>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -126,7 +140,7 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
                   <td className="px-4 py-3">{r.title}</td>
                   <td className="px-4 py-3">{r.track_name ?? '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={statusBadgeClass(r.status)}>{SUBMISSION_STATUS_LABELS[r.status] ?? r.status}</span>
+                    <StatusChip status={r.status} labels={SUBMISSION_STATUS_LABELS} />
                   </td>
                   <td className="px-4 py-3">
                     {r.completed_count} / {r.assignment_count}

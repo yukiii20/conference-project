@@ -124,6 +124,7 @@ test('a user with two roles sees both sections in one sidebar', async ({ page })
   // from every role the account holds, not just the one picked at login.
   await signIn(page, FIXTURE.chairEmail, 'session_chair')
   await expect(page).toHaveURL(/\/portal/)
+  await expectNotBlank(page)
   const labels = await sidebarLabels(page, false)
   expect(labels).toContain('My sessions')
   expect(labels).toContain('My reviews')
@@ -134,9 +135,6 @@ test('a user with two roles sees both sections in one sidebar', async ({ page })
 test('author registers to attend from My ticket, staff checks them in, convenor issues and releases a certificate, author downloads it from My certificates', async ({
   page,
 }) => {
-  // Approving the role request below triggers a window.confirm().
-  page.on('dialog', (dialog) => dialog.accept())
-
   // A fresh author, not the shared e2e-author fixture — registration.spec.ts
   // already registers e2e-author for e2e-conf, and a conference only allows
   // one active registration per user (reusing that fixture here would 409
@@ -164,6 +162,7 @@ test('author registers to attend from My ticket, staff checks them in, convenor 
   const requestRow = page.locator('li', { hasText: email })
   await expect(requestRow).toBeVisible()
   await requestRow.getByRole('button', { name: 'Approve' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Approve' }).click()
   await expect(requestRow).toHaveCount(0)
 
   // 1. The author registers to attend from the portal's own "My ticket" page.

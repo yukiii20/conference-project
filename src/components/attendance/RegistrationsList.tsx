@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
+import { StatusChip } from '../ui/Badge'
+import { ConfirmDialog } from '../ui/Modal'
 
 type Category = { id: string; name: string }
 
@@ -71,8 +73,10 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
     }
   }
 
+  const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null)
+
   async function cancelRegistration(id: string) {
-    if (!window.confirm('Cancel this registration?')) return
+    setConfirmingCancelId(null)
     setBusyId(id)
     try {
       await api.del(`/conferences/${conferenceId}/registrations/${id}`)
@@ -151,7 +155,9 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
                     <div className="text-xs text-ink/50">{r.email}</div>
                   </td>
                   <td className="px-4 py-2">{r.category_name}</td>
-                  <td className="px-4 py-2 capitalize">{r.status}</td>
+                  <td className="px-4 py-2">
+                    <StatusChip status={r.status} />
+                  </td>
                   <td className="px-4 py-2 whitespace-nowrap">{formatKathmandu(r.registered_at)}</td>
                   {readOnly ? null : (
                     <td className="px-4 py-2">
@@ -169,7 +175,7 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
                         {r.status !== 'cancelled' ? (
                           <button
                             type="button"
-                            onClick={() => cancelRegistration(r.id)}
+                            onClick={() => setConfirmingCancelId(r.id)}
                             disabled={busyId === r.id}
                             className="text-xs text-red-600 hover:underline disabled:opacity-50"
                           >
@@ -185,6 +191,16 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingCancelId !== null}
+        title="Cancel this registration?"
+        message="The attendee will need to register again if they still want to attend."
+        confirmLabel="Cancel registration"
+        busy={busyId === confirmingCancelId}
+        onConfirm={() => confirmingCancelId && cancelRegistration(confirmingCancelId)}
+        onCancel={() => setConfirmingCancelId(null)}
+      />
     </div>
   )
 }

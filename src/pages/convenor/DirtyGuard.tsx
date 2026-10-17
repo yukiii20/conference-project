@@ -27,6 +27,11 @@ export function DirtyGuardProvider({ children }: { children: ReactNode }) {
   }, [])
   const confirmLeave = useCallback(() => {
     if (!dirtyRef.current) return true
+    // Intentionally the native confirm(), not the shared ConfirmDialog: every
+    // caller (sidebar nav links, tab switches) needs a synchronous true/false
+    // to decide whether to go ahead with navigation right now - a React modal
+    // can't do that without restructuring every call site to defer the
+    // navigation until the user answers. See docs/ui-audit.md.
     const ok = window.confirm('Discard changes?')
     if (ok) dirtyRef.current = false
     return ok

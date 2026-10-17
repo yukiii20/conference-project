@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { ASSIGNABLE_MEMBER_ROLES, inviteMemberSchema, type InviteMemberInput } from '../../lib/validation'
+import { EmptyState } from '../../components/ui/EmptyState'
 
 type Member = {
   id: string
@@ -185,7 +186,21 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
         {loading ? (
           <p className="mt-4 text-sm text-ink/60">Loading…</p>
         ) : members.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">No members found.</p>
+          <div className="mt-4 rounded-lg border border-dashed border-line bg-white">
+            <EmptyState
+              title="No members found."
+              message={q || roleFilter ? 'No one matches this search or filter.' : 'Invite someone from the form below.'}
+              actionLabel={q || roleFilter ? 'Clear filters' : undefined}
+              onAction={
+                q || roleFilter
+                  ? () => {
+                      setQ('')
+                      setRoleFilter('')
+                    }
+                  : undefined
+              }
+            />
+          </div>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
             <table className="w-full min-w-[640px] text-left text-sm">

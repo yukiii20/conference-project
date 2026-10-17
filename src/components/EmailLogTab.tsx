@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
+import { StatusChip } from './ui/Badge'
 
 type EmailLogRow = {
   id: number
@@ -14,21 +15,6 @@ type EmailLogRow = {
 }
 
 const STATUSES = ['queued', 'sending', 'sent', 'delivered', 'bounced', 'failed'] as const
-
-function statusClass(status: string) {
-  switch (status) {
-    case 'sent':
-    case 'delivered':
-      return 'bg-green-100 text-green-700'
-    case 'failed':
-    case 'bounced':
-      return 'bg-red-100 text-red-700'
-    case 'sending':
-      return 'bg-blue-100 text-blue-700'
-    default:
-      return 'bg-ink/10 text-ink/70'
-  }
-}
 
 type Scope = 'admin' | { conferenceId: string }
 
@@ -128,7 +114,7 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
                   <td className="px-4 py-3 font-mono text-xs">{r.template_key}</td>
                   <td className="px-4 py-3">{r.subject}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(r.status)}`}>{r.status}</span>
+                    <StatusChip status={r.status} />
                   </td>
                   <td className="px-4 py-3">{r.attempts}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{new Date(r.queued_at).toLocaleString()}</td>

@@ -39,8 +39,8 @@ test('admin grants and revokes platform admin access', async ({ page }) => {
   const row = page.locator('li', { hasText: FIXTURE.convenorEmail })
   await expect(row).toBeVisible()
 
-  page.once('dialog', (dialog) => dialog.accept())
   await row.getByRole('button', { name: 'Remove' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove access' }).click()
   await expect(page.getByText(`Administrator access removed from ${FIXTURE.convenorEmail}.`)).toBeVisible()
 })
 

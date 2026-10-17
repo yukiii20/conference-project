@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { reviewSettingsSchema, type ReviewSettingsInput } from '../../lib/validation'
+import { useToast } from '../../components/ui/Toast'
 
 type Settings = {
   review_mode: 'open' | 'single_blind' | 'double_blind'
@@ -30,7 +31,7 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -54,7 +55,6 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
     e.preventDefault()
     if (!form) return
     setFormError(null)
-    setSaved(false)
 
     const candidate: ReviewSettingsInput = {
       ...form,
@@ -77,10 +77,12 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
     setSaving(true)
     try {
       await api.patch(`/conferences/${conferenceId}/settings`, parsed.data)
-      setSaved(true)
+      showToast('Saved.', 'success')
       await load()
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Could not save these settings.')
+      const message = err instanceof ApiError ? err.message : 'Could not save these settings.'
+      setFormError(message)
+      showToast(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -96,7 +98,6 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
           {formError}
         </div>
       ) : null}
-      {saved ? <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div> : null}
 
       <div>
         <label className="block text-sm font-medium text-ink">Review mode</label>

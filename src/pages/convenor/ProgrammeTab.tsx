@@ -20,6 +20,7 @@ import {
   sessionSchema,
   type SessionInput,
 } from '../../lib/validation'
+import { ConfirmDialog } from '../../components/ui/Modal'
 
 const TRACK_COLORS = ['#DCEEFB', '#FDE7D8', '#E3F2DF', '#F3E3F5', '#FFF4CC', '#E2E8F0'] as const
 
@@ -421,8 +422,10 @@ function TimeSlotsSection({ conferenceId, onSlotsChanged }: { conferenceId: stri
     }
   }
 
+  const [confirmingDeleteSlot, setConfirmingDeleteSlot] = useState<ScheduleSlot | null>(null)
+
   async function handleDelete(slot: ScheduleSlot) {
-    if (!window.confirm(`Delete "${slot.label}"?`)) return
+    setConfirmingDeleteSlot(null)
     setBusyId(slot.id)
     try {
       await api.del(`/conferences/${conferenceId}/schedule-slots/${slot.id}`)
@@ -495,7 +498,7 @@ function TimeSlotsSection({ conferenceId, onSlotsChanged }: { conferenceId: stri
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDelete(s)}
+                  onClick={() => setConfirmingDeleteSlot(s)}
                   disabled={busyId === s.id}
                   className="text-xs text-red-600 hover:underline disabled:opacity-50"
                 >
@@ -577,6 +580,16 @@ function TimeSlotsSection({ conferenceId, onSlotsChanged }: { conferenceId: stri
         </button>
         {copyMessage ? <span className="text-sm text-ink/60">{copyMessage}</span> : null}
       </form>
+
+      <ConfirmDialog
+        open={confirmingDeleteSlot !== null}
+        title={`Delete "${confirmingDeleteSlot?.label ?? ''}"?`}
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        busy={busyId === confirmingDeleteSlot?.id}
+        onConfirm={() => confirmingDeleteSlot && handleDelete(confirmingDeleteSlot)}
+        onCancel={() => setConfirmingDeleteSlot(null)}
+      />
     </div>
   )
 }
@@ -689,8 +702,10 @@ function SessionManagePanel({
     })
   }
 
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null)
+
   async function removePresentation(id: string) {
-    if (!window.confirm('Remove this from the programme?')) return
+    setConfirmingRemoveId(null)
     await withBusy(async () => {
       await api.del(`/conferences/${conferenceId}/sessions/${sessionId}/presentations/${id}`)
     })
@@ -721,7 +736,7 @@ function SessionManagePanel({
       <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-lg">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-ink">{detail?.title ?? 'Session'}</h3>
-          <button type="button" onClick={onClose} className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background">
+          <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-line px-4 py-2 text-sm hover:bg-background">
             Close
           </button>
         </div>
@@ -819,7 +834,7 @@ function SessionManagePanel({
                       <button type="button" onClick={() => mark(p.id, 'absent')} disabled={busy} className="text-xs text-yellow-700 hover:underline disabled:opacity-50">
                         Absent
                       </button>
-                      <button type="button" onClick={() => removePresentation(p.id)} disabled={busy} className="text-xs text-red-600 hover:underline disabled:opacity-50">
+                      <button type="button" onClick={() => setConfirmingRemoveId(p.id)} disabled={busy} className="text-xs text-red-600 hover:underline disabled:opacity-50">
                         Remove
                       </button>
                     </div>
@@ -855,7 +870,7 @@ function SessionManagePanel({
                 className="w-20 rounded-md border border-line px-3 py-1.5 text-sm focus:border-button"
                 title="Minutes"
               />
-              <button type="button" onClick={addPaper} disabled={busy || !paperId} className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background disabled:opacity-50">
+              <button type="button" onClick={addPaper} disabled={busy || !paperId} className="min-h-10 rounded-md border border-line px-4 py-2 text-sm hover:bg-background disabled:opacity-50">
                 Add
               </button>
             </div>
@@ -902,6 +917,16 @@ function SessionManagePanel({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmingRemoveId !== null}
+        title="Remove this from the programme?"
+        message={detail?.presentations.find((p) => p.id === confirmingRemoveId)?.title ?? ''}
+        confirmLabel="Remove"
+        busy={busy}
+        onConfirm={() => confirmingRemoveId && removePresentation(confirmingRemoveId)}
+        onCancel={() => setConfirmingRemoveId(null)}
+      />
     </div>
   )
 }
@@ -928,6 +953,7 @@ function SessionsSection({
   const [busyId, setBusyId] = useState<string | null>(null)
   const [manageSessionId, setManageSessionId] = useState<string | null>(null)
   const [warningsKey, setWarningsKey] = useState(0)
+  const [confirmingDeleteSession, setConfirmingDeleteSession] = useState<SessionRow | null>(null)
   const [activeDay, setActiveDay] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'grid'>('list')
 
@@ -1051,7 +1077,7 @@ function SessionsSection({
   }
 
   async function handleDelete(session: SessionRow) {
-    if (!window.confirm(`Delete "${session.title}"?`)) return
+    setConfirmingDeleteSession(null)
     setBusyId(session.id)
     try {
       await api.del(`/conferences/${conferenceId}/sessions/${session.id}`)
@@ -1200,7 +1226,7 @@ function SessionsSection({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(s)}
+                          onClick={() => setConfirmingDeleteSession(s)}
                           disabled={busyId === s.id}
                           className="rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
                         >
@@ -1358,6 +1384,16 @@ function SessionsSection({
           onChanged={() => setWarningsKey((k) => k + 1)}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={confirmingDeleteSession !== null}
+        title={`Delete "${confirmingDeleteSession?.title ?? ''}"?`}
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        busy={busyId === confirmingDeleteSession?.id}
+        onConfirm={() => confirmingDeleteSession && handleDelete(confirmingDeleteSession)}
+        onCancel={() => setConfirmingDeleteSession(null)}
+      />
     </div>
   )
 }

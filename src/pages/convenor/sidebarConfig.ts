@@ -33,7 +33,7 @@ export const SECTIONS: SectionConfig[] = [
     id: 'people',
     label: 'People',
     tabs: [
-      { id: 'requests', label: 'Role requests' },
+      { id: 'requests', label: 'Role requests', hideForManager: true },
       { id: 'members', label: 'Members and roles', hideForManager: true },
       { id: 'committees', label: 'Committees' },
       { id: 'speakers', label: 'Speakers' },

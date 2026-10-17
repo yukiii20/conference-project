@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { conferenceDetailsSchema, portalTextsSchema, type ConferenceDetailsInput } from '../../lib/validation'
+import { useToast } from '../../components/ui/Toast'
 
 type ConferenceDetailsData = {
   slug: string
@@ -35,12 +36,11 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
-    setSaved(false)
     const parsed = portalTextsSchema.safeParse({ welcome_text: welcomeText, submission_guidelines: guidelines })
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error))
@@ -50,9 +50,11 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
     setSaving(true)
     try {
       await api.patch(`/conferences/${conferenceId}`, parsed.data)
-      setSaved(true)
+      showToast('Saved.', 'success')
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Could not save this.')
+      const message = err instanceof ApiError ? err.message : 'Could not save this.'
+      setFormError(message)
+      showToast(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -84,10 +86,6 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
             {formError}
           </div>
         ) : null}
-        {saved ? (
-          <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
-        ) : null}
-
         <div>
           <div className="flex items-center justify-between">
             <label htmlFor="welcome_text" className="block text-sm font-medium text-ink">
@@ -98,10 +96,7 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
           <textarea
             id="welcome_text"
             value={welcomeText}
-            onChange={(e) => {
-              setWelcomeText(e.target.value)
-              setSaved(false)
-            }}
+            onChange={(e) => setWelcomeText(e.target.value)}
             maxLength={3000}
             rows={4}
             placeholder="Welcome to the submission page for... Please create an account to submit your abstract."
@@ -124,10 +119,7 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
           <textarea
             id="guidelines"
             value={guidelines}
-            onChange={(e) => {
-              setGuidelines(e.target.value)
-              setSaved(false)
-            }}
+            onChange={(e) => setGuidelines(e.target.value)}
             maxLength={10000}
             rows={10}
             className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
@@ -182,7 +174,7 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     let cancelled = false
@@ -214,13 +206,11 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
-    setSaved(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
-    setSaved(false)
     if (!form) return
 
     const parsed = conferenceDetailsSchema.safeParse(form as ConferenceDetailsInput)
@@ -233,9 +223,11 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
 
     try {
       await api.patch(`/conferences/${conferenceId}`, parsed.data)
-      setSaved(true)
+      showToast('Saved.', 'success')
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Could not save this.')
+      const message = err instanceof ApiError ? err.message : 'Could not save this.'
+      setFormError(message)
+      showToast(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -257,10 +249,6 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
             {formError}
           </div>
         ) : null}
-        {saved ? (
-          <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
-        ) : null}
-
         <div>
           <label className="block text-sm font-medium text-ink">Conference code</label>
           <p className="mt-1 rounded-md border border-line bg-background px-3 py-2 text-ink/70">{code}</p>

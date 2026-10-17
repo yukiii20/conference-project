@@ -14,33 +14,8 @@ export const SUBMISSION_STATUS_LABELS: Record<string, string> = {
   withdrawn: 'Withdrawn',
 }
 
-const BADGE_BASE = 'inline-block rounded-full px-2 py-0.5 text-xs font-medium'
-
-export function statusBadgeClass(status: string): string {
-  switch (status) {
-    case 'draft':
-      return `${BADGE_BASE} bg-ink/10 text-ink/70`
-    case 'submitted':
-    case 'under_review':
-    case 'full_paper_submitted':
-      return `${BADGE_BASE} bg-blue-100 text-blue-700`
-    case 'revision_required':
-      return `${BADGE_BASE} bg-accent/20 text-accent`
-    case 'accepted':
-    case 'final_approved':
-    case 'scheduled':
-    case 'presented':
-    case 'completed':
-      return `${BADGE_BASE} bg-green-100 text-green-700`
-    case 'rejected':
-    case 'withdrawn':
-      return `${BADGE_BASE} bg-red-100 text-red-700`
-    case 'full_paper_pending':
-      return `${BADGE_BASE} bg-amber-100 text-amber-700`
-    default:
-      return `${BADGE_BASE} bg-ink/10 text-ink/70`
-  }
-}
+// Colour classes now live in one place: src/lib/status.ts - render a status with
+// <StatusChip status={status} labels={SUBMISSION_STATUS_LABELS} /> instead of this map.
 
 export const FILE_KIND_LABELS: Record<string, string> = {
   abstract: 'Abstract file',

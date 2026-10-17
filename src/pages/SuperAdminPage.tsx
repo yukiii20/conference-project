@@ -5,6 +5,8 @@ import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } f
 import { useNoIndex } from '../lib/noindex'
 import { EmailLogTab } from '../components/EmailLogTab'
 import { PortalHeader } from '../components/PortalHeader'
+import { StatusChip } from '../components/ui/Badge'
+import { ConfirmDialog } from '../components/ui/Modal'
 
 type AdminTab =
   | 'dashboard'
@@ -601,12 +603,16 @@ function CreateConvenorTab({
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [pendingReplace, setPendingReplace] = useState<{
+    data: ReturnType<typeof inviteConvenorSchema.parse>
+    currentName: string
+  } | null>(null)
 
   function update<K extends keyof typeof EMPTY_INVITE_CONVENOR>(key: K, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
     setSuccess(null)
@@ -627,10 +633,15 @@ function CreateConvenorTab({
 
     const current = convenorByConference[parsed.data.conference_id]
     if (current) {
-      const ok = window.confirm(`Replace ${current.full_name ?? current.email} with ${parsed.data.full_name}?`)
-      if (!ok) return
+      setPendingReplace({ data: parsed.data, currentName: current.full_name ?? current.email ?? '' })
+      return
     }
+    performInvite(parsed.data)
+  }
 
+  async function performInvite(parsedData: ReturnType<typeof inviteConvenorSchema.parse>) {
+    const parsed = { data: parsedData }
+    setPendingReplace(null)
     setSubmitting(true)
 
     try {
@@ -739,6 +750,21 @@ function CreateConvenorTab({
       >
         {submitting ? 'Sending…' : 'Send invitation'}
       </button>
+
+      <ConfirmDialog
+        open={pendingReplace !== null}
+        title="Replace the current convenor?"
+        message={
+          pendingReplace
+            ? `Replace ${pendingReplace.currentName} with ${pendingReplace.data.full_name}?`
+            : ''
+        }
+        confirmLabel="Replace"
+        confirmVariant="primary"
+        busy={submitting}
+        onConfirm={() => pendingReplace && performInvite(pendingReplace.data)}
+        onCancel={() => setPendingReplace(null)}
+      />
     </form>
   )
 }
@@ -760,6 +786,7 @@ function AppointConvenorTab({
   const [actionError, setActionError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pendingAppoint, setPendingAppoint] = useState<{ profile: ProfileRow; currentName: string } | null>(null)
 
   useEffect(() => {
     const term = query.trim()
@@ -791,7 +818,7 @@ function AppointConvenorTab({
     }
   }, [query])
 
-  async function handleAppoint(profile: ProfileRow) {
+  function handleAppoint(profile: ProfileRow) {
     setActionError(null)
     setSuccess(null)
 
@@ -806,12 +833,14 @@ function AppointConvenorTab({
 
     const current = convenorByConference[conferenceId]
     if (current) {
-      const ok = window.confirm(
-        `Replace ${current.full_name ?? current.email} with ${profile.full_name ?? profile.email}?`,
-      )
-      if (!ok) return
+      setPendingAppoint({ profile, currentName: current.full_name ?? current.email ?? '' })
+      return
     }
+    performAppoint(profile)
+  }
 
+  async function performAppoint(profile: ProfileRow) {
+    setPendingAppoint(null)
     setBusyId(profile.id)
     try {
       await api.post(`/admin/conferences/${conferenceId}/convenor`, { email: profile.email })
@@ -893,6 +922,21 @@ function AppointConvenorTab({
           </ul>
         )
       ) : null}
+
+      <ConfirmDialog
+        open={pendingAppoint !== null}
+        title="Replace the current convenor?"
+        message={
+          pendingAppoint
+            ? `Replace ${pendingAppoint.currentName} with ${pendingAppoint.profile.full_name ?? pendingAppoint.profile.email}?`
+            : ''
+        }
+        confirmLabel="Replace"
+        confirmVariant="primary"
+        busy={busyId === pendingAppoint?.profile.id}
+        onConfirm={() => pendingAppoint && performAppoint(pendingAppoint.profile)}
+        onCancel={() => setPendingAppoint(null)}
+      />
     </div>
   )
 }
@@ -909,6 +953,12 @@ function UsersTab() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [anonymizeTarget, setAnonymizeTarget] = useState<ProfileRow | null>(null)
+  const [pendingAction, setPendingAction] = useState<{
+    profile: ProfileRow
+    action: string
+    confirmMessage: string
+    successMessage: string
+  } | null>(null)
 
   const reload = useCallback(async (): Promise<void> => {
     try {
@@ -936,8 +986,14 @@ function UsersTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
-  async function runAction(profile: ProfileRow, action: string, confirmMessage: string, successMessage: string) {
-    if (!window.confirm(confirmMessage)) return
+  function runAction(profile: ProfileRow, action: string, confirmMessage: string, successMessage: string) {
+    setPendingAction({ profile, action, confirmMessage, successMessage })
+  }
+
+  async function performAction() {
+    if (!pendingAction) return
+    const { profile, action, successMessage } = pendingAction
+    setPendingAction(null)
     setBusyId(profile.id)
     setError(null)
     setNotice(null)
@@ -1039,17 +1095,7 @@ function UsersTab() {
                   <td className="px-4 py-3">{p.email ?? '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
-                      <span
-                        className={`inline-block w-fit rounded-full px-2 py-0.5 text-xs font-medium ${
-                          p.status === 'suspended'
-                            ? 'bg-red-100 text-red-700'
-                            : p.status === 'deactivated'
-                              ? 'bg-gray-200 text-gray-700'
-                              : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {p.status ?? 'active'}
-                      </span>
+                      <StatusChip status={p.status ?? 'active'} />
                       {isLocked(p) ? (
                         <span className="inline-block w-fit rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
                           Locked until {formatDateTime(p.locked_until!)}
@@ -1132,6 +1178,17 @@ function UsersTab() {
           onConfirm={confirmAnonymize}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={pendingAction !== null}
+        title="Confirm this action"
+        message={pendingAction?.confirmMessage ?? ''}
+        confirmLabel="Confirm"
+        confirmVariant={pendingAction?.action === 'reset-password' || pendingAction?.action === 'reactivate' || pendingAction?.action === 'unlock' ? 'primary' : 'danger'}
+        busy={busyId === pendingAction?.profile.id}
+        onConfirm={performAction}
+        onCancel={() => setPendingAction(null)}
+      />
     </div>
   )
 }
@@ -1306,6 +1363,7 @@ function AdminsTab() {
   const [submitting, setSubmitting] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [confirmingRevoke, setConfirmingRevoke] = useState<PlatformAdminRow | null>(null)
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -1342,7 +1400,7 @@ function AdminsTab() {
   }
 
   async function handleRevoke(admin: PlatformAdminRow) {
-    if (!window.confirm(`Remove administrator access from ${admin.full_name} (${admin.email})?`)) return
+    setConfirmingRevoke(null)
     setBusyId(admin.id)
     setError(null)
     setNotice(null)
@@ -1405,7 +1463,7 @@ function AdminsTab() {
               </div>
               <button
                 type="button"
-                onClick={() => handleRevoke(a)}
+                onClick={() => setConfirmingRevoke(a)}
                 disabled={busyId === a.id}
                 className="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
               >
@@ -1415,6 +1473,16 @@ function AdminsTab() {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={confirmingRevoke !== null}
+        title="Remove administrator access?"
+        message={confirmingRevoke ? `Remove administrator access from ${confirmingRevoke.full_name} (${confirmingRevoke.email})?` : ''}
+        confirmLabel="Remove access"
+        busy={busyId === confirmingRevoke?.id}
+        onConfirm={() => confirmingRevoke && handleRevoke(confirmingRevoke)}
+        onCancel={() => setConfirmingRevoke(null)}
+      />
     </div>
   )
 }

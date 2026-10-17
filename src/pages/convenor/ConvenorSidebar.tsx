@@ -33,8 +33,10 @@ export function ConvenorSidebar({
   papersAttention: number
   onNavigate?: () => void
 }) {
+  // Managers can't act on role requests (members.manage only) - don't show a
+  // badge count for something that would 403 if they clicked through to it.
   const badges: Record<string, number> = {
-    people: pendingRoleRequests,
+    people: isManager ? 0 : pendingRoleRequests,
     papers: papersAttention,
   }
 

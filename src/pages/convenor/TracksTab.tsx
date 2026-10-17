@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { trackSchema } from '../../lib/validation'
+import { EmptyState } from '../../components/ui/EmptyState'
 
 type Track = {
   id: string
@@ -137,9 +138,9 @@ export function TracksTab({ conferenceId }: { conferenceId: string }) {
 
       <div className="space-y-3">
         {sorted.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-            No tracks yet.
-          </p>
+          <div className="rounded-lg border border-dashed border-line bg-white">
+            <EmptyState title="No tracks yet." message="Add your first track using the form below." />
+          </div>
         ) : (
           sorted.map((track, i) => {
             const edit = edits[track.id] ?? toEditState(track)

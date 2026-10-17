@@ -6,8 +6,9 @@ import { buildSubmissionSchema, coAuthorSchema, type CoAuthorInput } from '../..
 import {
   FILE_KIND_LABELS,
   SUBMISSION_STATUS_LABELS,
-  statusBadgeClass,
 } from '../../lib/submissionDisplay'
+import { StatusChip } from '../../components/ui/Badge'
+import { ConfirmDialog } from '../../components/ui/Modal'
 
 type Track = { id: string; name: string }
 
@@ -111,6 +112,9 @@ export function SubmissionDetail({
   const [withdrawing, setWithdrawing] = useState(false)
   const [withdrawReason, setWithdrawReason] = useState('')
   const [showWithdraw, setShowWithdraw] = useState(false)
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [removingAuthor, setRemovingAuthor] = useState<Author | null>(null)
 
   const [newAuthor, setNewAuthor] = useState(EMPTY_CO_AUTHOR)
   const [authorError, setAuthorError] = useState<string | null>(null)
@@ -262,7 +266,7 @@ export function SubmissionDetail({
 
   async function handleSubmitForReview() {
     if (!id) return
-    if (!window.confirm('Submit this abstract for review? You can withdraw it later if needed.')) return
+    setConfirmingSubmit(false)
     setSubmitting(true)
     setFormError(null)
     setNotice(null)
@@ -292,7 +296,7 @@ export function SubmissionDetail({
 
   async function handleDelete() {
     if (!id) return
-    if (!window.confirm('Delete this submission? This cannot be undone.')) return
+    setConfirmingDelete(false)
     setDeleting(true)
     try {
       await api.del(`/submissions/${id}`)
@@ -331,7 +335,7 @@ export function SubmissionDetail({
 
   async function handleRemoveAuthor(author: Author) {
     if (!id) return
-    if (!window.confirm(`Remove ${author.full_name}?`)) return
+    setRemovingAuthor(null)
     setAuthorBusy(author.id)
     try {
       await api.del(`/submissions/${id}/authors/${author.id}`)
@@ -418,7 +422,7 @@ export function SubmissionDetail({
       {id ? (
         <div className="flex flex-wrap items-center gap-3">
           {submissionCode ? <span className="font-mono text-sm text-ink/60">{submissionCode}</span> : null}
-          <span className={statusBadgeClass(status)}>{SUBMISSION_STATUS_LABELS[status] ?? status}</span>
+          <StatusChip status={status} labels={SUBMISSION_STATUS_LABELS} />
         </div>
       ) : null}
 
@@ -578,7 +582,7 @@ export function SubmissionDetail({
             {id ? (
               <button
                 type="button"
-                onClick={handleSubmitForReview}
+                onClick={() => setConfirmingSubmit(true)}
                 disabled={submitting}
                 className="rounded-md border border-button px-4 py-2 text-sm font-medium text-button hover:bg-button/5 disabled:opacity-50"
               >
@@ -637,7 +641,7 @@ export function SubmissionDetail({
                       ) : null}
                       <button
                         type="button"
-                        onClick={() => handleRemoveAuthor(a)}
+                        onClick={() => setRemovingAuthor(a)}
                         disabled={authorBusy === a.id}
                         className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
@@ -868,7 +872,7 @@ export function SubmissionDetail({
             <div className="rounded-lg border border-line bg-white p-5">
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setConfirmingDelete(true)}
                 disabled={deleting}
                 className="rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
               >
@@ -878,6 +882,35 @@ export function SubmissionDetail({
           ) : null}
         </>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmingSubmit}
+        title="Submit this abstract for review?"
+        message="You can withdraw it later if needed."
+        confirmLabel="Submit for review"
+        confirmVariant="primary"
+        busy={submitting}
+        onConfirm={handleSubmitForReview}
+        onCancel={() => setConfirmingSubmit(false)}
+      />
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this submission?"
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmingDelete(false)}
+      />
+      <ConfirmDialog
+        open={removingAuthor !== null}
+        title={`Remove ${removingAuthor?.full_name ?? 'this author'}?`}
+        message="They will no longer be listed as a co-author on this submission."
+        confirmLabel="Remove"
+        busy={authorBusy === removingAuthor?.id}
+        onConfirm={() => removingAuthor && handleRemoveAuthor(removingAuthor)}
+        onCancel={() => setRemovingAuthor(null)}
+      />
     </div>
   )
 }

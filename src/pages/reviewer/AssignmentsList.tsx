@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
+import { StatusChip } from '../../components/ui/Badge'
 
 type Assignment = {
   id: string
@@ -18,20 +19,6 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
   declined: 'Declined',
   cancelled: 'Cancelled',
-}
-
-function statusClass(status: string) {
-  switch (status) {
-    case 'completed':
-      return 'bg-green-100 text-green-700'
-    case 'declined':
-    case 'cancelled':
-      return 'bg-red-100 text-red-700'
-    case 'in_progress':
-      return 'bg-blue-100 text-blue-700'
-    default:
-      return 'bg-ink/10 text-ink/70'
-  }
 }
 
 export function AssignmentsList({
@@ -115,9 +102,7 @@ export function AssignmentsList({
               {a.submission_code ? <p className="font-mono text-xs text-ink/50">{a.submission_code}</p> : null}
               <p className="font-medium text-ink">{a.title}</p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/60">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(a.status)}`}>
-                  {STATUS_LABELS[a.status] ?? a.status}
-                </span>
+                <StatusChip status={a.status} labels={STATUS_LABELS} />
                 {a.due_at ? <span>Due {new Date(a.due_at).toLocaleDateString()}</span> : null}
                 {a.is_overdue ? <span className="font-medium text-red-600">Overdue</span> : null}
               </div>

@@ -39,7 +39,7 @@ function AttentionRow({ label, count, to }: { label: string; count: number; to: 
   )
 }
 
-export function DashboardTab({ conferenceId, base }: { conferenceId: string; base: string }) {
+export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: string; base: string; isManager?: boolean }) {
   const [data, setData] = useState<Dashboard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,8 +70,11 @@ export function DashboardTab({ conferenceId, base }: { conferenceId: string; bas
   const totalMembers = Object.values(data.members_by_role).reduce((a, b) => a + b, 0)
   const maxTrackCount = Math.max(1, ...data.submissions_per_track.map((t) => t.count))
   const attention = data.needs_attention
+  // Managers hold every permission except members.manage, so they can't act on
+  // role requests - don't surface an attention item that would 403 if clicked.
+  const pendingRoleRequests = isManager ? 0 : attention.pending_role_requests
   const hasAttention =
-    attention.pending_role_requests > 0 ||
+    pendingRoleRequests > 0 ||
     attention.submitted_no_reviewer > 0 ||
     attention.overdue_reviews > 0 ||
     attention.awaiting_decision > 0 ||
@@ -102,7 +105,7 @@ export function DashboardTab({ conferenceId, base }: { conferenceId: string; bas
           <p className="mt-2 text-sm text-ink/60">Nothing needs your attention right now.</p>
         ) : (
           <div className="mt-2 space-y-2">
-            <AttentionRow label="Pending role requests" count={attention.pending_role_requests} to={`${base}/people/requests`} />
+            <AttentionRow label="Pending role requests" count={pendingRoleRequests} to={`${base}/people/requests`} />
             <AttentionRow label="Submitted papers with no reviewer" count={attention.submitted_no_reviewer} to={`${base}/papers/submissions`} />
             <AttentionRow label="Overdue reviews" count={attention.overdue_reviews} to={`${base}/papers/reviews`} />
             <AttentionRow label="Papers awaiting a decision" count={attention.awaiting_decision} to={`${base}/papers/reviews`} />

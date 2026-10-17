@@ -3,6 +3,7 @@ import { api, ApiError } from '../../lib/api'
 import { downloadSubmissionFile } from '../../lib/submissionFiles'
 import { RECOMMENDATIONS, reviewFormSchema, type ReviewFormInput } from '../../lib/validation'
 import { FILE_KIND_LABELS } from '../../lib/submissionDisplay'
+import { ConfirmDialog } from '../../components/ui/Modal'
 
 type AssignmentDetail = {
   assignment: { id: string; status: string }
@@ -126,8 +127,10 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
     }
   }
 
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false)
+
   async function handleSubmit() {
-    if (!window.confirm('Submit this review? You cannot edit after submitting.')) return
+    setConfirmingSubmit(false)
     setSubmitting(true)
     const ok = await persist('submitted')
     setSubmitting(false)
@@ -275,7 +278,7 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => setConfirmingSubmit(true)}
             disabled={submitting}
             className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
@@ -283,6 +286,17 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
           </button>
         </div>
       </fieldset>
+
+      <ConfirmDialog
+        open={confirmingSubmit}
+        title="Submit this review?"
+        message="You cannot edit it after submitting."
+        confirmLabel="Submit review"
+        confirmVariant="primary"
+        busy={submitting}
+        onConfirm={handleSubmit}
+        onCancel={() => setConfirmingSubmit(false)}
+      />
     </div>
   )
 }

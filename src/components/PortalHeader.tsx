@@ -27,13 +27,17 @@ export function PortalHeader({ roleLabel }: { roleLabel: string }) {
         <span>{user?.full_name ?? user?.email ?? ''}</span>
         <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{roleLabel}</span>
         <NotificationBell />
-        <Link to="/profile" className="rounded border border-white/40 px-3 py-1 hover:bg-white/10">
+        <Link to="/profile" className="inline-flex min-h-10 items-center rounded-md border border-white/40 px-4 py-2 hover:bg-white/10">
           Profile
         </Link>
-        <Link to="/change-password" className="rounded border border-white/40 px-3 py-1 hover:bg-white/10">
+        <Link to="/change-password" className="inline-flex min-h-10 items-center rounded-md border border-white/40 px-4 py-2 hover:bg-white/10">
           Change password
         </Link>
-        <button type="button" onClick={handleSignOut} className="rounded border border-white/40 px-3 py-1 hover:bg-white/10">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="inline-flex min-h-10 items-center rounded-md border border-white/40 px-4 py-2 hover:bg-white/10"
+        >
           Sign out
         </button>
       </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
-import { SUBMISSION_STATUS_LABELS, statusBadgeClass } from '../../lib/submissionDisplay'
+import { SUBMISSION_STATUS_LABELS } from '../../lib/submissionDisplay'
+import { StatusChip } from '../../components/ui/Badge'
 
 type Row = {
   id: string
@@ -70,7 +71,7 @@ export function SubmissionsList({
               <p className="font-medium text-ink">{r.title}</p>
               <p className="text-xs text-ink/50">{r.track_name}</p>
             </div>
-            <span className={statusBadgeClass(r.status)}>{SUBMISSION_STATUS_LABELS[r.status] ?? r.status}</span>
+            <StatusChip status={r.status} labels={SUBMISSION_STATUS_LABELS} />
           </button>
         </li>
       ))}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { SPEAKER_TYPES, speakerSchema, type SpeakerInput } from '../../lib/validation'
 import { ImageUpload } from '../../components/ImageUpload'
+import { ConfirmDialog } from '../../components/ui/Modal'
 
 const MAX_MB = 2
 
@@ -45,6 +46,7 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
   const [edits, setEdits] = useState<Record<string, EditState>>({})
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [confirmingRemove, setConfirmingRemove] = useState<Speaker | null>(null)
   const [newSpeaker, setNewSpeaker] = useState<EditState>(EMPTY_NEW)
   const [newError, setNewError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -125,7 +127,7 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
   }
 
   async function handleRemove(speaker: Speaker) {
-    if (!window.confirm(`Delete ${speaker.full_name}? This also removes their photo.`)) return
+    setConfirmingRemove(null)
     setBusyId(speaker.id)
     try {
       await api.del(`/conferences/${conferenceId}/speakers/${speaker.id}`)
@@ -240,7 +242,7 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
                   <button type="button" onClick={() => handleTogglePublic(speaker)} disabled={busyId === speaker.id} className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-50">
                     {speaker.is_public ? 'Hide' : 'Show'}
                   </button>
-                  <button type="button" onClick={() => handleRemove(speaker)} disabled={busyId === speaker.id} className="ml-auto rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
+                  <button type="button" onClick={() => setConfirmingRemove(speaker)} disabled={busyId === speaker.id} className="ml-auto rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
                     Delete speaker
                   </button>
                 </div>
@@ -277,6 +279,16 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
           {creating ? 'Adding…' : 'Add speaker'}
         </button>
       </form>
+
+      <ConfirmDialog
+        open={confirmingRemove !== null}
+        title={`Delete ${confirmingRemove?.full_name ?? 'this speaker'}?`}
+        message="This also removes their photo. This cannot be undone."
+        confirmLabel="Delete"
+        busy={busyId === confirmingRemove?.id}
+        onConfirm={() => confirmingRemove && handleRemove(confirmingRemove)}
+        onCancel={() => setConfirmingRemove(null)}
+      />
     </div>
   )
 }

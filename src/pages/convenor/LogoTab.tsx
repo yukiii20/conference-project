@@ -4,6 +4,7 @@ import { brandingSchema } from '../../lib/validation'
 import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } from '../../lib/color'
 import { publicImageUrl } from '../../lib/storage'
 import { ImageUpload } from '../../components/ImageUpload'
+import { useToast } from '../../components/ui/Toast'
 
 const MAX_LOGO_MB = 2
 const MAX_BANNER_MB = 3
@@ -95,7 +96,7 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     let cancelled = false
@@ -128,7 +129,6 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
-    setSaved(false)
     const parsed = brandingSchema.safeParse({ tagline, primary_color: primaryColor })
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error))
@@ -138,9 +138,11 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
     setSaving(true)
     try {
       await api.patch(`/conferences/${conferenceId}`, parsed.data)
-      setSaved(true)
+      showToast('Saved.', 'success')
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Could not save this.')
+      const message = err instanceof ApiError ? err.message : 'Could not save this.'
+      setFormError(message)
+      showToast(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -182,21 +184,14 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
               {formError}
             </div>
           ) : null}
-          {saved ? (
-            <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
-          ) : null}
-
-          <div>
+<div>
             <label htmlFor="tagline" className="block text-sm font-medium text-ink">
               Tagline
             </label>
             <input
               id="tagline"
               value={tagline}
-              onChange={(e) => {
-                setTagline(e.target.value)
-                setSaved(false)
-              }}
+              onChange={(e) => setTagline(e.target.value)}
               maxLength={200}
               placeholder="A short line shown under the conference name"
               className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
@@ -212,19 +207,13 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
               <input
                 type="color"
                 value={/^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : DEFAULT_CONFERENCE_COLOR}
-                onChange={(e) => {
-                  setPrimaryColor(e.target.value)
-                  setSaved(false)
-                }}
+                onChange={(e) => setPrimaryColor(e.target.value)}
                 className="h-10 w-14 rounded-md border border-line"
               />
               <input
                 id="primary_color"
                 value={primaryColor}
-                onChange={(e) => {
-                  setPrimaryColor(e.target.value)
-                  setSaved(false)
-                }}
+                onChange={(e) => setPrimaryColor(e.target.value)}
                 placeholder="#2747A0"
                 className="flex-1 rounded-md border border-line px-3 py-2 font-mono uppercase focus:border-button"
               />

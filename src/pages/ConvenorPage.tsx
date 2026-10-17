@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import { api, setAdminViewAs } from '../lib/api'
 import { useAuth } from '../lib/authContext'
+import { AdminViewAsProvider } from '../lib/adminViewAsContext'
 import { PortalHeader } from '../components/PortalHeader'
 import { ConvenorSidebar } from './convenor/ConvenorSidebar'
 import { DashboardTab } from './convenor/DashboardTab'
@@ -223,9 +224,10 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
                 the real enforcement is server-side (blockWritesInAdminViewAsMode), this just keeps
                 the admin from clicking a save button that would only fail anyway. */}
             <fieldset disabled={Boolean(viewAs)} className="m-0 min-w-0 border-0 p-0">
+              <AdminViewAsProvider value={Boolean(viewAs)}>
               <Routes>
                 <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<DashboardTab conferenceId={conferenceId} base={base} />} />
+                <Route path="dashboard" element={<DashboardTab conferenceId={conferenceId} base={base} isManager={isManagerPortal} />} />
                 <Route path="setup/*" element={<SetupSection conferenceId={conferenceId} basePath={`${base}/setup`} />} />
                 <Route
                   path="schedule-basics/*"
@@ -251,6 +253,7 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
 
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
               </Routes>
+              </AdminViewAsProvider>
             </fieldset>
           </main>
         </div>

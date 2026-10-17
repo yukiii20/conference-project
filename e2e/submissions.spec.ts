@@ -46,6 +46,7 @@ async function approveRoleRequest(page: Page, email: string) {
   const row = page.locator('li', { hasText: email })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Approve' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Approve' }).click()
   await expect(row).toHaveCount(0)
 }
 
@@ -64,9 +65,6 @@ async function setDeadlineWindow(page: Page, rowLabel: string) {
 test('author submits -> convenor assigns reviewer -> reviewer reviews -> convenor accepts -> author uploads full paper', async ({
   page,
 }) => {
-  // Every window.confirm() in this flow (role approval, abstract submit, review submit) should just proceed.
-  page.on('dialog', (dialog) => dialog.accept())
-
   const stamp = Date.now()
   const authorEmail = `e2e-sub-author-${stamp}@example.com`
   const reviewerEmail = `e2e-sub-reviewer-${stamp}@example.com`
@@ -111,6 +109,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   await page.getByRole('button', { name: 'Create draft' }).click()
   await expect(page.getByText('Draft', { exact: true }).first()).toBeVisible()
   await page.getByRole('button', { name: 'Submit for review' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Submit for review' }).click()
   await expect(page.getByText('Submitted.')).toBeVisible()
 
   // 4. Convenor assigns the reviewer.
@@ -130,6 +129,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   await page.getByRole('button', { name: 'Write review' }).click()
   await page.locator('textarea').first().fill('Solid work overall, recommend accepting with minor edits.')
   await page.getByRole('button', { name: 'Submit review', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Submit review', exact: true }).click()
   await expect(page.getByText('submitted and can no longer be edited')).toBeVisible()
 
   // 6. Convenor accepts the abstract.
@@ -139,6 +139,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   const decisionBox = page.locator('form', { has: page.getByRole('button', { name: 'Save decision' }) })
   await decisionBox.locator('textarea').fill('Nice abstract — accepted.')
   await decisionBox.getByRole('button', { name: 'Save decision' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Save decision' }).click()
   await expect(page.getByText('Decision saved.')).toBeVisible()
 
   // 7. Author uploads the full paper now that the submission is accepted.

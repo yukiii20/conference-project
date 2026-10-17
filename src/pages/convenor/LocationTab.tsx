@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { locationSchema, type LocationInput } from '../../lib/validation'
+import { useToast } from '../../components/ui/Toast'
 
 type FormState = {
   venue_name: string
@@ -24,7 +25,7 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     let cancelled = false
@@ -66,13 +67,11 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
-    setSaved(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
-    setSaved(false)
 
     const parsed = locationSchema.safeParse(form as LocationInput)
     if (!parsed.success) {
@@ -91,9 +90,11 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
 
     try {
       await api.patch(`/conferences/${conferenceId}`, parsed.data)
-      setSaved(true)
+      showToast('Saved.', 'success')
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Could not save this.')
+      const message = err instanceof ApiError ? err.message : 'Could not save this.'
+      setFormError(message)
+      showToast(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -111,11 +112,7 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
             {formError}
           </div>
         ) : null}
-        {saved ? (
-          <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
-        ) : null}
-
-        <div>
+<div>
           <label htmlFor="venue_name" className="block text-sm font-medium text-ink">
             Venue
           </label>

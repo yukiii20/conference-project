@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { fromKathmanduInputValue, toKathmanduInputValue } from '../../lib/datetime'
+import { useToast } from '../../components/ui/Toast'
 
 type DeadlineRow = {
   code: string
@@ -26,7 +27,7 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     let cancelled = false
@@ -66,12 +67,10 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
 
   function update(code: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [code]: { ...prev[code], ...patch } }))
-    setSaved(false)
   }
 
   async function handleSave() {
     setError(null)
-    setSaved(false)
 
     const payload: Array<{
       deadline_type: string
@@ -110,9 +109,11 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
     setSaving(true)
     try {
       await api.put(`/conferences/${conferenceId}/deadlines`, { deadlines: payload })
-      setSaved(true)
+      showToast('Saved.', 'success')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save key dates.')
+      const message = err instanceof ApiError ? err.message : 'Could not save key dates.'
+      setError(message)
+      showToast(message, 'error')
     } finally {
       setSaving(false)
     }
@@ -128,9 +129,6 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
         <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
-      ) : null}
-      {saved ? (
-        <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
       ) : null}
 
       <p className="mb-4 text-sm text-ink/60">Times are shown and saved in Asia/Kathmandu time.</p>

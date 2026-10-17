@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import { publicImageUrl } from '../lib/storage'
+import { useIsAdminViewAsReadOnly } from '../lib/adminViewAsContext'
+import { ConfirmDialog } from './ui/Modal'
 
 const DEFAULT_ACCEPT = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -70,7 +72,8 @@ export function ImageUpload({
 
   const hasImage = Boolean(preview || currentPath)
   const displayUrl = preview ?? publicImageUrl(currentPath)
-  const busy = uploading || removing
+  const readOnly = useIsAdminViewAsReadOnly()
+  const busy = uploading || removing || readOnly
 
   function clearPreview() {
     if (previewObjectUrl.current) {
@@ -125,9 +128,15 @@ export function ImageUpload({
     }
   }
 
-  async function handleRemove() {
+  const [confirmingRemove, setConfirmingRemove] = useState(false)
+
+  function handleRemove() {
     if (!currentPath) return
-    if (!window.confirm('Remove this image?')) return
+    setConfirmingRemove(true)
+  }
+
+  async function confirmRemove() {
+    setConfirmingRemove(false)
     setError(null)
     setSuccess(null)
     setRemoving(true)
@@ -156,6 +165,7 @@ export function ImageUpload({
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault()
     setDragOver(false)
+    if (readOnly) return
     const file = e.dataTransfer.files?.[0]
     if (file) handleFile(file)
   }
@@ -167,7 +177,7 @@ export function ImageUpload({
     <div
       onDragOver={(e) => {
         e.preventDefault()
-        setDragOver(true)
+        if (!readOnly) setDragOver(true)
       }}
       onDragLeave={() => setDragOver(false)}
       onDrop={onDrop}
@@ -256,6 +266,18 @@ export function ImageUpload({
     </>
   )
 
+  const removeConfirmDialog = (
+    <ConfirmDialog
+      open={confirmingRemove}
+      title={`Remove this ${label}?`}
+      message="This can't be undone."
+      confirmLabel="Remove"
+      busy={removing}
+      onConfirm={confirmRemove}
+      onCancel={() => setConfirmingRemove(false)}
+    />
+  )
+
   if (size === 'sm') {
     return (
       <div className="flex flex-1 flex-wrap items-start gap-3">
@@ -264,6 +286,7 @@ export function ImageUpload({
           {messages}
           {controls}
         </div>
+        {removeConfirmDialog}
       </div>
     )
   }
@@ -273,6 +296,7 @@ export function ImageUpload({
       {messages}
       {box}
       {controls}
+      {removeConfirmDialog}
     </div>
   )
 }

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { getRoleDefinition } from '../../lib/roles'
 import { Avatar } from '../../components/Avatar'
+import { ConfirmDialog } from '../../components/ui/Modal'
+import { useToast } from '../../components/ui/Toast'
 import type { RoleRequestForReview, RoleRequestStatus } from '../../lib/types'
 
 const TABS: RoleRequestStatus[] = ['pending', 'approved', 'rejected']
@@ -14,6 +16,8 @@ export function RoleRequestsTab({ conferenceId }: { conferenceId: string }) {
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [confirmingApproveId, setConfirmingApproveId] = useState<string | null>(null)
+  const { showToast } = useToast()
 
   const loadRequests = useCallback(async () => {
     setLoading(true)
@@ -33,13 +37,16 @@ export function RoleRequestsTab({ conferenceId }: { conferenceId: string }) {
   }, [loadRequests])
 
   async function handleApprove(id: string) {
-    if (!window.confirm('Approve this request?')) return
+    setConfirmingApproveId(null)
     setBusyId(id)
     try {
       await api.post(`/role-requests/${id}/approve`)
+      showToast('Request approved.', 'success')
       await loadRequests()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not approve this request.')
+      const message = err instanceof ApiError ? err.message : 'Could not approve this request.'
+      setError(message)
+      showToast(message, 'error')
     } finally {
       setBusyId(null)
     }
@@ -60,9 +67,12 @@ export function RoleRequestsTab({ conferenceId }: { conferenceId: string }) {
     try {
       await api.post(`/role-requests/${id}/reject`, { reason: reason.trim() })
       setRejectingId(null)
+      showToast('Request rejected.', 'success')
       await loadRequests()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not reject this request.')
+      const message = err instanceof ApiError ? err.message : 'Could not reject this request.'
+      setError(message)
+      showToast(message, 'error')
     } finally {
       setBusyId(null)
     }
@@ -120,7 +130,7 @@ export function RoleRequestsTab({ conferenceId }: { conferenceId: string }) {
                   <div className="flex shrink-0 gap-2">
                     <button
                       type="button"
-                      onClick={() => handleApprove(request.id)}
+                      onClick={() => setConfirmingApproveId(request.id)}
                       disabled={busyId === request.id}
                       className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
                     >
@@ -173,6 +183,17 @@ export function RoleRequestsTab({ conferenceId }: { conferenceId: string }) {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={confirmingApproveId !== null}
+        title="Approve this request?"
+        message="This grants the role immediately."
+        confirmLabel="Approve"
+        confirmVariant="primary"
+        busy={busyId === confirmingApproveId}
+        onConfirm={() => confirmingApproveId && handleApprove(confirmingApproveId)}
+        onCancel={() => setConfirmingApproveId(null)}
+      />
     </div>
   )
 }

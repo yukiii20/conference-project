@@ -89,7 +89,6 @@ test.describe('author sign-up -> convenor approval -> author login', () => {
   })
 
   test('convenor approves the author', async ({ page }) => {
-    page.on('dialog', (dialog) => dialog.accept())
     await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
     await expect(page).toHaveURL(/\/convenor/)
 
@@ -97,6 +96,7 @@ test.describe('author sign-up -> convenor approval -> author login', () => {
     const row = page.locator('li', { hasText: authorEmail })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Approve' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Approve' }).click()
     await expect(row).toHaveCount(0)
   })
 

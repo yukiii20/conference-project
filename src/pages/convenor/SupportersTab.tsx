@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { SUPPORTER_TIERS, supporterSchema, type SupporterTier } from '../../lib/validation'
 import { ImageUpload } from '../../components/ImageUpload'
+import { ConfirmDialog } from '../../components/ui/Modal'
 
 const MAX_MB = 2
 
@@ -38,6 +39,7 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
   const [edits, setEdits] = useState<Record<string, EditState>>({})
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [confirmingRemove, setConfirmingRemove] = useState<Supporter | null>(null)
   const [newSupporter, setNewSupporter] = useState<EditState>(EMPTY_NEW)
   const [newError, setNewError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -139,7 +141,7 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
   }
 
   async function handleRemove(supporter: Supporter) {
-    if (!window.confirm(`Delete ${supporter.name}? This also removes its logo.`)) return
+    setConfirmingRemove(null)
     setBusyId(supporter.id)
     try {
       await api.del(`/conferences/${conferenceId}/supporters/${supporter.id}`)
@@ -286,7 +288,7 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleRemove(supporter)}
+                          onClick={() => setConfirmingRemove(supporter)}
                           disabled={busyId === supporter.id}
                           className="ml-auto rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
                         >
@@ -339,6 +341,16 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
           {creating ? 'Adding…' : 'Add supporter'}
         </button>
       </form>
+
+      <ConfirmDialog
+        open={confirmingRemove !== null}
+        title={`Delete ${confirmingRemove?.name ?? 'this supporter'}?`}
+        message="This also removes its logo. This cannot be undone."
+        confirmLabel="Delete"
+        busy={busyId === confirmingRemove?.id}
+        onConfirm={() => confirmingRemove && handleRemove(confirmingRemove)}
+        onCancel={() => setConfirmingRemove(null)}
+      />
     </div>
   )
 }
