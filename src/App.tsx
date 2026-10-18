@@ -1,8 +1,10 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './lib/authContext'
 import { ToastProvider } from './components/ui/Toast'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { SuperAdminRoute } from './components/SuperAdminRoute'
+import { PageLoading } from './components/PageLoading'
 import { HomePage } from './pages/HomePage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { TermsPage } from './pages/TermsPage'
@@ -16,12 +18,17 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { SetPasswordPage } from './pages/SetPasswordPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage'
-import { SuperAdminPage } from './pages/SuperAdminPage'
-import { AdminViewAsPage } from './pages/AdminViewAsPage'
-import { ConvenorPage } from './pages/ConvenorPage'
-import { PortalPage } from './pages/PortalPage'
 import { VerifyCertificatePage } from './pages/VerifyCertificatePage'
 import { OLD_PORTAL_REDIRECTS } from './pages/portal/sidebarConfig'
+
+// Route-based code splitting for the big, role-gated portals - a visitor who
+// never signs in (or signs in as an attendee) never downloads any of this.
+// ConvenorPage is also used by AdminViewAsPage, which lazy-imports it the
+// same way - Vite/Rollup dedupe both dynamic imports into one shared chunk.
+const SuperAdminPage = lazy(() => import('./pages/SuperAdminPage').then((m) => ({ default: m.SuperAdminPage })))
+const AdminViewAsPage = lazy(() => import('./pages/AdminViewAsPage').then((m) => ({ default: m.AdminViewAsPage })))
+const ConvenorPage = lazy(() => import('./pages/ConvenorPage').then((m) => ({ default: m.ConvenorPage })))
+const PortalPage = lazy(() => import('./pages/PortalPage').then((m) => ({ default: m.PortalPage })))
 
 /** Old single-role URLs (bookmarked, or baked into stored notification link_path values) — kept working, query string and all. */
 function OldPortalRedirect({ to }: { to: string }) {
@@ -51,7 +58,9 @@ export default function App() {
               path="/super-admin"
               element={
                 <SuperAdminRoute>
-                  <SuperAdminPage />
+                  <Suspense fallback={<PageLoading />}>
+                    <SuperAdminPage />
+                  </Suspense>
                 </SuperAdminRoute>
               }
             />
@@ -59,7 +68,9 @@ export default function App() {
               path="/super-admin/view-as/:conferenceId/*"
               element={
                 <SuperAdminRoute>
-                  <AdminViewAsPage />
+                  <Suspense fallback={<PageLoading />}>
+                    <AdminViewAsPage />
+                  </Suspense>
                 </SuperAdminRoute>
               }
             />
@@ -67,7 +78,9 @@ export default function App() {
               path="/convenor/*"
               element={
                 <ProtectedRoute kind="convenor">
-                  <ConvenorPage />
+                  <Suspense fallback={<PageLoading />}>
+                    <ConvenorPage />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -75,7 +88,9 @@ export default function App() {
               path="/manager/*"
               element={
                 <ProtectedRoute kind="role" role="manager">
-                  <ConvenorPage />
+                  <Suspense fallback={<PageLoading />}>
+                    <ConvenorPage />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -83,7 +98,9 @@ export default function App() {
               path="/portal/*"
               element={
                 <ProtectedRoute kind="authenticated">
-                  <PortalPage />
+                  <Suspense fallback={<PageLoading />}>
+                    <PortalPage />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />

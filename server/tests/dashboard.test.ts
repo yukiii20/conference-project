@@ -9,6 +9,7 @@ import {
   createTrack,
   createUser,
   resetDatabase,
+  setDeadlineWindow,
   upsertConferenceSettings,
 } from './helpers.js'
 
@@ -55,6 +56,37 @@ describe('convenor dashboard', () => {
     expect(Array.isArray(res.body.submissions_per_track)).toBe(true)
     expect(res.body.submissions_per_track[0]).toMatchObject({ track_name: 'AI', count: 0 })
     expect(res.body.needs_attention.pending_role_requests).toBe(0)
+  })
+
+  it('counts real registrations, excluding cancelled ones - not a hard-coded 0', async () => {
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId, { registration_requires_payment: false })
+    await setDeadlineWindow(conferenceId, 'registration', -24, 24)
+    await pool.query(`INSERT INTO registration_categories (conference_id, code, name) VALUES (?, 'general', 'General')`, [
+      conferenceId,
+    ])
+    const [[{ id: categoryId }]] = (await pool.query(
+      'SELECT id FROM registration_categories WHERE conference_id = ? AND code = ?',
+      [conferenceId, 'general'],
+    )) as unknown as [Array<{ id: string }>]
+
+    const { agent: convenorAgent } = await loginAs(conferenceId, 'dash-convenor2@example.com', 'convenor')
+    const { agent: attendeeAgent } = await loginAs(conferenceId, 'dash-attendee@example.com', 'author')
+    const { agent: cancelledAgent } = await loginAs(conferenceId, 'dash-cancelled@example.com', 'author')
+
+    const reg = await attendeeAgent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+    expect(reg.status).toBe(201)
+
+    const cancelledReg = await cancelledAgent
+      .post(`/api/conferences/${conferenceId}/register`)
+      .send({ category_id: categoryId })
+    expect(cancelledReg.status).toBe(201)
+    const cancel = await cancelledAgent.delete(`/api/conferences/${conferenceId}/my-registration`)
+    expect(cancel.status).toBe(200)
+
+    const res = await convenorAgent.get(`/api/conferences/${conferenceId}/dashboard`)
+    expect(res.status).toBe(200)
+    expect(res.body.registrations).toBe(1)
   })
 
   it('is forbidden for an author (no conference.view_internal permission)', async () => {

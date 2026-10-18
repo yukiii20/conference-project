@@ -248,3 +248,59 @@ Vitest worker crash, documented in final-test-report.md, confirmed by re-running
 alone), root tests (21 passed), Playwright (88/88, full suite + responsive.spec.ts) all green.
 See docs/responsive-ui-audit.md for the full findings, screenshots-inspected list, and honestly
 disclosed remaining limitations (1920px and real-device/real-camera testing not covered).
+
+## Step 8 - Production readiness - DONE
+Audit first (`docs/production-audit.md`): most security/reliability requirements were already
+correctly implemented from Steps 0-2 (helmet/CSP, CORS locked to `CLIENT_ORIGIN`, CSRF via an
+Origin-header check, httpOnly/Secure/SameSite cookies, rate limits, 100 KB body cap, zod
+validation on every mutating route, no stack-trace leakage, upload content-sniffing, env
+validation) - confirmed by reading the code, not assumed. What needed real work: zero frontend
+code-splitting (one 798 KB bundle for every visitor), 9 sequential dashboard queries, a
+hard-coded `registrations: 0` dashboard stat (a real "no fake numbers" bug), two pagination gaps
+(admin Users list, registrations list), a bare `{ok:true}` health endpoint, unlogged email-retry
+actions, and an undersized MySQL pool (`connectionLimit: 10`, mysql2's own default). Fixed all of
+these: `React.lazy`+`Suspense` code-splitting (main bundle 798 KB -> 508 KB, 199.5 KB -> 146.9 KB
+gzip), parallelized the dashboard queries and fixed the hard-coded count (with a new test that
+actually distinguishes a real count from zero), wired both paginated lists up to the shared
+`Pagination` component, extended `/api/health` with uptime/DB-ping-latency/email-queue counts,
+audit-logged email retries, and added `DB_POOL_SIZE` (default 20, env-configurable, refuses to
+start below 1). Wrote the Phase 6-7 deliverables: `deploy/backup.sh` + `deploy/restore.md`
+(independently re-run against `conference_cms_test`, a real valid gzip dump + storage tarball
+produced; restore itself needs a human with MySQL root, not available in this sandbox),
+`docs/monitoring.md` (free tooling only: PM2, UptimeRobot, MySQL slow query log, goaccess), and
+`load/scenario.js` + `load/README.md` (k6, three weighted scenarios - browse, signed-in portal,
+register+check-in - exercising the one-active-registration and once-per-day-checkin duplicate-
+action paths).
+Ran the k6 load test for real (not just written): `DB_POOL_SIZE=10` (pre-fix) vs `20` (this
+step's fix) against the throwaway `:4100` test backend, ramping 10->50->100->200 VUs per
+scenario (420 combined peak). Real, measured improvement - throughput 11.04 -> 16.83 req/s
+(+52%), median latency 4.52s -> 399ms (~11x faster), checks-passed 88.85% -> 93.70%, zero real
+5xx responses either run (every failure was a 60s client timeout, i.e. queuing, not a crash) -
+honestly reported alongside the fact that both runs still fail the script's own p95<800ms
+threshold at this 420-VU stress-test ceiling (well above the doc's own 100-300 concurrent-user
+target); see docs/production-readiness.md for the full table and the reasoning for not
+overclaiming "fixed for 10,000 users."
+Ran Lighthouse for real against the production build (`vite preview`, `/api` proxied to the test
+backend) on home/conference/login/portal, mobile, simulated throttling - and it found a genuine
+bug the earlier fixes missed: `public/logo.png` was a 1536x1024, 1.42 MB PNG displayed at 28-64px
+on every single page, driving LCP to 9.0-9.6s (3.6-3.8x the doc's 2.5s target) on three of the
+four pages tested. Resized it with `sharp` to 384px wide (1.42 MB -> 25.5 KB, 98.2% smaller, no
+visual change) and re-measured: conference page LCP 9.00s -> 2.10s, login 9.15s -> 2.25s, portal
+9.61s -> 2.78s. CLS was 0 everywhere both before and after. Honestly disclosed: INP could not be
+measured (needs real user interaction, not a lab page load - no field-data/RUM tool is set up for
+this app), and the signed-in portal dashboard's LCP (2.78s) is still a touch over target after the
+fix, from its own lazy JS chunk - a real next-step candidate, not papered over.
+Final verification (test DB re-seeded first): tsc (root+server) clean, build (both) clean -
+508.26 KB / 146.93 KB gzip main bundle, confirmed in the final build too, npm test root (21/21),
+npm test server (449/449, 34 files incl. the new `emailLogRetry.test.ts`, no Vitest worker crash
+this run), npm audit root (0 vulnerabilities) and server (2 moderate transitive `exceljs`/`uuid`
+advisories, unchanged since Step 5, no safe fix without a breaking downgrade), Playwright (88/88 -
+one transient `net::ERR_CONNECTION_REFUSED` flake on the first full run, confirmed not a
+regression by re-running that file alone and the full suite again, both clean, with both e2e
+servers staying healthy throughout per `/api/health`).
+Wrote `docs/production-readiness.md`: problems found, files changed, before/after performance
+(bundle, Lighthouse, load test), security fixes and remaining risks, commands run, missing
+features, recommended VPS size (2 vCPU/4 GB/60-80 GB SSD) and MySQL settings, tasks left before
+going live, and paid-services-vs-cheaper-options. No SQL run, no schema changes, no secrets
+committed, no real emails sent - test DB and throwaway `:4100`/`:5273` servers only throughout,
+same as every prior step.

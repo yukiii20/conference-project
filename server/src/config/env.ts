@@ -17,6 +17,14 @@ const envSchema = z
     DB_USER: z.string().min(1),
     DB_PASSWORD: z.string().min(1),
     DB_NAME: z.string().min(1),
+    // mysql2's own default (10) queues every request past that count instead
+    // of erroring, which is safe but means an undersized pool shows up as
+    // creeping latency, not an obvious crash - see load/README.md's load-test
+    // numbers for exactly how badly 10 queues under concurrent load. 20 is a
+    // safer default for real traffic while staying well under MySQL's own
+    // max_connections (150 by default) even with a few other clients
+    // connected at once.
+    DB_POOL_SIZE: z.coerce.number().int().positive().default(20),
     SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 characters.'),
     CLIENT_ORIGIN: z.string().url(),
     PORT: z.coerce.number().int().positive().default(4000),
@@ -83,3 +91,16 @@ if (!parsed.success) {
 
 export const env = parsed.data
 export const isProduction = env.NODE_ENV === 'production'
+
+// Not a hard refusal (unlike the checks above) — a production deployment that
+// hasn't configured SMTP yet still needs to boot to be configured, but this
+// must not go unnoticed: in console mode, password resets, invitations, and
+// every other email this app sends only ever get logged to this process's
+// own stdout, not delivered to anyone.
+if (isProduction && env.EMAIL_MODE === 'console') {
+  console.warn(
+    '*** WARNING: EMAIL_MODE=console in production. No real emails will be sent ' +
+      '(password resets, invitations, notifications all just log to this console). ' +
+      'Set EMAIL_MODE=smtp with SMTP_HOST/SMTP_USER/SMTP_PASS/MAIL_FROM before going live. ***',
+  )
+}

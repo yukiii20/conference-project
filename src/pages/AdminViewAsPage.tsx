@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
-import { ConvenorPage } from './ConvenorPage'
+import { PageLoading } from '../components/PageLoading'
+import { ErrorState } from '../components/ui/EmptyState'
+
+// Same chunk as the /convenor and /manager routes in App.tsx - Vite/Rollup
+// dedupe every dynamic import() of this module into one shared chunk.
+const ConvenorPage = lazy(() => import('./ConvenorPage').then((m) => ({ default: m.ConvenorPage })))
 
 /**
  * Entry point for the admin's "View as admin" action: logs the audit entry,
@@ -47,16 +52,18 @@ export function AdminViewAsPage() {
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4 text-ink">
-        <p className="text-sm text-red-600">{error}</p>
+        <ErrorState message={error} />
       </div>
     )
   }
 
   if (!ready || !conferenceId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-ink/60">Loading…</div>
-    )
+    return <PageLoading />
   }
 
-  return <ConvenorPage viewAs={{ conferenceId, conferenceName: conferenceName ?? '' }} />
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <ConvenorPage viewAs={{ conferenceId, conferenceName: conferenceName ?? '' }} />
+    </Suspense>
+  )
 }

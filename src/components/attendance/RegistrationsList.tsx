@@ -3,6 +3,7 @@ import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { StatusChip } from '../ui/Badge'
 import { ConfirmDialog } from '../ui/Modal'
+import { Pagination } from '../ui/Table'
 
 type Category = { id: string; name: string }
 
@@ -32,6 +33,9 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
   const [status, setStatus] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [pageSize, setPageSize] = useState(50)
 
   useEffect(() => {
     api
@@ -43,23 +47,34 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const query: Record<string, string | undefined> = {}
+      const query: Record<string, string | undefined> = { page: String(page) }
       if (search) query.search = search
       if (status) query.status = status
       if (categoryId) query.category_id = categoryId
-      const data = await api.get<{ registrations: AdminRegistration[] }>(`/conferences/${conferenceId}/registrations`, query)
+      const data = await api.get<{ registrations: AdminRegistration[]; page: number; page_size: number; total: number }>(
+        `/conferences/${conferenceId}/registrations`,
+        query,
+      )
       setRegistrations(data.registrations)
+      setTotal(data.total)
+      setPageSize(data.page_size)
       setError(null)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load registrations.')
     } finally {
       setLoading(false)
     }
-  }, [conferenceId, search, status, categoryId])
+  }, [conferenceId, search, status, categoryId, page])
 
   useEffect(() => {
     load()
   }, [load])
+
+  // Any filter change invalidates the current page - go back to page 1 rather
+  // than risk landing past the end of a now-smaller result set.
+  useEffect(() => {
+    setPage(1)
+  }, [search, status, categoryId])
 
   async function confirmRegistration(id: string) {
     setBusyId(id)
@@ -191,6 +206,8 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
           </table>
         </div>
       )}
+
+      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
 
       <ConfirmDialog
         open={confirmingCancelId !== null}

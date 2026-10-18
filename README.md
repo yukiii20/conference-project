@@ -59,6 +59,7 @@ Open `server/.env` and fill in every variable:
 | Variable | What it's for |
 |---|---|
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | How to connect to MySQL. Use the `cms_app` user you created above. |
+| `DB_POOL_SIZE` | MySQL connection pool size. Defaults to `20`; see `load/README.md` for why the driver's own default of 10 isn't enough under real concurrent traffic. |
 | `SESSION_SECRET` | Random secret used to sign session data. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. In production this must be 32+ random characters — the server refuses to start otherwise. |
 | `CLIENT_ORIGIN` | The exact URL the frontend is served from (e.g. `http://localhost:5173` in dev, `https://your-domain.com` in production). Used for CORS and to reject cross-site requests. |
 | `PORT` | Port the backend listens on. Defaults to `4000`. |

@@ -58,8 +58,19 @@ async function signInAdmin(page: Page) {
  * checks `aria-expanded` rather than clicking blindly).
  */
 async function openMobileNavIfPresent(page: Page) {
+  // PortalPage's toggle is `md:hidden` (src/pages/PortalPage.tsx) - at >=768px
+  // it never renders at all, so don't wait for it (the caller also runs this
+  // at the 768/1024/1440px widths, where waiting out a real timeout for an
+  // element that structurally never exists would blow the test timeout).
+  const width = page.viewportSize()?.width ?? 0
+  if (width >= 768) return
+
   const menuButton = page.getByRole('button', { name: 'menu' }).first()
-  if ((await menuButton.count()) === 0 || !(await menuButton.isVisible())) return
+  // Lazy-loaded routes (convenor/manager/portal/super-admin, see src/App.tsx)
+  // show a brief Suspense fallback with no nav chrome at all before the real
+  // page mounts - wait for the button rather than taking an instant snapshot,
+  // same as a real visitor would just wait a moment before tapping it.
+  await menuButton.waitFor({ state: 'visible', timeout: 10_000 })
   if ((await menuButton.getAttribute('aria-expanded')) === 'true') return
   await menuButton.click()
 }

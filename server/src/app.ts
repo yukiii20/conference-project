@@ -3,8 +3,8 @@ import helmet from 'helmet'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import { env } from './config/env.js'
-import { pool } from './db/pool.js'
 import { errorHandler } from './middleware/errorHandler.js'
+import { pingDatabase, getEmailQueueCounts } from './utils/health.js'
 import { authRouter } from './modules/auth/routes.js'
 import { conferencesRouter } from './modules/conferences/routes.js'
 import { conferencesManageRouter } from './modules/conferences/manage.routes.js'
@@ -120,13 +120,19 @@ export function createApp() {
 
   app.use('/files/public', express.static(PUBLIC_DIR, { maxAge: '7d', immutable: true }))
 
+  const startedAt = Date.now()
+
+  // Deliberately public (no auth) - this is what a load balancer / uptime
+  // monitor polls. Only operational counts, never user data or secrets.
   app.get('/api/health', async (_req, res) => {
-    try {
-      await pool.query('SELECT 1')
-      res.json({ ok: true })
-    } catch {
-      res.status(503).json({ ok: false })
-    }
+    const [db, email] = await Promise.all([pingDatabase(), getEmailQueueCounts()])
+    const ok = db.ok
+    res.status(ok ? 200 : 503).json({
+      ok,
+      uptime_seconds: Math.round((Date.now() - startedAt) / 1000),
+      database: db,
+      email_queue: email,
+    })
   })
 
   app.use('/api/auth', authRouter)

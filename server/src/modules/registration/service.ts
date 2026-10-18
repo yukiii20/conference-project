@@ -294,10 +294,9 @@ export type AdminRegistrationRow = {
 
 // Deliberately selects every column except qr_token — it must never appear
 // in a list response (only the owner's own QR-image endpoint reads it).
-export async function listRegistrations(
-  conferenceId: string,
-  filter: { search?: string; status?: string; categoryId?: string } = {},
-): Promise<AdminRegistrationRow[]> {
+const REGISTRATIONS_PAGE_SIZE = 50
+
+function registrationWhere(conferenceId: string, filter: { search?: string; status?: string; categoryId?: string }) {
   const conditions = ['r.conference_id = ?']
   const params: unknown[] = [conferenceId]
   if (filter.status) {
@@ -313,21 +312,58 @@ export async function listRegistrations(
     const like = `%${filter.search}%`
     params.push(like, like, like)
   }
+  return { where: conditions.join(' AND '), params }
+}
+
+/** Unpaginated - only for exportRegistrationsCsv, which needs every matching row. */
+async function listAllRegistrations(
+  conferenceId: string,
+  filter: { search?: string; status?: string; categoryId?: string },
+): Promise<AdminRegistrationRow[]> {
+  const { where, params } = registrationWhere(conferenceId, filter)
   const [rows] = await pool.query(
     `SELECT r.id, r.registration_number, u.full_name, u.email, c.name AS category_name,
             r.status, r.amount_due, r.currency, r.registered_at
      FROM registrations r
      JOIN users u ON u.id = r.user_id
      JOIN registration_categories c ON c.id = r.category_id
-     WHERE ${conditions.join(' AND ')}
+     WHERE ${where}
      ORDER BY r.registered_at DESC`,
     params,
   )
   return rows as AdminRegistrationRow[]
 }
 
+export async function listRegistrations(
+  conferenceId: string,
+  filter: { search?: string; status?: string; categoryId?: string; page?: number } = {},
+): Promise<{ registrations: AdminRegistrationRow[]; page: number; page_size: number; total: number }> {
+  const page = filter.page ?? 1
+  const { where, params } = registrationWhere(conferenceId, filter)
+  const offset = (page - 1) * REGISTRATIONS_PAGE_SIZE
+
+  const [[rows], [countRows]] = await Promise.all([
+    pool.query(
+      `SELECT r.id, r.registration_number, u.full_name, u.email, c.name AS category_name,
+              r.status, r.amount_due, r.currency, r.registered_at
+       FROM registrations r
+       JOIN users u ON u.id = r.user_id
+       JOIN registration_categories c ON c.id = r.category_id
+       WHERE ${where}
+       ORDER BY r.registered_at DESC LIMIT ? OFFSET ?`,
+      [...params, REGISTRATIONS_PAGE_SIZE, offset],
+    ),
+    pool.query(
+      `SELECT COUNT(*) AS count FROM registrations r JOIN users u ON u.id = r.user_id WHERE ${where}`,
+      params,
+    ),
+  ])
+  const total = Number((countRows as Array<{ count: number }>)[0]?.count ?? 0)
+  return { registrations: rows as AdminRegistrationRow[], page, page_size: REGISTRATIONS_PAGE_SIZE, total }
+}
+
 export async function exportRegistrationsCsv(conferenceId: string): Promise<string> {
-  const rows = await listRegistrations(conferenceId)
+  const rows = await listAllRegistrations(conferenceId, {})
   const header = ['Registration number', 'Name', 'Email', 'Category', 'Status', 'Amount due', 'Currency', 'Registered at']
   const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
   const lines = [header.map(escape).join(',')]

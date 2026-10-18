@@ -7,6 +7,7 @@ import { EmailLogTab } from '../components/EmailLogTab'
 import { PortalHeader } from '../components/PortalHeader'
 import { StatusChip } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/Modal'
+import { Pagination } from '../components/ui/Table'
 
 type AdminTab =
   | 'dashboard'
@@ -959,16 +960,30 @@ function UsersTab() {
     confirmMessage: string
     successMessage: string
   } | null>(null)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [pageSize, setPageSize] = useState(50)
 
   const reload = useCallback(async (): Promise<void> => {
     try {
-      const data = await api.get<{ users: ProfileRow[] }>('/admin/users', { query: query.trim() || undefined })
+      const data = await api.get<{ users: ProfileRow[]; page: number; page_size: number; total: number }>(
+        '/admin/users',
+        { query: query.trim() || undefined, page: String(page) },
+      )
       setResults(data.users)
+      setTotal(data.total)
+      setPageSize(data.page_size)
       setError(null)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load users.')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, page])
+
+  // A new search invalidates the current page - start back at page 1 rather
+  // than risk landing past the end of a now-smaller result set.
+  useEffect(() => {
+    setPage(1)
   }, [query])
 
   useEffect(() => {
@@ -984,7 +999,7 @@ function UsersTab() {
       clearTimeout(handle)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query])
+  }, [query, page])
 
   function runAction(profile: ProfileRow, action: string, confirmMessage: string, successMessage: string) {
     setPendingAction({ profile, action, confirmMessage, successMessage })
@@ -1169,6 +1184,8 @@ function UsersTab() {
           </table>
         </div>
       )}
+
+      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
 
       {anonymizeTarget ? (
         <AnonymizeConfirmDialog

@@ -22,3 +22,22 @@ export async function getStorageDiskSpace(): Promise<{ free_bytes: number | null
     return { free_bytes: null, total_bytes: null }
   }
 }
+
+/** Queued and 24h-failed email counts — no addresses/subjects, just counts. Never throws — callers get nulls instead. */
+export async function getEmailQueueCounts(): Promise<{ queued: number | null; failed_24h: number | null }> {
+  try {
+    const [rows] = await pool.query(
+      `SELECT
+         SUM(status = 'queued') AS queued,
+         SUM(status = 'failed' AND queued_at >= NOW(3) - INTERVAL 24 HOUR) AS failed_24h
+       FROM email_logs`,
+    )
+    const row = (rows as Array<{ queued: string | number | null; failed_24h: string | number | null }>)[0]
+    return {
+      queued: row?.queued != null ? Number(row.queued) : 0,
+      failed_24h: row?.failed_24h != null ? Number(row.failed_24h) : 0,
+    }
+  } catch {
+    return { queued: null, failed_24h: null }
+  }
+}

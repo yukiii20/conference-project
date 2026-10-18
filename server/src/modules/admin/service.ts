@@ -7,7 +7,7 @@ import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
-import { pingDatabase, getStorageDiskSpace } from '../../utils/health.js'
+import { pingDatabase, getStorageDiskSpace, getEmailQueueCounts } from '../../utils/health.js'
 import type {
   AppointConvenorInput,
   AuditLogQuery,
@@ -401,7 +401,9 @@ export type AdminUserRow = {
   created_at: string
 }
 
-export async function listUsers(query: ListUsersQuery): Promise<{ users: AdminUserRow[]; page: number }> {
+export async function listUsers(
+  query: ListUsersQuery,
+): Promise<{ users: AdminUserRow[]; page: number; page_size: number; total: number }> {
   const conditions: string[] = []
   const params: unknown[] = []
 
@@ -417,14 +419,17 @@ export async function listUsers(query: ListUsersQuery): Promise<{ users: AdminUs
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
   const offset = (query.page - 1) * PAGE_SIZE
-  params.push(PAGE_SIZE, offset)
 
-  const [rows] = await pool.query(
-    `SELECT id, full_name, email, phone, status, failed_login_count, locked_until, created_at FROM users ${where}
-     ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    params,
-  )
-  return { users: rows as AdminUserRow[], page: query.page }
+  const [[rows], [countRows]] = await Promise.all([
+    pool.query(
+      `SELECT id, full_name, email, phone, status, failed_login_count, locked_until, created_at FROM users ${where}
+       ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, PAGE_SIZE, offset],
+    ),
+    pool.query(`SELECT COUNT(*) AS count FROM users ${where}`, params),
+  ])
+  const total = Number((countRows as Array<{ count: number }>)[0]?.count ?? 0)
+  return { users: rows as AdminUserRow[], page: query.page, page_size: PAGE_SIZE, total }
 }
 
 export type UserDetail = {
@@ -835,8 +840,7 @@ export async function getDashboardCounts() {
     pendingRoleRequests,
     totalSubmissions,
     activeRegistrations,
-    failedEmails24h,
-    queuedEmails,
+    emailQueue,
     recentActions,
     dbHealth,
     diskSpace,
@@ -848,8 +852,7 @@ export async function getDashboardCounts() {
     scalarCount(`SELECT COUNT(*) AS count FROM role_requests WHERE status = 'pending'`),
     scalarCount(`SELECT COUNT(*) AS count FROM submissions WHERE deleted_at IS NULL`),
     scalarCount(`SELECT COUNT(*) AS count FROM registrations WHERE active_flag = 1`),
-    scalarCount(`SELECT COUNT(*) AS count FROM email_logs WHERE status = 'failed' AND queued_at >= NOW(3) - INTERVAL 24 HOUR`),
-    scalarCount(`SELECT COUNT(*) AS count FROM email_logs WHERE status = 'queued'`),
+    getEmailQueueCounts(),
     getRecentAuditLog(10),
     pingDatabase(),
     getStorageDiskSpace(),
@@ -867,8 +870,8 @@ export async function getDashboardCounts() {
     health: {
       database: dbHealth,
       email_mode: env.EMAIL_MODE,
-      failed_emails_24h: failedEmails24h,
-      queued_emails: queuedEmails,
+      failed_emails_24h: emailQueue.failed_24h,
+      queued_emails: emailQueue.queued,
       storage_disk: diskSpace,
     },
   }

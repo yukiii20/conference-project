@@ -119,7 +119,8 @@ pm2 startup   # follow the one printed command to make PM2 survive a reboot
 ```
 
 Check it's alive: `curl http://localhost:4000/api/health` should print
-`{"ok":true}`.
+`"ok":true` along with uptime, a DB ping, and queued/failed email counts —
+see `docs/monitoring.md` for what to do with that endpoint day to day.
 
 ## 5. Build the frontend
 
@@ -198,31 +199,17 @@ After this, update `server/.env`'s `CLIENT_ORIGIN` and `APP_URL` to the
 
 ## 8. Daily backups
 
-Create `/opt/conference-cms/backup.sh`:
+The real backup script is `deploy/backup.sh` (reads DB credentials straight
+out of `server/.env`, so there's nothing to duplicate here) — it dumps the
+database with `mysqldump` (gzip), tars `server/storage`, and deletes
+anything older than 14 days. See `deploy/restore.md` for exact restore
+steps (read it before you ever need it — restoring needs the MySQL `root`
+user, not the app's own `cms_app` user, which only has
+`SELECT/INSERT/UPDATE/DELETE`).
 
 ```bash
-#!/bin/bash
-set -euo pipefail
-
-BACKUP_DIR=/var/backups/conference-cms
-DATE=$(date +%F)
-mkdir -p "$BACKUP_DIR"
-
-# Database
-mysqldump -u root -p"$(cat /root/.cms-db-root-password)" conference_cms \
-  | gzip > "$BACKUP_DIR/db-$DATE.sql.gz"
-
-# Uploaded files (private submission files + public images)
-tar -czf "$BACKUP_DIR/storage-$DATE.tar.gz" -C /opt/conference-cms/server storage
-
-# Keep 14 days, delete anything older
-find "$BACKUP_DIR" -name '*.gz' -mtime +14 -delete
-```
-
-```bash
-chmod +x /opt/conference-cms/backup.sh
-echo "<the mysql root password>" | sudo tee /root/.cms-db-root-password
-sudo chmod 600 /root/.cms-db-root-password
+chmod +x /opt/conference-cms/deploy/backup.sh
+sudo mkdir -p /var/backups/conference-cms
 ```
 
 Run it once by hand to check it works, then schedule it daily at 2 AM:
@@ -234,25 +221,14 @@ sudo crontab -e
 Add:
 
 ```
-0 2 * * * /opt/conference-cms/backup.sh >> /var/log/cms-backup.log 2>&1
+0 2 * * * /opt/conference-cms/deploy/backup.sh >> /var/log/cms-backup.log 2>&1
 ```
 
-### Restoring from a backup
-
-Database:
-
-```bash
-gunzip -c /var/backups/conference-cms/db-2026-01-15.sql.gz | mysql -u root -p conference_cms
-```
-
-Files:
-
-```bash
-cd /opt/conference-cms/server
-tar -xzf /var/backups/conference-cms/storage-2026-01-15.tar.gz
-```
-
-Then `pm2 restart cms-backend`.
+To also copy backups off this server (recommended — a backup that lives on
+the same disk as the thing it backs up doesn't survive a disk failure),
+set `REMOTE_BACKUP_DEST` in the crontab line's environment to an
+`rclone`-configured remote or an `rsync`/`scp` target — see the comment in
+`deploy/backup.sh` for the exact syntax.
 
 ## 9. Updating to a new version later
 

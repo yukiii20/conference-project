@@ -16,10 +16,19 @@ afterAll(async () => {
 })
 
 describe('GET /api/health', () => {
-  it('pings the database and reports ok with no secrets in the body', async () => {
+  it('pings the database and reports ok, uptime, and email queue counts with no secrets in the body', async () => {
     const res = await request(app).get('/api/health')
     expect(res.status).toBe(200)
-    expect(res.body).toEqual({ ok: true })
+    expect(res.body).toMatchObject({
+      ok: true,
+      database: { ok: true },
+    })
+    expect(typeof res.body.uptime_seconds).toBe('number')
+    expect(typeof res.body.email_queue.queued).toBe('number')
+    expect(typeof res.body.email_queue.failed_24h).toBe('number')
+    // No secrets, no PII, no email addresses/subjects - only operational counts.
+    const bodyText = JSON.stringify(res.body)
+    expect(bodyText).not.toMatch(/password|secret|token|@.*\.\w+/i)
   })
 })
 

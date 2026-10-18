@@ -8,7 +8,7 @@ export const pool = mysql.createPool({
   password: env.DB_PASSWORD,
   database: env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: env.DB_POOL_SIZE,
   // DATE columns (start_date, end_date, ...) come back as plain 'YYYY-MM-DD'
   // strings — not JS Date objects — because every caller (conference forms,
   // <input type="date">, formatDateRange) expects that exact shape, same as

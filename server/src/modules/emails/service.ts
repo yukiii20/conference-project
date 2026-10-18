@@ -1,6 +1,8 @@
 import { pool } from '../../db/pool.js'
+import { withTransaction } from '../../db/withTransaction.js'
 import { assertConferencePermission } from '../../middleware/auth.js'
 import { ConflictError, NotFoundError } from '../../utils/errors.js'
+import { insertAuditLog, type AuditContext } from '../../utils/audit.js'
 import type { ListEmailLogQuery } from './validation.js'
 
 const PAGE_SIZE = 50
@@ -61,29 +63,50 @@ export async function listEmailLogForConference(
   return { entries: rows as EmailLogRow[], page: filters.page }
 }
 
-async function retryRow(id: number, conferenceId?: string): Promise<void> {
-  const conditions = ['id = ?']
-  const params: unknown[] = [id]
-  if (conferenceId) {
-    conditions.push('conference_id = ?')
-    params.push(conferenceId)
-  }
+async function retryRow(actorUserId: string | null, id: number, conferenceId: string | undefined, ctx: AuditContext): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const conditions = ['id = ?']
+    const params: unknown[] = [id]
+    if (conferenceId) {
+      conditions.push('conference_id = ?')
+      params.push(conferenceId)
+    }
 
-  const [rows] = await pool.query(`SELECT status FROM email_logs WHERE ${conditions.join(' AND ')} LIMIT 1`, params)
-  const row = (rows as Array<{ status: string }>)[0]
-  if (!row) throw new NotFoundError('This email log entry does not exist.')
-  if (row.status !== 'failed') {
-    throw new ConflictError('Only a failed email can be retried.')
-  }
+    const [rows] = await conn.query(
+      `SELECT status, recipient_email, template_key, conference_id FROM email_logs WHERE ${conditions.join(' AND ')} LIMIT 1`,
+      params,
+    )
+    const row = (rows as Array<{ status: string; recipient_email: string; template_key: string; conference_id: string | null }>)[0]
+    if (!row) throw new NotFoundError('This email log entry does not exist.')
+    if (row.status !== 'failed') {
+      throw new ConflictError('Only a failed email can be retried.')
+    }
 
-  await pool.query(`UPDATE email_logs SET status = 'queued' WHERE id = ?`, [id])
+    await conn.query(`UPDATE email_logs SET status = 'queued' WHERE id = ?`, [id])
+
+    await insertAuditLog(conn, {
+      actorUserId,
+      conferenceId: row.conference_id,
+      action: 'email.retry',
+      entityType: 'email_log',
+      entityId: String(id),
+      newValues: { recipient_email: row.recipient_email, template_key: row.template_key },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    })
+  })
 }
 
-export async function retryEmailAsAdmin(id: number): Promise<void> {
-  await retryRow(id)
+export async function retryEmailAsAdmin(actorUserId: string, id: number, ctx: AuditContext = {}): Promise<void> {
+  await retryRow(actorUserId, id, undefined, ctx)
 }
 
-export async function retryEmailForConference(actorUserId: string, conferenceId: string, id: number): Promise<void> {
+export async function retryEmailForConference(
+  actorUserId: string,
+  conferenceId: string,
+  id: number,
+  ctx: AuditContext = {},
+): Promise<void> {
   await assertConferencePermission(actorUserId, conferenceId, 'email.read')
-  await retryRow(id, conferenceId)
+  await retryRow(actorUserId, id, conferenceId, ctx)
 }
