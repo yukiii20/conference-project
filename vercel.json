@@ -4,11 +4,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://REPLACE-WITH-RENDER-URL.onrender.com/api/:path*"
+      "destination": "https://conference-project-84xj.onrender.com/api/:path*"
     },
     {
       "source": "/files/:path*",
-      "destination": "https://REPLACE-WITH-RENDER-URL.onrender.com/files/:path*"
+      "destination": "https://conference-project-84xj.onrender.com/files/:path*"
     },
     {
       "source": "/(.*)",
