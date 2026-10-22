@@ -7,8 +7,22 @@ import {
   FILE_KIND_LABELS,
   SUBMISSION_STATUS_LABELS,
 } from '../../lib/submissionDisplay'
-import { StatusChip } from '../../components/ui/Badge'
-import { ConfirmDialog } from '../../components/ui/Modal'
+import {
+  StatusChip,
+  ConfirmDialog,
+  Button,
+  Input,
+  Select,
+  Textarea,
+  Checkbox,
+  FormField,
+  Card,
+  CardHeader,
+  Alert,
+  Spinner,
+  UploadIcon,
+  DownloadIcon,
+} from '../../components/ui'
 
 type Track = { id: string; name: string }
 
@@ -410,7 +424,11 @@ export function SubmissionDetail({
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   const words = core.abstract.trim() ? core.abstract.trim().split(/\s+/).filter(Boolean).length : 0
@@ -421,191 +439,199 @@ export function SubmissionDetail({
     <div className="mt-6 max-w-3xl space-y-8">
       {id ? (
         <div className="flex flex-wrap items-center gap-3">
-          {submissionCode ? <span className="font-mono text-sm text-ink/60">{submissionCode}</span> : null}
+          {submissionCode ? <span className="font-mono text-sm text-text-muted">{submissionCode}</span> : null}
           <StatusChip status={status} labels={SUBMISSION_STATUS_LABELS} />
         </div>
       ) : null}
 
       {presentation ? (
-        <div className="rounded-md border border-line bg-white px-4 py-3 text-sm">
-          <p className="font-medium text-ink">Your presentation</p>
-          <p className="mt-1 text-ink/70">
+        <Card>
+          <CardHeader title="Your presentation" />
+          <p className="text-sm text-text-muted">
             {presentation.session_title} · {presentation.room_name}
           </p>
-          <p className="text-ink/70">
+          <p className="text-sm text-text-muted">
             {formatKathmandu(presentation.starts_at)} – {formatKathmandu(presentation.ends_at)}
           </p>
-        </div>
+        </Card>
       ) : null}
 
-      {notice ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
-      ) : null}
+      {notice ? <Alert variant="success">{notice}</Alert> : null}
 
-      <form onSubmit={handleSave} className="space-y-4 rounded-lg border border-line bg-white p-5">
-        {formError ? (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {formError}
-          </div>
-        ) : null}
+      <form onSubmit={handleSave} className="space-y-4">
+        <Card className="space-y-4">
+          {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
-        <fieldset disabled={Boolean(id) && !editable} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-ink">Track</label>
-            <select
-              value={core.track_id}
-              onChange={(e) => setCore((p) => ({ ...p, track_id: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 focus:border-button"
-            >
-              <option value="">Choose a track</option>
-              {tracks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            {errors.track_id ? <p className="mt-1 text-sm text-red-600">{errors.track_id}</p> : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-ink">Title</label>
-            <input
-              value={core.title}
-              onChange={(e) => setCore((p) => ({ ...p, title: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-            />
-            {errors.title ? <p className="mt-1 text-sm text-red-600">{errors.title}</p> : null}
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-ink">Abstract</label>
-              <span className={`text-xs ${words > maxAbstractWords ? 'text-red-600' : 'text-ink/50'}`}>
-                {words} / {maxAbstractWords} words
-              </span>
-            </div>
-            <textarea
-              value={core.abstract}
-              onChange={(e) => setCore((p) => ({ ...p, abstract: e.target.value }))}
-              rows={8}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-            />
-            {errors.abstract ? <p className="mt-1 text-sm text-red-600">{errors.abstract}</p> : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-ink">Abstract file (optional)</label>
-            <p className="mt-1 text-xs text-ink/50">
-              You can type the abstract above, upload it as a file, or both. PDF, Word, or an image (PNG/JPG/WEBP).
-              {!id ? ' Save a draft first to enable the upload.' : ''}
-            </p>
-            <div className="mt-1">
-              <input
-                ref={abstractFileInputRef}
-                type="file"
-                accept={SUBMISSION_FILE_RULES.abstract.accept}
-                disabled={!id || !canUpload.abstract || uploadingKind === 'abstract'}
-                onChange={(e) => handleFilePick('abstract', e.target.files?.[0])}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => abstractFileInputRef.current?.click()}
-                disabled={!id || !canUpload.abstract || uploadingKind === 'abstract'}
-                className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          <fieldset disabled={Boolean(id) && !editable} className="space-y-4">
+            <FormField label="Track" error={errors.track_id} htmlFor="submission-track">
+              <Select
+                id="submission-track"
+                value={core.track_id}
+                onChange={(e) => setCore((p) => ({ ...p, track_id: e.target.value }))}
+                error={Boolean(errors.track_id)}
               >
-                {uploadingKind === 'abstract' ? 'Uploading…' : 'Upload abstract file'}
-              </button>
-            </div>
-            {uploadError ? <p className="mt-1 text-sm text-red-600">{uploadError}</p> : null}
-          </div>
+                <option value="">Choose a track</option>
+                {tracks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
 
-          <div>
-            <label className="block text-sm font-medium text-ink">Keywords</label>
-            <div className="mt-1 flex gap-2">
-              <input
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    addKeyword()
-                  }
-                }}
-                placeholder="Add a keyword and press Enter"
-                className="flex-1 rounded-md border border-line px-3 py-2 focus:border-button"
+            <FormField label="Title" error={errors.title} htmlFor="submission-title">
+              <Input
+                id="submission-title"
+                value={core.title}
+                onChange={(e) => setCore((p) => ({ ...p, title: e.target.value }))}
+                error={Boolean(errors.title)}
               />
-              <button type="button" onClick={addKeyword} className="rounded-md border border-line px-3 py-2 text-sm hover:bg-background">
-                Add
-              </button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {keywords.map((k) => (
-                <span key={k} className="flex items-center gap-1 rounded-full bg-button/10 px-3 py-1 text-sm text-button">
-                  {k}
-                  <button type="button" onClick={() => removeKeyword(k)} className="text-button/70 hover:text-button">
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            {errors.keywords ? <p className="mt-1 text-sm text-red-600">{errors.keywords}</p> : null}
-          </div>
+            </FormField>
 
-          <div>
-            <label className="block text-sm font-medium text-ink">Presentation preference</label>
-            <div className="mt-1 flex gap-4 text-sm">
-              {(['oral', 'poster', 'either'] as const).map((pref) => (
-                <label key={pref} className="flex items-center gap-1.5 capitalize">
-                  <input
-                    type="radio"
-                    name="pref"
-                    checked={core.presentation_preference === pref}
-                    onChange={() => setCore((p) => ({ ...p, presentation_preference: pref }))}
-                  />
-                  {pref}
+            <div>
+              <div className="flex items-center justify-between">
+                <label htmlFor="submission-abstract" className="block text-sm font-medium text-text">
+                  Abstract
                 </label>
-              ))}
+                <span className={`text-xs ${words > maxAbstractWords ? 'text-danger' : 'text-text-muted'}`}>
+                  {words} / {maxAbstractWords} words
+                </span>
+              </div>
+              <Textarea
+                id="submission-abstract"
+                value={core.abstract}
+                onChange={(e) => setCore((p) => ({ ...p, abstract: e.target.value }))}
+                rows={8}
+                error={Boolean(errors.abstract)}
+                className="mt-1"
+              />
+              {errors.abstract ? (
+                <p className="mt-1 text-sm text-danger" role="alert">
+                  {errors.abstract}
+                </p>
+              ) : null}
             </div>
-          </div>
-        </fieldset>
 
-        {!id || editable ? (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : id ? 'Save draft' : 'Create draft'}
-            </button>
-            {id ? (
-              <button
-                type="button"
-                onClick={() => setConfirmingSubmit(true)}
-                disabled={submitting}
-                className="rounded-md border border-button px-4 py-2 text-sm font-medium text-button hover:bg-button/5 disabled:opacity-50"
-              >
-                {submitting ? 'Submitting…' : 'Submit for review'}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+            <div>
+              <label className="block text-sm font-medium text-text">Abstract file (optional)</label>
+              <p className="mt-1 text-xs text-text-muted">
+                You can type the abstract above, upload it as a file, or both. PDF, Word, or an image (PNG/JPG/WEBP).
+                {!id ? ' Save a draft first to enable the upload.' : ''}
+              </p>
+              <div className="mt-1">
+                <input
+                  ref={abstractFileInputRef}
+                  type="file"
+                  accept={SUBMISSION_FILE_RULES.abstract.accept}
+                  disabled={!id || !canUpload.abstract || uploadingKind === 'abstract'}
+                  onChange={(e) => handleFilePick('abstract', e.target.files?.[0])}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  iconLeft={<UploadIcon className="h-4 w-4" />}
+                  onClick={() => abstractFileInputRef.current?.click()}
+                  disabled={!id || !canUpload.abstract || uploadingKind === 'abstract'}
+                  loading={uploadingKind === 'abstract'}
+                >
+                  {uploadingKind === 'abstract' ? 'Uploading…' : 'Upload abstract file'}
+                </Button>
+              </div>
+              {uploadError ? (
+                <p className="mt-1 text-sm text-danger" role="alert">
+                  {uploadError}
+                </p>
+              ) : null}
+            </div>
+
+            <FormField label="Keywords" error={errors.keywords}>
+              <div className="flex gap-2">
+                <Input
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addKeyword()
+                    }
+                  }}
+                  placeholder="Add a keyword and press Enter"
+                  className="flex-1"
+                />
+                <Button type="button" variant="secondary" onClick={addKeyword}>
+                  Add
+                </Button>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {keywords.map((k) => (
+                  <span
+                    key={k}
+                    className="flex items-center gap-1 rounded-full border border-border-soft bg-surface-muted px-3 py-1 text-sm text-text"
+                  >
+                    {k}
+                    <button
+                      type="button"
+                      onClick={() => removeKeyword(k)}
+                      className="text-text-muted hover:text-text"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </FormField>
+
+            <div>
+              <label className="block text-sm font-medium text-text">Presentation preference</label>
+              <div className="mt-1 flex gap-4 text-sm">
+                {(['oral', 'poster', 'either'] as const).map((pref) => (
+                  <label key={pref} className="flex items-center gap-1.5 capitalize">
+                    <input
+                      type="radio"
+                      name="pref"
+                      checked={core.presentation_preference === pref}
+                      onChange={() => setCore((p) => ({ ...p, presentation_preference: pref }))}
+                    />
+                    {pref}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </fieldset>
+
+          {!id || editable ? (
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="secondary" loading={saving}>
+                {saving ? 'Saving…' : id ? 'Save draft' : 'Create draft'}
+              </Button>
+              {id ? (
+                <Button type="button" variant="primary" onClick={() => setConfirmingSubmit(true)} loading={submitting}>
+                  {submitting ? 'Submitting…' : 'Submit for review'}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </Card>
       </form>
 
       {id ? (
         <>
-          <div className="rounded-lg border border-line bg-white p-5">
-            <h3 className="font-medium text-ink">Authors</h3>
-            {authorError ? <p className="mt-2 text-sm text-red-600">{authorError}</p> : null}
-            <ul className="mt-3 divide-y divide-line">
+          <Card>
+            <CardHeader title="Authors" />
+            {authorError ? (
+              <div className="mb-3">
+                <Alert variant="danger">{authorError}</Alert>
+              </div>
+            ) : null}
+            <ul className="divide-y divide-border">
               {sortedAuthors.map((a, i) => (
                 <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                   <div className="text-sm">
-                    <p className="font-medium text-ink">
-                      {a.full_name} {a.is_corresponding ? <span className="text-xs text-button">(corresponding)</span> : null}
+                    <p className="font-medium text-text">
+                      {a.full_name} {a.is_corresponding ? <span className="text-xs text-brand">(corresponding)</span> : null}
                     </p>
-                    <p className="text-ink/60">
+                    <p className="text-text-muted">
                       {a.email}
                       {a.affiliation ? ` · ${a.affiliation}` : ''}
                       {a.country ? ` · ${a.country}` : ''}
@@ -613,40 +639,44 @@ export function SubmissionDetail({
                   </div>
                   {editable ? (
                     <div className="flex gap-1.5">
-                      <button
+                      <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => handleMoveAuthor(a, 'up')}
                         disabled={authorBusy === a.id || i === 0}
-                        className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background disabled:opacity-40"
                       >
                         ↑
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => handleMoveAuthor(a, 'down')}
                         disabled={authorBusy === a.id || i === sortedAuthors.length - 1}
-                        className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background disabled:opacity-40"
                       >
                         ↓
-                      </button>
+                      </Button>
                       {!a.is_corresponding ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           onClick={() => handleMakeCorresponding(a)}
                           disabled={authorBusy === a.id}
-                          className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background disabled:opacity-50"
                         >
                           Make corresponding
-                        </button>
+                        </Button>
                       ) : null}
-                      <button
+                      <Button
                         type="button"
+                        variant="danger"
+                        size="sm"
                         onClick={() => setRemovingAuthor(a)}
                         disabled={authorBusy === a.id}
-                        className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
                         Remove
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </li>
@@ -654,65 +684,57 @@ export function SubmissionDetail({
             </ul>
 
             {editable ? (
-              <form onSubmit={handleAddAuthor} className="mt-4 space-y-2 rounded-md border border-dashed border-line p-3">
-                <p className="text-sm font-medium text-ink">Add a co-author</p>
+              <form onSubmit={handleAddAuthor} className="mt-4 space-y-2 rounded-md border border-dashed border-border p-3">
+                <p className="text-sm font-medium text-text">Add a co-author</p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input
+                  <Input
                     value={newAuthor.full_name}
                     onChange={(e) => setNewAuthor((p) => ({ ...p, full_name: e.target.value }))}
                     placeholder="Full name"
-                    className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
                   />
-                  <input
+                  <Input
                     value={newAuthor.email}
                     onChange={(e) => setNewAuthor((p) => ({ ...p, email: e.target.value }))}
                     placeholder="Email"
-                    className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
                   />
-                  <input
+                  <Input
                     value={newAuthor.affiliation}
                     onChange={(e) => setNewAuthor((p) => ({ ...p, affiliation: e.target.value }))}
                     placeholder="Affiliation"
-                    className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
                   />
-                  <input
+                  <Input
                     value={newAuthor.country}
                     onChange={(e) => setNewAuthor((p) => ({ ...p, country: e.target.value }))}
                     placeholder="Country"
-                    className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
                   />
                 </div>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={newAuthor.is_corresponding}
-                    onChange={(e) => setNewAuthor((p) => ({ ...p, is_corresponding: e.target.checked }))}
-                  />
-                  Corresponding author
-                </label>
-                <p className="text-xs text-ink/50">The corresponding author must already have an account.</p>
-                {authorError ? <p className="text-sm text-red-600">{authorError}</p> : null}
-                <button
-                  type="submit"
-                  disabled={authorBusy === 'new'}
-                  className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-                >
+                <Checkbox
+                  label="Corresponding author"
+                  checked={newAuthor.is_corresponding}
+                  onChange={(e) => setNewAuthor((p) => ({ ...p, is_corresponding: e.target.checked }))}
+                />
+                <p className="text-xs text-text-muted">The corresponding author must already have an account.</p>
+                {authorError ? <Alert variant="danger">{authorError}</Alert> : null}
+                <Button type="submit" size="sm" loading={authorBusy === 'new'}>
                   {authorBusy === 'new' ? 'Adding…' : 'Add author'}
-                </button>
+                </Button>
               </form>
             ) : null}
-          </div>
+          </Card>
 
-          <div className="rounded-lg border border-line bg-white p-5">
-            <h3 className="font-medium text-ink">Files</h3>
-            <p className="mt-1 text-xs text-ink/50">The abstract file upload is above, with the abstract text.</p>
-            {uploadError ? <p className="mt-2 text-sm text-red-600">{uploadError}</p> : null}
+          <Card>
+            <CardHeader title="Files" subtitle="The abstract file upload is above, with the abstract text." />
+            {uploadError ? (
+              <div className="mb-3">
+                <Alert variant="danger">{uploadError}</Alert>
+              </div>
+            ) : null}
 
             {canUpload.full_paper || canUpload.slides ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm text-ink/70">Full paper</label>
-                  <p className="mt-1 text-xs text-ink/50">{SUBMISSION_FILE_RULES.full_paper.helpText}</p>
+                  <label className="block text-sm text-text-muted">Full paper</label>
+                  <p className="mt-1 text-xs text-text-muted">{SUBMISSION_FILE_RULES.full_paper.helpText}</p>
                   <div className="mt-1">
                     <input
                       ref={fullPaperFileInputRef}
@@ -722,19 +744,21 @@ export function SubmissionDetail({
                       onChange={(e) => handleFilePick('full_paper', e.target.files?.[0])}
                       className="hidden"
                     />
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
+                      iconLeft={<UploadIcon className="h-4 w-4" />}
                       onClick={() => fullPaperFileInputRef.current?.click()}
                       disabled={!canUpload.full_paper || uploadingKind === 'full_paper'}
-                      className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                      loading={uploadingKind === 'full_paper'}
                     >
                       {uploadingKind === 'full_paper' ? 'Uploading…' : 'Upload full paper'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-ink/70">Presentation</label>
-                  <p className="mt-1 text-xs text-ink/50">{SUBMISSION_FILE_RULES.slides.helpText}</p>
+                  <label className="block text-sm text-text-muted">Presentation</label>
+                  <p className="mt-1 text-xs text-text-muted">{SUBMISSION_FILE_RULES.slides.helpText}</p>
                   <div className="mt-1">
                     <input
                       ref={slidesFileInputRef}
@@ -744,141 +768,122 @@ export function SubmissionDetail({
                       onChange={(e) => handleFilePick('slides', e.target.files?.[0])}
                       className="hidden"
                     />
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
+                      iconLeft={<UploadIcon className="h-4 w-4" />}
                       onClick={() => slidesFileInputRef.current?.click()}
                       disabled={!canUpload.slides || uploadingKind === 'slides'}
-                      className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                      loading={uploadingKind === 'slides'}
                     >
                       {uploadingKind === 'slides' ? 'Uploading…' : 'Upload presentation'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
             ) : null}
 
             {files.length === 0 ? (
-              <p className="mt-3 text-sm text-ink/60">No files uploaded yet.</p>
+              <p className="mt-3 text-sm text-text-muted">No files uploaded yet.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-line">
+              <ul className="mt-4 divide-y divide-border">
                 {files.map((f) => (
                   <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                     <div>
-                      <p className="text-ink">
+                      <p className="text-text">
                         {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} · v{f.version}{' '}
-                        <span className="text-ink/50">({f.status})</span>
+                        <span className="text-text-muted">({f.status})</span>
                       </p>
-                      <p className="text-ink/60">{f.original_filename}</p>
+                      <p className="text-text-muted">{f.original_filename}</p>
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
+                      iconLeft={<DownloadIcon className="h-4 w-4" />}
                       onClick={() => handleDownload(f.id)}
-                      className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background"
                     >
                       Download
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
             )}
-            <p className="mt-3 text-xs text-ink/50">
+            <p className="mt-3 text-xs text-text-muted">
               Uploading a new file keeps earlier versions on record — it doesn't delete them. Files can't be deleted
               once uploaded.
             </p>
-          </div>
+          </Card>
 
           {history.length > 0 ? (
-            <div className="rounded-lg border border-line bg-white p-5">
-              <h3 className="font-medium text-ink">Timeline</h3>
-              <ul className="mt-3 space-y-2 text-sm">
+            <Card>
+              <CardHeader title="Timeline" />
+              <ul className="space-y-2 text-sm">
                 {history.map((h) => (
-                  <li key={h.id} className="text-ink/70">
-                    <span className="font-medium text-ink">{SUBMISSION_STATUS_LABELS[h.to_status] ?? h.to_status}</span>{' '}
+                  <li key={h.id} className="text-text-muted">
+                    <span className="font-medium text-text">{SUBMISSION_STATUS_LABELS[h.to_status] ?? h.to_status}</span>{' '}
                     — {new Date(h.changed_at).toLocaleString()}
-                    {h.reason ? <span className="block text-ink/60">{h.reason}</span> : null}
+                    {h.reason ? <span className="block text-text-muted">{h.reason}</span> : null}
                   </li>
                 ))}
               </ul>
-            </div>
+            </Card>
           ) : null}
 
           {feedback.decisions.length > 0 || feedback.reviews.length > 0 ? (
-            <div className="rounded-lg border border-line bg-white p-5">
-              <h3 className="font-medium text-ink">Feedback</h3>
-              <ul className="mt-3 space-y-4">
+            <Card>
+              <CardHeader title="Feedback" />
+              <ul className="space-y-4">
                 {feedback.decisions.map((d, i) => (
-                  <li key={`decision-${i}`} className="rounded-md border border-line p-3 text-sm">
-                    <p className="font-medium text-ink capitalize">
+                  <li key={`decision-${i}`} className="rounded-md border border-border p-3 text-sm">
+                    <p className="font-medium text-text capitalize">
                       {d.stage.replace('_', ' ')} decision: {d.decision.replace('_', ' ')}
                     </p>
-                    {d.comments_to_author ? <p className="mt-1 text-ink/70">{d.comments_to_author}</p> : null}
+                    {d.comments_to_author ? <p className="mt-1 text-text-muted">{d.comments_to_author}</p> : null}
                   </li>
                 ))}
                 {feedback.reviews.map((r) => (
-                  <li key={`review-${r.review_number}`} className="rounded-md border border-line p-3 text-sm">
-                    <p className="font-medium text-ink">
+                  <li key={`review-${r.review_number}`} className="rounded-md border border-border p-3 text-sm">
+                    <p className="font-medium text-text">
                       Review #{r.review_number}
                       {r.overall_score !== null ? ` — overall ${r.overall_score}/5` : ''}
                     </p>
-                    {r.comments_to_author ? <p className="mt-1 text-ink/70">{r.comments_to_author}</p> : null}
+                    {r.comments_to_author ? <p className="mt-1 text-text-muted">{r.comments_to_author}</p> : null}
                   </li>
                 ))}
               </ul>
-            </div>
+            </Card>
           ) : null}
 
           {canWithdraw ? (
-            <div className="rounded-lg border border-line bg-white p-5">
+            <Card>
               {showWithdraw ? (
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-ink">Reason (optional)</label>
-                  <textarea
-                    value={withdrawReason}
-                    onChange={(e) => setWithdrawReason(e.target.value)}
-                    rows={2}
-                    className="w-full rounded-md border border-line px-3 py-2 text-sm"
-                  />
+                  <label className="block text-sm font-medium text-text">Reason (optional)</label>
+                  <Textarea value={withdrawReason} onChange={(e) => setWithdrawReason(e.target.value)} rows={2} />
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleWithdraw}
-                      disabled={withdrawing}
-                      className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-                    >
+                    <Button type="button" variant="danger" onClick={handleWithdraw} loading={withdrawing}>
                       {withdrawing ? 'Withdrawing…' : 'Confirm withdraw'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowWithdraw(false)}
-                      className="rounded-md border border-line px-3 py-1.5 text-sm"
-                    >
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={() => setShowWithdraw(false)}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowWithdraw(true)}
-                  className="rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                >
+                <Button type="button" variant="danger" onClick={() => setShowWithdraw(true)}>
                   Withdraw submission
-                </button>
+                </Button>
               )}
-            </div>
+            </Card>
           ) : null}
 
           {canDelete ? (
-            <div className="rounded-lg border border-line bg-white p-5">
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(true)}
-                disabled={deleting}
-                className="rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-              >
+            <Card>
+              <Button type="button" variant="danger" onClick={() => setConfirmingDelete(true)} loading={deleting}>
                 {deleting ? 'Deleting…' : 'Delete submission'}
-              </button>
-            </div>
+              </Button>
+            </Card>
           ) : null}
         </>
       ) : null}

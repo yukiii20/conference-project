@@ -23,7 +23,7 @@ export function Spinner({
 }
 
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-ink/10 ${className}`} />
+  return <div className={`animate-pulse rounded-md bg-surface-muted ${className}`} />
 }
 
 export function SkeletonText({ lines = 3, className = '' }: { lines?: number; className?: string }) {

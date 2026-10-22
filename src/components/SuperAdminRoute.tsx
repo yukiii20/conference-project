@@ -120,27 +120,27 @@ function AdminIdleGuard() {
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="sa-idle-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-landing-navy-900/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-        <h2 id="sa-idle-title" className="text-lg font-semibold text-landing-text">
+      <div className="w-full max-w-sm rounded-lg bg-surface p-6 shadow-lg">
+        <h2 id="sa-idle-title" className="text-lg font-semibold text-text">
           You&rsquo;ll be signed out soon. Stay signed in?
         </h2>
-        <p className="mt-2 text-sm text-landing-muted">
+        <p className="mt-2 text-sm text-text-muted">
           You&rsquo;ve been inactive for a while. Signing out in {secondsLeft} s.
         </p>
         <div className="mt-5 flex gap-3">
           <button
             type="button"
             onClick={resetIdle}
-            className="flex-1 rounded-md bg-landing-navy-600 px-4 py-2 text-sm font-medium text-white hover:bg-landing-navy-800"
+            className="min-h-10 flex-1 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:bg-button-hover"
           >
             Stay signed in
           </button>
           <button
             type="button"
             onClick={signOutNow}
-            className="flex-1 rounded-md border border-landing-border px-4 py-2 text-sm font-medium text-landing-text hover:bg-gray-50"
+            className="min-h-10 flex-1 rounded-md border border-border px-4 py-2 text-sm font-medium text-text hover:bg-surface-muted"
           >
             Sign out
           </button>

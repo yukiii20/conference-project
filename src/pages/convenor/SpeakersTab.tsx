@@ -3,6 +3,7 @@ import { api, ApiError } from '../../lib/api'
 import { SPEAKER_TYPES, speakerSchema, type SpeakerInput } from '../../lib/validation'
 import { ImageUpload } from '../../components/ImageUpload'
 import { ConfirmDialog } from '../../components/ui/Modal'
+import { Alert, Button, EmptyState, Input, Select, Spinner, Textarea } from '../../components/ui'
 
 const MAX_MB = 2
 
@@ -159,23 +160,35 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
     }
   }
 
-  if (loading) return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+  if (loading) {
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
+  }
 
   const sorted = [...speakers].sort((a, b) => a.display_order - b.display_order)
 
   return (
     <div className="mt-6 max-w-3xl">
-      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <div className="mb-4">
+          <Alert variant="danger">{error}</Alert>
+        </div>
+      ) : null}
 
       {sorted.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">No speakers yet.</p>
+        <div className="rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No speakers yet." />
+        </div>
       ) : (
         <div className="space-y-3">
           {sorted.map((speaker, i) => {
             const edit = edits[speaker.id] ?? toEditState(speaker)
             return (
-              <div key={speaker.id} className={`rounded-lg border border-line bg-white p-4 ${speaker.is_public ? '' : 'opacity-60'}`}>
-                {rowErrors[speaker.id] ? <p className="mb-2 text-sm text-red-600">{rowErrors[speaker.id]}</p> : null}
+              <div key={speaker.id} className={`rounded-lg border border-border bg-surface p-4 ${speaker.is_public ? '' : 'opacity-60'}`}>
+                {rowErrors[speaker.id] ? <p className="mb-2 text-sm text-danger">{rowErrors[speaker.id]}</p> : null}
                 <div className="flex flex-wrap gap-4">
                   <ImageUpload
                     label="photo"
@@ -189,62 +202,67 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
                     onRemoved={() => load()}
                   />
                   <div className="min-w-[220px] flex-1 space-y-2">
-                    <input
+                    <Input
                       value={edit.full_name}
                       onChange={(e) => updateEdit(speaker.id, { full_name: e.target.value })}
                       placeholder="Full name"
-                      className="w-full rounded-md border border-line px-3 py-2 focus:border-button"
                     />
                     <div className="flex flex-wrap gap-2">
-                      <input
+                      <Input
                         value={edit.designation}
                         onChange={(e) => updateEdit(speaker.id, { designation: e.target.value })}
                         placeholder="Designation"
-                        className="flex-1 rounded-md border border-line px-3 py-2 focus:border-button"
+                        className="flex-1"
                       />
-                      <input
+                      <Input
                         value={edit.affiliation}
                         onChange={(e) => updateEdit(speaker.id, { affiliation: e.target.value })}
                         placeholder="Affiliation"
-                        className="flex-1 rounded-md border border-line px-3 py-2 focus:border-button"
+                        className="flex-1"
                       />
-                      <select
+                      <Select
                         value={edit.speaker_type}
                         onChange={(e) => updateEdit(speaker.id, { speaker_type: e.target.value as SpeakerInput['speaker_type'] })}
-                        className="rounded-md border border-line bg-white px-3 py-2 focus:border-button"
+                        className="w-auto"
                       >
                         {SPEAKER_TYPES.map((t) => (
                           <option key={t} value={t}>
                             {TYPE_LABELS[t]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
-                    <textarea
+                    <Textarea
                       value={edit.bio}
                       onChange={(e) => updateEdit(speaker.id, { bio: e.target.value })}
                       placeholder="Bio"
                       rows={2}
-                      className="w-full rounded-md border border-line px-3 py-2 focus:border-button"
                     />
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => handleSaveRow(speaker)} disabled={busyId === speaker.id} className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+                  <Button type="button" size="sm" onClick={() => handleSaveRow(speaker)} disabled={busyId === speaker.id}>
                     Save
-                  </button>
-                  <button type="button" onClick={() => handleMove(speaker, 'up')} disabled={busyId === speaker.id || i === 0} className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40">
+                  </Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => handleMove(speaker, 'up')} disabled={busyId === speaker.id || i === 0}>
                     ↑
-                  </button>
-                  <button type="button" onClick={() => handleMove(speaker, 'down')} disabled={busyId === speaker.id || i === sorted.length - 1} className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40">
+                  </Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => handleMove(speaker, 'down')} disabled={busyId === speaker.id || i === sorted.length - 1}>
                     ↓
-                  </button>
-                  <button type="button" onClick={() => handleTogglePublic(speaker)} disabled={busyId === speaker.id} className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-50">
+                  </Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => handleTogglePublic(speaker)} disabled={busyId === speaker.id}>
                     {speaker.is_public ? 'Hide' : 'Show'}
-                  </button>
-                  <button type="button" onClick={() => setConfirmingRemove(speaker)} disabled={busyId === speaker.id} className="ml-auto rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    className="ml-auto"
+                    onClick={() => setConfirmingRemove(speaker)}
+                    disabled={busyId === speaker.id}
+                  >
                     Delete speaker
-                  </button>
+                  </Button>
                 </div>
               </div>
             )
@@ -252,32 +270,36 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">Add a speaker</p>
-        {newError ? <p className="mt-2 text-sm text-red-600">{newError}</p> : null}
+      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">Add a speaker</p>
+        {newError ? (
+          <div className="mt-2">
+            <Alert variant="danger">{newError}</Alert>
+          </div>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
-          <input
+          <Input
             value={newSpeaker.full_name}
             onChange={(e) => setNewSpeaker((p) => ({ ...p, full_name: e.target.value }))}
             placeholder="Full name"
-            className="flex-1 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="flex-1"
           />
-          <select
+          <Select
             value={newSpeaker.speaker_type}
             onChange={(e) => setNewSpeaker((p) => ({ ...p, speaker_type: e.target.value as SpeakerInput['speaker_type'] }))}
-            className="rounded-md border border-line bg-white px-3 py-2 focus:border-button"
+            className="w-auto"
           >
             {SPEAKER_TYPES.map((t) => (
               <option key={t} value={t}>
                 {TYPE_LABELS[t]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
-        <p className="mt-2 text-xs text-ink/50">Add the photo after creating, from the row below.</p>
-        <button type="submit" disabled={creating} className="mt-3 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
-          {creating ? 'Adding…' : 'Add speaker'}
-        </button>
+        <p className="mt-2 text-xs text-text-muted">Add the photo after creating, from the row below.</p>
+        <Button type="submit" className="mt-3" loading={creating}>
+          Add speaker
+        </Button>
       </form>
 
       <ConfirmDialog

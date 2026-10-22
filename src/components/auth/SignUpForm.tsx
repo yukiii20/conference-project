@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api'
 import { SIGNUP_ROLE_CODES, getRoleDefinition } from '../../lib/roles'
 import { nameSchema, emailSchema, phoneSchema, signupSchema, getPasswordChecklist } from '../../lib/validation'
+import { Alert, Badge, Button, Checkbox, FormField, Input } from '../ui'
 
 type ConferenceSlugRow = { id: string; name: string | null; code: string | null; slug: string }
 
@@ -167,10 +168,10 @@ export function SignUpForm({
   if (success) {
     return (
       <div className="text-center">
-        <h2 className="text-lg font-semibold text-ink">Account created</h2>
-        <p className="mt-3 text-sm text-ink/70">The convenor must approve it before you can sign in.</p>
+        <h2 className="text-lg font-semibold text-text">Account created</h2>
+        <p className="mt-3 text-sm text-text-muted">The convenor must approve it before you can sign in.</p>
         {showSignInLink ? (
-          <Link to="/login" className="mt-6 inline-block font-medium text-button underline">
+          <Link to="/login" className="mt-6 inline-block font-medium text-brand underline">
             Back to sign in
           </Link>
         ) : null}
@@ -180,21 +181,29 @@ export function SignUpForm({
 
   return (
     <div>
-      <p className="text-sm text-ink/60">
+      <p className="text-sm text-text-muted">
         Step {step === 3 && preselectedConference ? 2 : step} of {preselectedConference ? 2 : 3}
       </p>
       {preselectedConference ? (
-        <p className="mt-1 text-sm text-ink/70">
-          Signing up for <span className="font-medium text-ink">{preselectedConference.name}</span>
+        <p className="mt-1 text-sm text-text-muted">
+          Signing up for <span className="font-medium text-text">{preselectedConference.name}</span>
         </p>
       ) : null}
 
-      {formError ? <p className="mt-3 text-sm text-red-600">{formError}</p> : null}
+      {formError ? (
+        <div className="mt-3">
+          <Alert variant="danger">{formError}</Alert>
+        </div>
+      ) : null}
 
       {step === 1 ? (
         <div className="mt-4">
-          <h2 className="font-medium text-ink">Choose your role</h2>
-          {errors.role ? <p className="mt-1 text-sm text-red-600">{errors.role}</p> : null}
+          <h2 className="font-medium text-text">Choose your role</h2>
+          {errors.role ? (
+            <p className="mt-1 text-sm text-danger" role="alert">
+              {errors.role}
+            </p>
+          ) : null}
           <div className="mt-3 grid grid-cols-2 gap-2">
             {SIGNUP_ROLE_CODES.map((code) => (
               <button
@@ -202,30 +211,30 @@ export function SignUpForm({
                 type="button"
                 onClick={() => setRole(code)}
                 className={`rounded-lg border p-3 text-left text-sm ${
-                  role === code ? 'border-button ring-2 ring-button/30' : 'border-line hover:border-button/50'
+                  role === code ? 'border-button ring-2 ring-button/30' : 'border-border hover:border-button/50'
                 }`}
               >
                 {getRoleDefinition(code)?.label}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={goToStep2}
-            className="mt-6 w-full rounded-md bg-button px-4 py-2 font-medium text-white hover:opacity-90"
-          >
+          <Button type="button" onClick={goToStep2} className="mt-6 w-full">
             Continue
-          </button>
+          </Button>
         </div>
       ) : null}
 
       {step === 2 ? (
         <div className="mt-4">
-          <h2 className="font-medium text-ink">Choose a conference</h2>
-          {errors.conference_id ? <p className="mt-1 text-sm text-red-600">{errors.conference_id}</p> : null}
+          <h2 className="font-medium text-text">Choose a conference</h2>
+          {errors.conference_id ? (
+            <p className="mt-1 text-sm text-danger" role="alert">
+              {errors.conference_id}
+            </p>
+          ) : null}
           <div className="mt-3 space-y-2">
             {conferences.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-background px-4 py-6 text-sm text-ink/70">
+              <p className="rounded-lg border border-dashed border-border bg-page-bg px-4 py-6 text-sm text-text-muted">
                 No conferences are open right now.
               </p>
             ) : (
@@ -233,7 +242,7 @@ export function SignUpForm({
                 <label
                   key={conference.id}
                   className={`block cursor-pointer rounded-lg border px-3 py-2 text-sm ${
-                    conferenceId === conference.id ? 'border-button bg-button/5' : 'border-line bg-white'
+                    conferenceId === conference.id ? 'border-button bg-button/5' : 'border-border bg-surface'
                   }`}
                 >
                   <input
@@ -250,155 +259,119 @@ export function SignUpForm({
             )}
           </div>
           <div className="mt-6 flex justify-between">
-            <button
-              type="button"
-              onClick={goBack}
-              className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background"
-            >
+            <Button type="button" variant="secondary" onClick={goBack}>
               Back
-            </button>
-            <button
-              type="button"
-              onClick={goToStep3}
-              className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
+            </Button>
+            <Button type="button" onClick={goToStep3}>
               Continue
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
 
       {step === 3 ? (
         <div className="mt-4 space-y-4">
-          <div>
-            <label htmlFor="su-full_name" className="block text-sm font-medium text-ink">
-              Full name
-            </label>
-            <input
+          <FormField label="Full name" htmlFor="su-full_name" error={errors.full_name}>
+            <Input
               id="su-full_name"
               value={form.full_name}
               onChange={(e) => update('full_name', e.target.value)}
               onBlur={() => blurField('full_name')}
-              aria-invalid={Boolean(errors.full_name)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              error={Boolean(errors.full_name)}
             />
-            {errors.full_name ? <p className="mt-1 text-sm text-red-600">{errors.full_name}</p> : null}
-          </div>
+          </FormField>
 
-          <div>
-            <label htmlFor="su-email" className="block text-sm font-medium text-ink">
-              Email
-            </label>
-            <input
+          <FormField label="Email" htmlFor="su-email" error={errors.email}>
+            <Input
               id="su-email"
               type="email"
               value={form.email}
               onChange={(e) => update('email', e.target.value)}
               onBlur={() => blurField('email')}
-              aria-invalid={Boolean(errors.email)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              error={Boolean(errors.email)}
             />
-            {errors.email ? <p className="mt-1 text-sm text-red-600">{errors.email}</p> : null}
-          </div>
+          </FormField>
 
-          <div>
-            <label htmlFor="su-phone" className="block text-sm font-medium text-ink">
-              Phone number
-            </label>
-            <input
+          <FormField label="Phone number" htmlFor="su-phone" error={errors.phone}>
+            <Input
               id="su-phone"
               value={form.phone}
               onChange={(e) => update('phone', e.target.value)}
               onBlur={() => blurField('phone')}
               placeholder="98XXXXXXXX"
-              aria-invalid={Boolean(errors.phone)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              error={Boolean(errors.phone)}
             />
-            {errors.phone ? <p className="mt-1 text-sm text-red-600">{errors.phone}</p> : null}
-          </div>
+          </FormField>
 
           <div>
             <div className="flex items-center justify-between">
-              <label htmlFor="su-password" className="block text-sm font-medium text-ink">
+              <label htmlFor="su-password" className="block text-sm font-medium text-text">
                 Password
               </label>
-              <button type="button" onClick={() => setShowPassword((v) => !v)} className="text-sm text-button underline">
+              <Button type="button" variant="link" className="text-sm" onClick={() => setShowPassword((v) => !v)}>
                 {showPassword ? 'Hide' : 'Show'}
-              </button>
+              </Button>
             </div>
-            <input
+            <Input
               id="su-password"
               type={showPassword ? 'text' : 'password'}
               value={form.password}
               onChange={(e) => update('password', e.target.value)}
-              aria-invalid={Boolean(errors.password)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              error={Boolean(errors.password)}
             />
-            <ul className="mt-2 space-y-1 text-sm">
+            <ul className="mt-2 space-y-1">
               {getPasswordChecklist(form.password).map((rule) => (
-                <li key={rule.id} className={rule.passed ? 'text-green-700' : 'text-ink/50'}>
-                  {rule.passed ? '✓' : '○'} {rule.label}
+                <li key={rule.id}>
+                  <Badge tone={rule.passed ? 'success' : 'neutral'}>
+                    {rule.passed ? '✓' : '○'} {rule.label}
+                  </Badge>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div>
-            <label htmlFor="su-confirm_password" className="block text-sm font-medium text-ink">
-              Confirm password
-            </label>
-            <input
+          <FormField label="Confirm password" htmlFor="su-confirm_password" error={errors.confirm_password}>
+            <Input
               id="su-confirm_password"
               type={showPassword ? 'text' : 'password'}
               value={form.confirm_password}
               onChange={(e) => update('confirm_password', e.target.value)}
               onBlur={() => blurField('confirm_password')}
-              aria-invalid={Boolean(errors.confirm_password)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              error={Boolean(errors.confirm_password)}
             />
-            {errors.confirm_password ? <p className="mt-1 text-sm text-red-600">{errors.confirm_password}</p> : null}
-          </div>
+          </FormField>
 
           <div>
-            <label className="flex items-start gap-2 text-sm text-ink/70">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => {
-                  setTermsAccepted(e.target.checked)
-                  setErrors((prev) => ({ ...prev, terms: '' }))
-                }}
-                className="mt-0.5"
-              />
-              I agree to the terms of use and privacy policy.
-            </label>
-            {errors.terms ? <p className="mt-1 text-sm text-red-600">{errors.terms}</p> : null}
+            <Checkbox
+              label="I agree to the terms of use and privacy policy."
+              checked={termsAccepted}
+              onChange={(e) => {
+                setTermsAccepted(e.target.checked)
+                setErrors((prev) => ({ ...prev, terms: '' }))
+              }}
+            />
+            {errors.terms ? (
+              <p className="mt-1 text-sm text-danger" role="alert">
+                {errors.terms}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex justify-between">
-            <button
-              type="button"
-              onClick={goBack}
-              className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background"
-            >
+            <Button type="button" variant="secondary" onClick={goBack}>
               Back
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-            >
+            </Button>
+            <Button type="button" onClick={handleSubmit} loading={submitting}>
               {submitting ? 'Creating…' : 'Create account'}
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
 
       {showSignInLink ? (
-        <p className="mt-6 text-center text-sm text-ink/70">
+        <p className="mt-6 text-center text-sm text-text-muted">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-button underline">
+          <Link to="/login" className="font-medium text-brand underline">
             Sign in
           </Link>
         </p>

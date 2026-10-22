@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
+import { SkeletonText } from '../ui/Spinner'
+import { EmptyState } from '../ui/EmptyState'
 
 type RecentCheckin = {
   id: string
@@ -29,17 +31,20 @@ export function RecentCheckins({ conferenceId, refreshKey }: { conferenceId: str
     }
   }, [conferenceId, refreshKey])
 
-  if (checkins === null) return <p className="mt-2 text-sm text-ink/60">Loading…</p>
-  if (checkins.length === 0) return <p className="mt-2 text-sm text-ink/60">No check-ins yet.</p>
+  if (checkins === null) return <SkeletonText lines={3} className="mt-2" />
+  if (checkins.length === 0) return <EmptyState title="No check-ins yet." />
 
   return (
     <ul className="mt-2 space-y-1">
       {checkins.map((c) => (
-        <li key={c.id} className="flex items-center justify-between gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm">
+        <li
+          key={c.id}
+          className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm"
+        >
           <span>
-            {c.full_name} <span className="text-ink/50">({c.registration_number})</span>
+            {c.full_name} <span className="text-text-muted">({c.registration_number})</span>
           </span>
-          <span className="shrink-0 text-xs text-ink/50">
+          <span className="shrink-0 text-xs text-text-muted">
             {c.method === 'qr' ? 'QR' : 'Manual'} · {formatKathmandu(c.checked_in_at)}
           </span>
         </li>

@@ -100,7 +100,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   await signIn(page, authorEmail, FIXTURE.password, 'author')
   await expect(page).toHaveURL(/\/portal/)
   await page.locator('nav').getByRole('link', { name: 'My submissions' }).click()
-  await page.getByRole('button', { name: 'New abstract' }).click()
+  await page.getByRole('tab', { name: 'New abstract' }).click()
   await page.locator('select').first().selectOption({ label: trackName })
   await page.locator('form').getByRole('textbox').nth(0).fill(title)
   await page.locator('form textarea').first().fill('This is the abstract body for the end to end test submission.')

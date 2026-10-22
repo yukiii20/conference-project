@@ -6,12 +6,22 @@
  */
 export type StatusTone = 'neutral' | 'info' | 'warning' | 'success' | 'danger'
 
+// Step 7B+C palette — withdrawn/inactive/draft-style statuses use 'neutral'.
 const TONE_CLASSES: Record<StatusTone, string> = {
-  neutral: 'bg-ink/10 text-ink/70',
-  info: 'bg-blue-100 text-blue-700',
-  warning: 'bg-amber-100 text-amber-800',
-  success: 'bg-green-100 text-green-700',
-  danger: 'bg-red-100 text-red-700',
+  neutral: 'bg-[#E7E5E4] text-[#57534E]',
+  info: 'bg-[#E0E7FF] text-[#1E3A8A]',
+  warning: 'bg-[#FEF3C7] text-[#92400E]',
+  success: 'bg-[#DCFCE7] text-[#166534]',
+  danger: 'bg-[#FEE2E2] text-[#991B1B]',
+}
+
+// Same tones, plus a border — for banners (Alert, Toast) rather than small pill chips.
+const TONE_BANNER_CLASSES: Record<StatusTone, string> = {
+  neutral: 'border-[#D6D3D1] bg-[#E7E5E4] text-[#57534E]',
+  info: 'border-[#C7D2FE] bg-[#E0E7FF] text-[#1E3A8A]',
+  warning: 'border-[#FDE68A] bg-[#FEF3C7] text-[#92400E]',
+  success: 'border-[#86EFAC] bg-[#DCFCE7] text-[#166534]',
+  danger: 'border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]',
 }
 
 /**
@@ -80,6 +90,11 @@ export function statusBadgeClasses(status: string): string {
 
 export function toneBadgeClasses(tone: StatusTone): string {
   return TONE_CLASSES[tone]
+}
+
+/** Same tones as a bordered banner (Alert, Toast) instead of a small pill chip. */
+export function toneBannerClasses(tone: StatusTone): string {
+  return TONE_BANNER_CLASSES[tone]
 }
 
 /** Human label for a status key, falling back to a title-cased version of the key itself. */

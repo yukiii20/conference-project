@@ -59,7 +59,7 @@ export const SECTIONS: SectionConfig[] = [
   },
   {
     id: 'communication',
-    label: 'Communication and reports',
+    label: 'Communication',
     tabs: [
       { id: 'announcements', label: 'Announcements' },
       { id: 'templates', label: 'Email templates' },

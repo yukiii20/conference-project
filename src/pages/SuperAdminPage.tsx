@@ -5,9 +5,28 @@ import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } f
 import { useNoIndex } from '../lib/noindex'
 import { EmailLogTab } from '../components/EmailLogTab'
 import { PortalHeader } from '../components/PortalHeader'
-import { StatusChip } from '../components/ui/Badge'
-import { ConfirmDialog } from '../components/ui/Modal'
-import { Pagination } from '../components/ui/Table'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  type Column,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  FormField,
+  Input,
+  Modal,
+  PageHeader,
+  Pagination,
+  Select,
+  SkeletonText,
+  Spinner,
+  StatusChip,
+  Table,
+  Tabs,
+  Textarea,
+} from '../components/ui'
 
 type AdminTab =
   | 'dashboard'
@@ -168,26 +187,13 @@ export function SuperAdminPage() {
   }, [loadConferences])
 
   return (
-    <div className="min-h-screen bg-background text-ink">
+    <div className="min-h-screen bg-page-bg text-text">
       <PortalHeader roleLabel="Administrator" />
 
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-2xl font-semibold">Administrator</h1>
+        <PageHeader title="Administrator" />
 
-        <div className="mt-6 flex flex-wrap gap-2 border-b border-line">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-                tab === t.id ? 'border-button text-button' : 'border-transparent text-ink/60'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Tabs tabs={TABS} active={tab} onChange={(id) => setTab(id as AdminTab)} />
 
         {tab === 'dashboard' ? <DashboardTab /> : null}
 
@@ -249,24 +255,90 @@ function ConferencesTab({
     }
   }
 
+  const columns: Column<ConferenceRow>[] = [
+    { key: 'name', header: 'Name', render: (c) => c.name },
+    { key: 'code', header: 'Code', render: (c) => c.code },
+    {
+      key: 'dates',
+      header: 'Dates',
+      render: (c) => (
+        <span className="whitespace-nowrap">
+          {formatDate(c.start_date)} – {formatDate(c.end_date)}
+        </span>
+      ),
+    },
+    { key: 'status', header: 'Status', render: (c) => formatStatus(c.status) },
+    {
+      key: 'convenor',
+      header: 'Convenor',
+      render: (c) => {
+        const convenor = convenorByConference[c.id]
+        return convenor ? (
+          <span>
+            {convenor.full_name ?? 'Unnamed'}
+            {convenor.email ? ` (${convenor.email})` : ''}
+          </span>
+        ) : (
+          <span className="text-text-muted">No convenor yet</span>
+        )
+      },
+    },
+    {
+      key: 'publish',
+      header: '',
+      render: (c) =>
+        c.status === 'draft' ? (
+          <Button size="sm" onClick={() => handlePublish(c.id)} loading={publishBusyId === c.id}>
+            Publish
+          </Button>
+        ) : null,
+    },
+    {
+      key: 'public-page',
+      header: '',
+      render: (c) =>
+        c.status !== 'draft' ? (
+          <a
+            href={`/c/${c.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-border px-3 py-1 text-sm hover:bg-surface-muted"
+          >
+            Public page
+          </a>
+        ) : null,
+    },
+    {
+      key: 'view-as',
+      header: '',
+      render: (c) => (
+        <Link
+          to={`/super-admin/view-as/${c.id}`}
+          state={{ name: c.name }}
+          className="rounded-md border border-border px-3 py-1 text-sm hover:bg-surface-muted"
+        >
+          View as admin
+        </Link>
+      ),
+    },
+  ]
+
   return (
     <div className="mt-6">
-      {loadError ? <p className="text-sm text-red-600">{loadError}</p> : null}
-      {publishError ? <p className="mt-2 text-sm text-red-600">{publishError}</p> : null}
+      <div className="space-y-2">
+        {loadError ? <Alert variant="danger">{loadError}</Alert> : null}
+        {publishError ? <Alert variant="danger">{publishError}</Alert> : null}
+      </div>
 
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
+      <div className="mt-4 flex justify-end">
+        <Button variant={showForm ? 'secondary' : 'primary'} onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Cancel' : 'New conference'}
-        </button>
+        </Button>
       </div>
 
       {createNote ? (
-        <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-          {createNote}
+        <div className="mt-4">
+          <Alert variant="success">{createNote}</Alert>
         </div>
       ) : null}
 
@@ -280,88 +352,16 @@ function ConferencesTab({
         />
       ) : null}
 
-      {loading ? (
-        <p className="mt-6 text-sm text-ink/60">Loading…</p>
-      ) : conferences.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          No conferences yet.
-        </p>
-      ) : (
-        <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-ink/60">
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Code</th>
-                <th className="px-4 py-2 font-medium">Dates</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Convenor</th>
-                <th className="px-4 py-2 font-medium"></th>
-                <th className="px-4 py-2 font-medium"></th>
-                <th className="px-4 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {conferences.map((c) => {
-                const convenor = convenorByConference[c.id]
-                return (
-                  <tr key={c.id}>
-                    <td className="px-4 py-3">{c.name}</td>
-                    <td className="px-4 py-3">{c.code}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {formatDate(c.start_date)} – {formatDate(c.end_date)}
-                    </td>
-                    <td className="px-4 py-3">{formatStatus(c.status)}</td>
-                    <td className="px-4 py-3">
-                      {convenor ? (
-                        <span>
-                          {convenor.full_name ?? 'Unnamed'}
-                          {convenor.email ? ` (${convenor.email})` : ''}
-                        </span>
-                      ) : (
-                        <span className="text-accent">No convenor yet</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.status === 'draft' ? (
-                        <button
-                          type="button"
-                          onClick={() => handlePublish(c.id)}
-                          disabled={publishBusyId === c.id}
-                          className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-                        >
-                          {publishBusyId === c.id ? 'Publishing…' : 'Publish'}
-                        </button>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.status !== 'draft' ? (
-                        <a
-                          href={`/c/${c.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background"
-                        >
-                          Public page
-                        </a>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        to={`/super-admin/view-as/${c.id}`}
-                        state={{ name: c.name }}
-                        className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background"
-                      >
-                        View as admin
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="mt-4">
+        <Table<ConferenceRow>
+          columns={columns}
+          rows={conferences}
+          rowKey={(c) => c.id}
+          loading={loading}
+          emptyTitle="No conferences yet."
+          minWidth={720}
+        />
+      </div>
     </div>
   )
 }
@@ -437,147 +437,101 @@ function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-4 rounded-lg border border-line bg-white p-4">
-      {formError ? (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {formError}
-        </div>
-      ) : null}
+    <Card className="mt-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
-      <div>
-        <label htmlFor="new-name" className="block text-sm font-medium text-ink">
-          Name
-        </label>
-        <input
-          id="new-name"
-          value={form.name}
-          onChange={(e) => update('name', e.target.value)}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-        />
-        {errors.name ? <p className="mt-1 text-sm text-red-600">{errors.name}</p> : null}
-      </div>
+        <FormField label="Name" htmlFor="new-name" error={errors.name}>
+          <Input id="new-name" value={form.name} onChange={(e) => update('name', e.target.value)} error={Boolean(errors.name)} />
+        </FormField>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="new-short-name" className="block text-sm font-medium text-ink">
-            Short name
-          </label>
-          <input
-            id="new-short-name"
-            value={form.short_name}
-            onChange={(e) => update('short_name', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.short_name ? <p className="mt-1 text-sm text-red-600">{errors.short_name}</p> : null}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField label="Short name" htmlFor="new-short-name" error={errors.short_name}>
+            <Input
+              id="new-short-name"
+              value={form.short_name}
+              onChange={(e) => update('short_name', e.target.value)}
+              error={Boolean(errors.short_name)}
+            />
+          </FormField>
+          <FormField label="Code" htmlFor="new-code" error={errors.code}>
+            <Input
+              id="new-code"
+              value={form.code}
+              onChange={(e) => update('code', e.target.value.toUpperCase())}
+              className="uppercase"
+              error={Boolean(errors.code)}
+            />
+          </FormField>
         </div>
-        <div>
-          <label htmlFor="new-code" className="block text-sm font-medium text-ink">
-            Code
-          </label>
-          <input
-            id="new-code"
-            value={form.code}
-            onChange={(e) => update('code', e.target.value.toUpperCase())}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 uppercase focus:border-button"
-          />
-          {errors.code ? <p className="mt-1 text-sm text-red-600">{errors.code}</p> : null}
-        </div>
-      </div>
 
-      <div>
-        <label htmlFor="new-slug" className="block text-sm font-medium text-ink">
-          Slug
-        </label>
-        <input
-          id="new-slug"
-          value={form.slug}
-          onChange={(e) => update('slug', e.target.value.toLowerCase())}
-          onFocus={() => setSlugTouched(true)}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-        />
-        <p className="mt-1 text-xs text-ink/50">Auto-filled from the short name; edit if you want something different.</p>
-        {errors.slug ? <p className="mt-1 text-sm text-red-600">{errors.slug}</p> : null}
-      </div>
+        <FormField
+          label="Slug"
+          htmlFor="new-slug"
+          help="Auto-filled from the short name; edit if you want something different."
+          error={errors.slug}
+        >
+          <Input
+            id="new-slug"
+            value={form.slug}
+            onChange={(e) => update('slug', e.target.value.toLowerCase())}
+            onFocus={() => setSlugTouched(true)}
+            error={Boolean(errors.slug)}
+          />
+        </FormField>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="new-start" className="block text-sm font-medium text-ink">
-            Start date
-          </label>
-          <input
-            id="new-start"
-            type="date"
-            value={form.start_date}
-            min={todayDateString()}
-            onChange={(e) => update('start_date', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.start_date ? <p className="mt-1 text-sm text-red-600">{errors.start_date}</p> : null}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField label="Start date" htmlFor="new-start" error={errors.start_date}>
+            <Input
+              id="new-start"
+              type="date"
+              value={form.start_date}
+              min={todayDateString()}
+              onChange={(e) => update('start_date', e.target.value)}
+              error={Boolean(errors.start_date)}
+            />
+          </FormField>
+          <FormField label="End date" htmlFor="new-end" error={errors.end_date}>
+            <Input
+              id="new-end"
+              type="date"
+              value={form.end_date}
+              min={form.start_date || todayDateString()}
+              onChange={(e) => update('end_date', e.target.value)}
+              error={Boolean(errors.end_date)}
+            />
+          </FormField>
         </div>
-        <div>
-          <label htmlFor="new-end" className="block text-sm font-medium text-ink">
-            End date
-          </label>
-          <input
-            id="new-end"
-            type="date"
-            value={form.end_date}
-            min={form.start_date || todayDateString()}
-            onChange={(e) => update('end_date', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.end_date ? <p className="mt-1 text-sm text-red-600">{errors.end_date}</p> : null}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div>
-          <label htmlFor="new-city" className="block text-sm font-medium text-ink">
-            City
-          </label>
-          <input
-            id="new-city"
-            value={form.city}
-            onChange={(e) => update('city', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.city ? <p className="mt-1 text-sm text-red-600">{errors.city}</p> : null}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <FormField label="City" htmlFor="new-city" error={errors.city}>
+            <Input id="new-city" value={form.city} onChange={(e) => update('city', e.target.value)} error={Boolean(errors.city)} />
+          </FormField>
+          <FormField label="Country code" htmlFor="new-country" error={errors.country}>
+            <Input
+              id="new-country"
+              value={form.country}
+              onChange={(e) => update('country', e.target.value.toUpperCase())}
+              maxLength={2}
+              className="uppercase"
+              error={Boolean(errors.country)}
+            />
+          </FormField>
+          <FormField label="Timezone" htmlFor="new-timezone" error={errors.timezone}>
+            <Input
+              id="new-timezone"
+              value={form.timezone}
+              onChange={(e) => update('timezone', e.target.value)}
+              error={Boolean(errors.timezone)}
+            />
+          </FormField>
         </div>
-        <div>
-          <label htmlFor="new-country" className="block text-sm font-medium text-ink">
-            Country code
-          </label>
-          <input
-            id="new-country"
-            value={form.country}
-            onChange={(e) => update('country', e.target.value.toUpperCase())}
-            maxLength={2}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 uppercase focus:border-button"
-          />
-          {errors.country ? <p className="mt-1 text-sm text-red-600">{errors.country}</p> : null}
-        </div>
-        <div>
-          <label htmlFor="new-timezone" className="block text-sm font-medium text-ink">
-            Timezone
-          </label>
-          <input
-            id="new-timezone"
-            value={form.timezone}
-            onChange={(e) => update('timezone', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.timezone ? <p className="mt-1 text-sm text-red-600">{errors.timezone}</p> : null}
-        </div>
-      </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-      >
-        {submitting ? 'Creating…' : 'Create conference'}
-      </button>
-    </form>
+        <Button type="submit" loading={submitting}>
+          Create conference
+        </Button>
+      </form>
+    </Card>
   )
 }
 
@@ -674,24 +628,15 @@ function CreateConvenorTab({
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 max-w-lg space-y-4">
-      {formError ? (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {formError}
-        </div>
-      ) : null}
-      {success ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</div>
-      ) : null}
+      {formError ? <Alert variant="danger">{formError}</Alert> : null}
+      {success ? <Alert variant="success">{success}</Alert> : null}
 
-      <div>
-        <label htmlFor="cc-conference" className="block text-sm font-medium text-ink">
-          Conference
-        </label>
-        <select
+      <FormField label="Conference" htmlFor="cc-conference" error={errors.conference_id}>
+        <Select
           id="cc-conference"
           value={form.conference_id}
           onChange={(e) => update('conference_id', e.target.value)}
-          className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 focus:border-button"
+          error={Boolean(errors.conference_id)}
         >
           <option value="">Choose a conference</option>
           {conferences.map((c) => (
@@ -699,58 +644,36 @@ function CreateConvenorTab({
               {c.name} ({c.code})
             </option>
           ))}
-        </select>
-        {errors.conference_id ? <p className="mt-1 text-sm text-red-600">{errors.conference_id}</p> : null}
-      </div>
+        </Select>
+      </FormField>
 
-      <div>
-        <label htmlFor="cc-name" className="block text-sm font-medium text-ink">
-          Full name
-        </label>
-        <input
-          id="cc-name"
-          value={form.full_name}
-          onChange={(e) => update('full_name', e.target.value)}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-        />
-        {errors.full_name ? <p className="mt-1 text-sm text-red-600">{errors.full_name}</p> : null}
-      </div>
+      <FormField label="Full name" htmlFor="cc-name" error={errors.full_name}>
+        <Input id="cc-name" value={form.full_name} onChange={(e) => update('full_name', e.target.value)} error={Boolean(errors.full_name)} />
+      </FormField>
 
-      <div>
-        <label htmlFor="cc-email" className="block text-sm font-medium text-ink">
-          Email
-        </label>
-        <input
+      <FormField label="Email" htmlFor="cc-email" error={errors.email}>
+        <Input
           id="cc-email"
           type="email"
           value={form.email}
           onChange={(e) => update('email', e.target.value)}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+          error={Boolean(errors.email)}
         />
-        {errors.email ? <p className="mt-1 text-sm text-red-600">{errors.email}</p> : null}
-      </div>
+      </FormField>
 
-      <div>
-        <label htmlFor="cc-phone" className="block text-sm font-medium text-ink">
-          Phone number
-        </label>
-        <input
+      <FormField label="Phone number" htmlFor="cc-phone" error={errors.phone}>
+        <Input
           id="cc-phone"
           value={form.phone}
           onChange={(e) => update('phone', e.target.value)}
           placeholder="98XXXXXXXX"
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+          error={Boolean(errors.phone)}
         />
-        {errors.phone ? <p className="mt-1 text-sm text-red-600">{errors.phone}</p> : null}
-      </div>
+      </FormField>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-      >
-        {submitting ? 'Sending…' : 'Send invitation'}
-      </button>
+      <Button type="submit" loading={submitting}>
+        Send invitation
+      </Button>
 
       <ConfirmDialog
         open={pendingReplace !== null}
@@ -857,67 +780,46 @@ function AppointConvenorTab({
 
   return (
     <div className="mt-6 max-w-2xl space-y-4">
-      {actionError ? <p className="text-sm text-red-600">{actionError}</p> : null}
-      {success ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</div>
-      ) : null}
+      {actionError ? <Alert variant="danger">{actionError}</Alert> : null}
+      {success ? <Alert variant="success">{success}</Alert> : null}
 
-      <div>
-        <label htmlFor="ac-conference" className="block text-sm font-medium text-ink">
-          Conference
-        </label>
-        <select
-          id="ac-conference"
-          value={conferenceId}
-          onChange={(e) => setConferenceId(e.target.value)}
-          className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 focus:border-button"
-        >
+      <FormField label="Conference" htmlFor="ac-conference">
+        <Select id="ac-conference" value={conferenceId} onChange={(e) => setConferenceId(e.target.value)}>
           <option value="">Choose a conference</option>
           {conferences.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.code})
             </option>
           ))}
-        </select>
-      </div>
+        </Select>
+      </FormField>
 
-      <div>
-        <label htmlFor="ac-search" className="block text-sm font-medium text-ink">
-          Search for an account
-        </label>
-        <input
-          id="ac-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name or email"
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-        />
-        {searchError ? <p className="mt-1 text-sm text-red-600">{searchError}</p> : null}
-      </div>
+      <FormField label="Search for an account" htmlFor="ac-search" error={searchError ?? undefined}>
+        <Input id="ac-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or email" />
+      </FormField>
 
-      {searching ? <p className="text-sm text-ink/60">Searching…</p> : null}
+      {searching ? (
+        <div className="flex items-center gap-2 text-sm text-text-muted">
+          <Spinner size="sm" /> Searching…
+        </div>
+      ) : null}
 
       {!searching && query.trim().length >= 2 ? (
         results.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-            No matching accounts.
-          </p>
+          <Card>
+            <EmptyState title="No matching accounts." />
+          </Card>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-white">
+          <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {results.map((profile) => (
               <li key={profile.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div>
-                  <p className="font-medium">{profile.full_name ?? 'Unnamed'}</p>
-                  <p className="text-sm text-ink/60">{profile.email ?? 'No email'}</p>
+                  <p className="font-medium text-text">{profile.full_name ?? 'Unnamed'}</p>
+                  <p className="text-sm text-text-muted">{profile.email ?? 'No email'}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleAppoint(profile)}
-                  disabled={busyId === profile.id}
-                  className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-                >
-                  {busyId === profile.id ? 'Appointing…' : 'Make convenor'}
-                </button>
+                <Button size="sm" onClick={() => handleAppoint(profile)} disabled={busyId === profile.id}>
+                  Make convenor
+                </Button>
               </li>
             ))}
           </ul>
@@ -1071,119 +973,74 @@ function UsersTab() {
     }
   }
 
+  const columns: Column<ProfileRow>[] = [
+    { key: 'name', header: 'Name', render: (p) => p.full_name ?? '—' },
+    { key: 'email', header: 'Email', render: (p) => p.email ?? '—' },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (p) => (
+        <div className="flex flex-col gap-1">
+          <StatusChip status={p.status ?? 'active'} />
+          {isLocked(p) ? <Badge tone="danger">Locked until {formatDateTime(p.locked_until!)}</Badge> : null}
+        </div>
+      ),
+    },
+    { key: 'joined', header: 'Joined', render: (p) => formatDate(p.created_at) },
+    {
+      key: 'actions',
+      header: '',
+      render: (p) => (
+        <div className="flex flex-wrap gap-1.5">
+          {isLocked(p) ? (
+            <Button variant="secondary" size="sm" onClick={() => handleUnlock(p)} disabled={busyId === p.id}>
+              Unlock
+            </Button>
+          ) : null}
+          <Button variant="secondary" size="sm" onClick={() => handleResetPassword(p)} disabled={busyId === p.id}>
+            Reset password
+          </Button>
+          {p.status === 'suspended' || p.status === 'deactivated' ? (
+            <Button variant="secondary" size="sm" onClick={() => handleReactivate(p)} disabled={busyId === p.id}>
+              Reactivate
+            </Button>
+          ) : (
+            <>
+              <Button variant="danger" size="sm" onClick={() => handleSuspend(p)} disabled={busyId === p.id}>
+                Suspend
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => handleDeactivate(p)} disabled={busyId === p.id}>
+                Deactivate
+              </Button>
+            </>
+          )}
+          <Button variant="danger" size="sm" onClick={() => setAnonymizeTarget(p)} disabled={busyId === p.id}>
+            Anonymise
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="mt-6">
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search by name or email"
-        className="w-full max-w-md rounded-md border border-line px-3 py-2 focus:border-button"
-      />
+      <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or email" className="w-full max-w-md" />
 
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-      {notice ? (
-        <div className="mt-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
-      ) : null}
+      <div className="mt-2 space-y-2">
+        {error ? <Alert variant="danger">{error}</Alert> : null}
+        {notice ? <Alert variant="success">{notice}</Alert> : null}
+      </div>
 
-      {loading ? (
-        <p className="mt-6 text-sm text-ink/60">Loading…</p>
-      ) : results.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          No users found.
-        </p>
-      ) : (
-        <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-ink/60">
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Joined</th>
-                <th className="px-4 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {results.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3">{p.full_name ?? '—'}</td>
-                  <td className="px-4 py-3">{p.email ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      <StatusChip status={p.status ?? 'active'} />
-                      {isLocked(p) ? (
-                        <span className="inline-block w-fit rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
-                          Locked until {formatDateTime(p.locked_until!)}
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">{formatDate(p.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {isLocked(p) ? (
-                        <button
-                          type="button"
-                          onClick={() => handleUnlock(p)}
-                          disabled={busyId === p.id}
-                          className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background disabled:opacity-50"
-                        >
-                          Unlock
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => handleResetPassword(p)}
-                        disabled={busyId === p.id}
-                        className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background disabled:opacity-50"
-                      >
-                        Reset password
-                      </button>
-                      {p.status === 'suspended' || p.status === 'deactivated' ? (
-                        <button
-                          type="button"
-                          onClick={() => handleReactivate(p)}
-                          disabled={busyId === p.id}
-                          className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background disabled:opacity-50"
-                        >
-                          Reactivate
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleSuspend(p)}
-                            disabled={busyId === p.id}
-                            className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background disabled:opacity-50"
-                          >
-                            Suspend
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeactivate(p)}
-                            disabled={busyId === p.id}
-                            className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background disabled:opacity-50"
-                          >
-                            Deactivate
-                          </button>
-                        </>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setAnonymizeTarget(p)}
-                        disabled={busyId === p.id}
-                        className="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        Anonymise
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="mt-4">
+        <Table<ProfileRow>
+          columns={columns}
+          rows={results}
+          rowKey={(p) => p.id}
+          loading={loading}
+          emptyTitle="No users found."
+          minWidth={760}
+        />
+      </div>
 
       <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
 
@@ -1225,43 +1082,31 @@ function AnonymizeConfirmDialog({
   const matches = profile.email != null && typedEmail.trim().toLowerCase() === profile.email.toLowerCase()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
-      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-lg">
-        <h2 className="text-lg font-semibold text-ink">Anonymise this user?</h2>
-        <p className="mt-2 text-sm text-ink/70">
-          This permanently replaces {profile.full_name ?? 'this user'}'s name, email, phone and profile photo with
-          placeholders, and signs them out everywhere. Their submission and review history is kept. This cannot be
-          undone.
-        </p>
-        <label htmlFor="anonymize-confirm-email" className="mt-4 block text-sm font-medium text-ink">
-          Type their email ({profile.email}) to confirm
-        </label>
-        <input
-          id="anonymize-confirm-email"
-          value={typedEmail}
-          onChange={(e) => setTypedEmail(e.target.value)}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          autoFocus
-        />
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => onConfirm(typedEmail)}
-            disabled={!matches || busy}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
-            {busy ? 'Anonymising…' : 'Anonymise'}
-          </button>
-        </div>
+    <Modal open onClose={onCancel} title="Anonymise this user?" size="sm">
+      <p className="mt-2 text-sm text-text-muted">
+        This permanently replaces {profile.full_name ?? 'this user'}'s name, email, phone and profile photo with
+        placeholders, and signs them out everywhere. Their submission and review history is kept. This cannot be
+        undone.
+      </p>
+      <div className="mt-4">
+        <FormField label={`Type their email (${profile.email}) to confirm`} htmlFor="anonymize-confirm-email">
+          <Input
+            id="anonymize-confirm-email"
+            value={typedEmail}
+            onChange={(e) => setTypedEmail(e.target.value)}
+            autoFocus
+          />
+        </FormField>
       </div>
-    </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onCancel} disabled={busy}>
+          Cancel
+        </Button>
+        <Button variant="danger" onClick={() => onConfirm(typedEmail)} disabled={!matches} loading={busy}>
+          Anonymise
+        </Button>
+      </div>
+    </Modal>
   )
 }
 
@@ -1288,8 +1133,20 @@ function DashboardTab() {
     }
   }, [])
 
-  if (error) return <p className="mt-6 text-sm text-red-600">{error}</p>
-  if (!data) return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+  if (error) {
+    return (
+      <div className="mt-6">
+        <ErrorState message={error} />
+      </div>
+    )
+  }
+  if (!data) {
+    return (
+      <div className="mt-6">
+        <SkeletonText lines={5} />
+      </div>
+    )
+  }
 
   const tiles: Array<{ label: string; value: number }> = [
     { label: 'Total users', value: data.total_users },
@@ -1304,63 +1161,69 @@ function DashboardTab() {
     <div className="mt-6 space-y-8">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-lg border border-line bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-ink/50">{t.label}</p>
-            <p className="mt-1 text-2xl font-semibold">{t.value}</p>
-          </div>
+          <Card key={t.label}>
+            <p className="text-xs uppercase tracking-wide text-text-muted">{t.label}</p>
+            <p className="mt-1 text-2xl font-semibold text-text">{t.value}</p>
+          </Card>
         ))}
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-ink">System health</h2>
+        <h2 className="text-lg font-semibold text-text">System health</h2>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <div className="rounded-lg border border-line bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-ink/50">Database</p>
-            <p className={`mt-1 text-lg font-semibold ${data.health.database.ok ? 'text-green-700' : 'text-red-600'}`}>
-              {data.health.database.ok ? `${data.health.database.latency_ms} ms` : 'Down'}
-            </p>
-          </div>
-          <div className="rounded-lg border border-line bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-ink/50">Email mode</p>
-            <p className="mt-1 text-lg font-semibold uppercase">{data.health.email_mode}</p>
-          </div>
-          <div className="rounded-lg border border-line bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-ink/50">Failed emails (24h)</p>
-            <p className={`mt-1 text-lg font-semibold ${data.health.failed_emails_24h > 0 ? 'text-red-600' : ''}`}>
-              {data.health.failed_emails_24h}
-            </p>
-          </div>
-          <div className="rounded-lg border border-line bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-ink/50">Queued emails</p>
-            <p className="mt-1 text-lg font-semibold">{data.health.queued_emails}</p>
-          </div>
-          <div className="rounded-lg border border-line bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-ink/50">Free disk space</p>
-            <p className="mt-1 text-lg font-semibold">{formatBytes(data.health.storage_disk.free_bytes)}</p>
-          </div>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-text-muted">Database</p>
+            <div className="mt-1">
+              <Badge tone={data.health.database.ok ? 'success' : 'danger'}>
+                {data.health.database.ok ? `${data.health.database.latency_ms} ms` : 'Down'}
+              </Badge>
+            </div>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-text-muted">Email mode</p>
+            <p className="mt-1 text-lg font-semibold uppercase text-text">{data.health.email_mode}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-text-muted">Failed emails (24h)</p>
+            <div className="mt-1">
+              <Badge tone={data.health.failed_emails_24h > 0 ? 'danger' : 'neutral'}>
+                {data.health.failed_emails_24h}
+              </Badge>
+            </div>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-text-muted">Queued emails</p>
+            <p className="mt-1 text-lg font-semibold text-text">{data.health.queued_emails}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-text-muted">Free disk space</p>
+            <p className="mt-1 text-lg font-semibold text-text">{formatBytes(data.health.storage_disk.free_bytes)}</p>
+          </Card>
         </div>
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-ink">Conferences by status</h2>
+        <h2 className="text-lg font-semibold text-text">Conferences by status</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {data.conferences_by_status.map((s) => (
-            <span key={s.status} className="rounded-full border border-line bg-white px-3 py-1 text-sm">
+            <Badge key={s.status} tone="neutral">
               {formatStatus(s.status)}: {s.count}
-            </span>
+            </Badge>
           ))}
         </div>
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-ink">Recent activity</h2>
+        <h2 className="text-lg font-semibold text-text">Recent activity</h2>
         {data.recent_actions.length === 0 ? (
-          <p className="mt-3 text-sm text-ink/60">No activity yet.</p>
+          <div className="mt-3">
+            <EmptyState title="No activity yet." />
+          </div>
         ) : (
-          <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-white">
+          <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-surface">
             {data.recent_actions.map((a) => (
               <li key={a.id} className="px-4 py-2.5 text-sm">
-                <span className="text-ink/60">{formatDateTime(a.occurred_at)}</span>
+                <span className="text-text-muted">{formatDateTime(a.occurred_at)}</span>
                 {' — '}
                 <span className="font-medium">{a.actor_name ?? 'System'}</span> {a.action}
               </li>
@@ -1434,58 +1297,48 @@ function AdminsTab() {
 
   return (
     <div className="mt-6 max-w-2xl space-y-6">
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {notice ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
-      ) : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
+      {notice ? <Alert variant="success">{notice}</Alert> : null}
 
-      <form onSubmit={handleGrant} className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line bg-white p-4">
-        <div className="flex-1">
-          <label htmlFor="grant-admin-email" className="block text-sm font-medium text-ink">
-            Add administrator by email
-          </label>
-          <input
-            id="grant-admin-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="person@example.com"
-            required
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          <p className="mt-1 text-xs text-ink/50">The account must already exist.</p>
-        </div>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {submitting ? 'Adding…' : 'Add admin'}
-        </button>
-      </form>
+      <Card>
+        <form onSubmit={handleGrant} className="flex flex-wrap items-end gap-2">
+          <div className="flex-1">
+            <FormField label="Add administrator by email" htmlFor="grant-admin-email" help="The account must already exist.">
+              <Input
+                id="grant-admin-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="person@example.com"
+                required
+              />
+            </FormField>
+          </div>
+          <Button type="submit" loading={submitting}>
+            Add admin
+          </Button>
+        </form>
+      </Card>
 
       {loading ? (
-        <p className="text-sm text-ink/60">Loading…</p>
+        <div className="flex items-center gap-2 text-sm text-text-muted">
+          <Spinner size="sm" /> Loading…
+        </div>
       ) : admins.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          No administrators found.
-        </p>
+        <Card>
+          <EmptyState title="No administrators found." />
+        </Card>
       ) : (
-        <ul className="divide-y divide-line rounded-lg border border-line bg-white">
+        <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
           {admins.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
-                <p className="font-medium">{a.full_name}</p>
-                <p className="text-sm text-ink/60">{a.email}</p>
+                <p className="font-medium text-text">{a.full_name}</p>
+                <p className="text-sm text-text-muted">{a.email}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setConfirmingRevoke(a)}
-                disabled={busyId === a.id}
-                className="rounded-md border border-red-300 px-3 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
-              >
-                {busyId === a.id ? 'Removing…' : 'Remove'}
-              </button>
+              <Button variant="danger" size="sm" onClick={() => setConfirmingRevoke(a)} disabled={busyId === a.id}>
+                Remove
+              </Button>
             </li>
           ))}
         </ul>
@@ -1571,137 +1424,110 @@ function PlatformSettingsTab() {
     }
   }
 
-  if (loading) return <p className="mt-6 text-sm text-ink/60">Loading…</p>
-  if (error && !settings) return <p className="mt-6 text-sm text-red-600">{error}</p>
+  if (loading) {
+    return (
+      <div className="mt-6">
+        <SkeletonText lines={6} />
+      </div>
+    )
+  }
+  if (error && !settings) {
+    return (
+      <div className="mt-6">
+        <ErrorState message={error} />
+      </div>
+    )
+  }
   if (!settings) return null
 
   return (
     <form onSubmit={handleSave} className="mt-6 max-w-2xl space-y-5">
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {saved ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Saved.</div>
-      ) : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
+      {saved ? <Alert variant="success">Saved.</Alert> : null}
 
-      <div>
-        <label htmlFor="ps-name" className="block text-sm font-medium text-ink">
-          Platform name
-        </label>
-        <input
-          id="ps-name"
-          value={settings.platform_name}
-          onChange={(e) => update('platform_name', e.target.value)}
-          required
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-        />
-      </div>
+      <FormField label="Platform name" htmlFor="ps-name">
+        <Input id="ps-name" value={settings.platform_name} onChange={(e) => update('platform_name', e.target.value)} required />
+      </FormField>
 
-      <div>
-        <label htmlFor="ps-support-email" className="block text-sm font-medium text-ink">
-          Support email
-        </label>
-        <input
+      <FormField label="Support email" htmlFor="ps-support-email">
+        <Input
           id="ps-support-email"
           type="email"
           value={settings.support_email ?? ''}
           onChange={(e) => update('support_email', e.target.value || null)}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label htmlFor="ps-footer" className="block text-sm font-medium text-ink">
-          Footer text
-        </label>
-        <textarea
+      <FormField label="Footer text" htmlFor="ps-footer">
+        <Textarea
           id="ps-footer"
           value={settings.footer_text ?? ''}
           onChange={(e) => update('footer_text', e.target.value || null)}
           rows={2}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label htmlFor="ps-hero-headline" className="block text-sm font-medium text-ink">
-          Home hero heading
-        </label>
-        <input
+      <FormField label="Home hero heading" htmlFor="ps-hero-headline">
+        <Input
           id="ps-hero-headline"
           value={settings.hero_headline ?? ''}
           onChange={(e) => update('hero_headline', e.target.value || null)}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <label htmlFor="ps-hero-subheadline" className="block text-sm font-medium text-ink">
-          Home hero subtext
-        </label>
-        <textarea
+      <FormField label="Home hero subtext" htmlFor="ps-hero-subheadline">
+        <Textarea
           id="ps-hero-subheadline"
           value={settings.hero_subheadline ?? ''}
           onChange={(e) => update('hero_subheadline', e.target.value || null)}
           rows={2}
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
         />
-      </div>
+      </FormField>
 
       <div>
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-ink">FAQ items</p>
-          <button
-            type="button"
-            onClick={addFaqItem}
-            className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background"
-          >
+          <p className="text-sm font-medium text-text">FAQ items</p>
+          <Button variant="secondary" size="sm" type="button" onClick={addFaqItem}>
             Add question
-          </button>
+          </Button>
         </div>
         <div className="mt-2 space-y-3">
           {settings.faq_items.map((item, i) => (
-            <div key={i} className="rounded-lg border border-line bg-white p-3">
+            <Card key={i}>
               <div className="flex items-start justify-between gap-2">
                 <label htmlFor={`faq-q-${i}`} className="sr-only">
                   Question {i + 1}
                 </label>
-                <input
+                <Input
                   id={`faq-q-${i}`}
                   value={item.q}
                   onChange={(e) => updateFaq(i, 'q', e.target.value)}
                   placeholder="Question"
-                  className="flex-1 rounded-md border border-line px-3 py-1.5 text-sm focus:border-button"
+                  className="flex-1"
                 />
-                <button
-                  type="button"
-                  onClick={() => removeFaqItem(i)}
-                  className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background"
-                >
+                <Button variant="secondary" size="sm" type="button" onClick={() => removeFaqItem(i)}>
                   Remove
-                </button>
+                </Button>
               </div>
               <label htmlFor={`faq-a-${i}`} className="sr-only">
                 Answer {i + 1}
               </label>
-              <textarea
+              <Textarea
                 id={`faq-a-${i}`}
                 value={item.a}
                 onChange={(e) => updateFaq(i, 'a', e.target.value)}
                 placeholder="Answer"
                 rows={2}
-                className="mt-2 w-full rounded-md border border-line px-3 py-1.5 text-sm focus:border-button"
+                className="mt-2"
               />
-            </div>
+            </Card>
           ))}
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-      >
-        {saving ? 'Saving…' : 'Save settings'}
-      </button>
+      <Button type="submit" loading={saving}>
+        Save settings
+      </Button>
     </form>
   )
 }

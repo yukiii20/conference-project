@@ -30,7 +30,7 @@ test('admin dashboard shows stat tiles and the system health card', async ({ pag
 
 test('admin grants and revokes platform admin access', async ({ page }) => {
   await signInAsAdmin(page)
-  await page.getByRole('button', { name: 'Admins', exact: true }).click()
+  await page.getByRole('tab', { name: 'Admins', exact: true }).click()
 
   await page.locator('#grant-admin-email').fill(FIXTURE.convenorEmail)
   await page.getByRole('button', { name: 'Add admin' }).click()
@@ -46,7 +46,7 @@ test('admin grants and revokes platform admin access', async ({ page }) => {
 
 test('admin edits platform settings and the home page reflects them', async ({ page }) => {
   await signInAsAdmin(page)
-  await page.getByRole('button', { name: 'Platform settings', exact: true }).click()
+  await page.getByRole('tab', { name: 'Platform settings', exact: true }).click()
 
   const stamp = Date.now()
   const headline = `E2E hero headline ${stamp}`
@@ -67,7 +67,7 @@ test('admin edits platform settings and the home page reflects them', async ({ p
 // end-to-end by server/tests/convenorInvite.test.ts.
 test('admin creates a conference and invites a convenor for it', async ({ page }) => {
   await signInAsAdmin(page)
-  await page.getByRole('button', { name: 'Conferences', exact: true }).click()
+  await page.getByRole('tab', { name: 'Conferences', exact: true }).click()
 
   const stamp = Date.now()
   const name = `E2E New Conference ${stamp}`
@@ -85,7 +85,7 @@ test('admin creates a conference and invites a convenor for it', async ({ page }
   await expect(page.getByText('Conference created with default key dates')).toBeVisible()
   await expect(page.locator('tr', { hasText: name })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Create convenor', exact: true }).click()
+  await page.getByRole('tab', { name: 'Create convenor', exact: true }).click()
   const convenorEmail = `e2e-new-convenor-${stamp}@example.com`
   await page.locator('#cc-conference').selectOption({ label: `${name} (${code})` })
   await page.locator('#cc-name').fill('New Convenor')
@@ -97,7 +97,7 @@ test('admin creates a conference and invites a convenor for it', async ({ page }
 
 test('view a conference as admin is read-only', async ({ page }) => {
   await signInAsAdmin(page)
-  await page.getByRole('button', { name: 'Conferences', exact: true }).click()
+  await page.getByRole('tab', { name: 'Conferences', exact: true }).click()
 
   const row = page.locator('tr', { hasText: FIXTURE.conferenceName })
   await row.getByRole('link', { name: 'View as admin' }).click()

@@ -50,15 +50,17 @@ export function PortalSidebar({
               onNavigate?.()
             }}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm ${
-                isActive ? 'bg-button/10 font-medium text-button' : 'text-ink/70 hover:bg-background'
+              `flex items-center gap-2.5 rounded-md border-l-[3px] px-3 py-2 text-sm ${
+                isActive
+                  ? 'border-brand bg-surface font-medium text-brand'
+                  : 'border-transparent text-text/70 hover:bg-border-soft'
               }`
             }
           >
             <Icon path={ICON_PATHS[s.id]!} />
             <span className="flex-1">{s.label}</span>
             {badge > 0 ? (
-              <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">{badge}</span>
+              <span className="rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-white">{badge}</span>
             ) : null}
           </NavLink>
         )

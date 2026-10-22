@@ -3,8 +3,8 @@ import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes 
 
 // text-base (16px) everywhere so mobile Safari/Chrome never zoom in on focus.
 const FIELD_CLASSES =
-  'w-full min-h-10 rounded-md border border-line bg-white px-3 py-2 text-base text-ink placeholder:text-ink/40 focus:border-button focus:outline-none disabled:bg-background disabled:text-ink/50'
-const FIELD_ERROR_CLASSES = 'border-red-400 focus:border-red-500'
+  'w-full min-h-10 rounded-md border border-border bg-surface px-3 py-2 text-base text-text placeholder:text-text-muted/60 focus:border-button focus:outline-none disabled:bg-page-bg disabled:text-text-muted'
+const FIELD_ERROR_CLASSES = 'border-danger focus:border-danger'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: boolean
@@ -73,13 +73,13 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
       ref={ref}
       type="checkbox"
       id={id}
-      className={`h-5 w-5 flex-shrink-0 rounded border-line text-button focus-visible:outline-2 focus-visible:outline-offset-2 ${className}`}
+      className={`h-5 w-5 flex-shrink-0 rounded border-border text-button focus-visible:outline-2 focus-visible:outline-offset-2 ${className}`}
       {...rest}
     />
   )
   if (!label) return input
   return (
-    <label htmlFor={id} className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-ink">
+    <label htmlFor={id} className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-text">
       {input}
       {label}
     </label>

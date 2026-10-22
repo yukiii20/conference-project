@@ -3,6 +3,19 @@ import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { AUTO_CERTIFICATE_TYPES, CERTIFICATE_TYPES, certificateTemplateSchema } from '../../lib/validation'
 import { ImageUpload } from '../../components/ImageUpload'
+import {
+  Alert,
+  Button,
+  Card,
+  CardHeader,
+  Checkbox,
+  EmptyState,
+  Input,
+  Select,
+  SkeletonText,
+  StatusChip,
+  TableContainer,
+} from '../../components/ui'
 
 type Signatory = { name: string; title: string; signature_path: string | null }
 type Template = {
@@ -118,23 +131,27 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
   const editingTemplate = templates.find((t) => t.id === editingId) ?? null
 
   return (
-    <div>
-      <h3 className="text-lg font-medium text-ink">Certificate templates</h3>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+    <Card>
+      <CardHeader title="Certificate templates" />
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (
-        <p className="mt-3 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={3} className="mt-3" />
+      ) : templates.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No certificate templates yet." />
+        </div>
       ) : (
         <ul className="mt-3 space-y-2">
           {templates.map((t) => (
-            <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm">
+            <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm">
               <span>
-                <span className="font-medium">{t.name}</span>{' '}
-                <span className="text-ink/50">
+                <span className="font-medium text-text">{t.name}</span>{' '}
+                <span className="text-text-muted">
                   ({TYPE_LABELS[t.certificate_type] ?? t.certificate_type}, {t.is_active ? 'active' : 'inactive'})
                 </span>
               </span>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <a
                   href={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${t.id}/preview.pdf`}
                   target="_blank"
@@ -143,109 +160,99 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
                 >
                   Preview
                 </a>
-                <button type="button" onClick={() => startEdit(t)} className="text-xs text-button hover:underline">
+                <Button type="button" variant="link" size="sm" onClick={() => startEdit(t)}>
                   Edit
-                </button>
+                </Button>
               </div>
             </li>
           ))}
         </ul>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">{editingId ? 'Edit template' : 'Add a template'}</p>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">{editingId ? 'Edit template' : 'Add a template'}</p>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <select
+          <Select
             value={form.certificate_type}
             onChange={(e) => setForm((p) => ({ ...p, certificate_type: e.target.value as (typeof CERTIFICATE_TYPES)[number] }))}
-            className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
           >
             {CERTIFICATE_TYPES.map((t) => (
               <option key={t} value={t}>
                 {TYPE_LABELS[t]}
               </option>
             ))}
-          </select>
-          <input
+          </Select>
+          <Input
             value={form.name}
             onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
             placeholder="Template name"
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
           />
         </div>
 
         <div>
-          <p className="text-xs font-medium text-ink/60">Recipient name position</p>
+          <p className="text-xs font-medium text-text-muted">Recipient name position</p>
           <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <input
+            <Input
               type="number"
               value={form.layout.name.y}
               onChange={(e) => setForm((p) => ({ ...p, layout: { name: { ...p.layout.name, y: Number(e.target.value) } } }))}
               placeholder="Y position"
-              className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
             />
-            <input
+            <Input
               type="number"
               value={form.layout.name.font_size}
               onChange={(e) => setForm((p) => ({ ...p, layout: { name: { ...p.layout.name, font_size: Number(e.target.value) } } }))}
               placeholder="Font size"
-              className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
             />
-            <input
+            <Input
               value={form.layout.name.color}
               onChange={(e) => setForm((p) => ({ ...p, layout: { name: { ...p.layout.name, color: e.target.value } } }))}
               placeholder="#1A1A1A"
-              className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
             />
           </div>
         </div>
 
         <div>
-          <p className="text-xs font-medium text-ink/60">Signatories (up to 2)</p>
+          <p className="text-xs font-medium text-text-muted">Signatories (up to 2)</p>
           {[0, 1].map((i) => (
             <div key={i} className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <input
+              <Input
                 value={form.signatories[i]?.name ?? ''}
                 onChange={(e) => setSignatory(i, 'name', e.target.value)}
                 placeholder="Name"
-                className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
               />
-              <input
+              <Input
                 value={form.signatories[i]?.title ?? ''}
                 onChange={(e) => setSignatory(i, 'title', e.target.value)}
                 placeholder="Title"
-                className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
               />
             </div>
           ))}
         </div>
 
-        <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} />
-          Active (one active template per type)
-        </label>
+        <Checkbox
+          label="Active (one active template per type)"
+          checked={form.is_active}
+          onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
+        />
 
         <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" disabled={saving}>
             {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add template'}
-          </button>
+          </Button>
           {editingId ? (
-            <button type="button" onClick={resetForm} className="rounded-md border border-line px-4 py-2 text-sm hover:bg-background">
+            <Button type="button" variant="secondary" onClick={resetForm}>
               Cancel
-            </button>
+            </Button>
           ) : null}
         </div>
 
         {editingTemplate ? (
-          <div className="space-y-4 border-t border-line pt-3">
+          <div className="space-y-4 border-t border-border pt-3">
             <div>
-              <p className="text-xs font-medium text-ink/60">Certificate background</p>
-              <p className="text-xs text-ink/40">PNG or JPG, A4 landscape, at least 2480 x 1754 px</p>
+              <p className="text-xs font-medium text-text-muted">Certificate background</p>
+              <p className="text-xs text-text-muted/70">PNG or JPG, A4 landscape, at least 2480 x 1754 px</p>
               <div className="mt-2">
                 <ImageUpload
                   label="certificate background"
@@ -267,8 +274,8 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
               const positionLabel = i === 0 ? 'First signature' : 'Second signature'
               return (
                 <div key={i}>
-                  <p className="text-xs font-medium text-ink/60">{positionLabel}</p>
-                  <p className="text-xs text-ink/40">Transparent PNG, about 600 x 200 px</p>
+                  <p className="text-xs font-medium text-text-muted">{positionLabel}</p>
+                  <p className="text-xs text-text-muted/70">Transparent PNG, about 600 x 200 px</p>
                   <div className="mt-2">
                     <ImageUpload
                       label={positionLabel.toLowerCase()}
@@ -290,7 +297,7 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
           </div>
         ) : null}
       </form>
-    </div>
+    </Card>
   )
 }
 
@@ -381,45 +388,32 @@ function IssueSection({ conferenceId, onIssued }: { conferenceId: string; onIssu
 
   return (
     <div className="mt-10 space-y-6">
-      <div className="rounded-lg border border-line bg-white p-4">
-        <h3 className="text-lg font-medium text-ink">Generate certificates</h3>
-        {message ? <p className="mt-2 text-sm text-ink/70">{message}</p> : null}
+      <Card>
+        <CardHeader title="Generate certificates" />
+        {message ? <p className="mt-2 text-sm text-text-muted">{message}</p> : null}
         <div className="mt-2 flex flex-wrap items-end gap-2">
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as (typeof AUTO_CERTIFICATE_TYPES)[number])}
-            className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-          >
+          <Select value={type} onChange={(e) => setType(e.target.value as (typeof AUTO_CERTIFICATE_TYPES)[number])} className="w-auto">
             {AUTO_CERTIFICATE_TYPES.map((t) => (
               <option key={t} value={t}>
                 {TYPE_LABELS[t]}
               </option>
             ))}
-          </select>
+          </Select>
           {preview ? (
-            <span className="text-sm text-ink/60">
+            <span className="text-sm text-text-muted">
               {preview.eligible} eligible · {preview.new} new · {preview.already_issued} already issued
             </span>
           ) : null}
-          <button
-            type="button"
-            onClick={generate}
-            disabled={busy}
-            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="button" variant="primary" onClick={generate} disabled={busy}>
             Generate certificates
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      <div className="rounded-lg border border-line bg-white p-4">
-        <h3 className="text-lg font-medium text-ink">Best paper (manual)</h3>
+      <Card>
+        <CardHeader title="Best paper (manual)" />
         <div className="mt-2 flex flex-wrap items-end gap-2">
-          <select
-            value={submissionId}
-            onChange={(e) => setSubmissionId(e.target.value)}
-            className="min-w-[240px] flex-1 rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-          >
+          <Select value={submissionId} onChange={(e) => setSubmissionId(e.target.value)} className="min-w-[240px] flex-1">
             <option value="">Choose a submission</option>
             {submissions.map((s) => (
               <option key={s.id} value={s.id}>
@@ -427,43 +421,29 @@ function IssueSection({ conferenceId, onIssued }: { conferenceId: string; onIssu
                 {s.title}
               </option>
             ))}
-          </select>
-          <button
-            type="button"
-            onClick={issueBestPaper}
-            disabled={busy || !submissionId}
-            className="rounded-md border border-line px-4 py-2 text-sm hover:bg-background disabled:opacity-50"
-          >
+          </Select>
+          <Button type="button" variant="primary" onClick={issueBestPaper} disabled={busy || !submissionId}>
             Issue to authors
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      <div className="rounded-lg border border-line bg-white p-4">
-        <h3 className="text-lg font-medium text-ink">Speaker (manual)</h3>
+      <Card>
+        <CardHeader title="Speaker (manual)" />
         <div className="mt-2 flex flex-wrap items-end gap-2">
-          <select
-            value={speakerId}
-            onChange={(e) => setSpeakerId(e.target.value)}
-            className="min-w-[240px] flex-1 rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-          >
+          <Select value={speakerId} onChange={(e) => setSpeakerId(e.target.value)} className="min-w-[240px] flex-1">
             <option value="">Choose a speaker</option>
             {speakers.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.full_name}
               </option>
             ))}
-          </select>
-          <button
-            type="button"
-            onClick={issueSpeaker}
-            disabled={busy || !speakerId}
-            className="rounded-md border border-line px-4 py-2 text-sm hover:bg-background disabled:opacity-50"
-          >
+          </Select>
+          <Button type="button" variant="primary" onClick={issueSpeaker} disabled={busy || !speakerId}>
             Issue
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -516,27 +496,24 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
   return (
     <div className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-medium text-ink">Issued certificates</h3>
-        <button
-          type="button"
-          onClick={releaseNow}
-          disabled={releasing}
-          className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background disabled:opacity-50"
-        >
+        <h3 className="text-lg font-medium text-text">Issued certificates</h3>
+        <Button type="button" variant="secondary" size="sm" onClick={releaseNow} disabled={releasing}>
           {releasing ? 'Releasing…' : 'Release now'}
-        </button>
+        </Button>
       </div>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (
-        <p className="mt-3 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={3} className="mt-3" />
       ) : certificates.length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-line bg-white px-4 py-4 text-sm text-ink/70">No certificates issued yet.</p>
+        <div className="mt-3 rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No certificates issued yet." />
+        </div>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[700px] text-left text-sm">
+        <div className="mt-3">
+          <TableContainer minWidth={700}>
             <thead>
-              <tr className="border-b border-line text-ink/60">
+              <tr className="border-b border-border bg-surface-muted text-text-muted">
                 <th className="px-4 py-2 font-medium">Number</th>
                 <th className="px-4 py-2 font-medium">Recipient</th>
                 <th className="px-4 py-2 font-medium">Type</th>
@@ -545,25 +522,27 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
                 <th className="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody className="divide-y divide-border">
               {certificates.map((c) => (
                 <tr key={c.id}>
                   <td className="px-4 py-2 font-mono text-xs">{c.certificate_number}</td>
                   <td className="px-4 py-2">{c.recipient_name}</td>
                   <td className="px-4 py-2">{TYPE_LABELS[c.certificate_type] ?? c.certificate_type}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{formatKathmandu(c.issued_at)}</td>
-                  <td className="px-4 py-2 capitalize">{c.status}</td>
+                  <td className="px-4 py-2">
+                    <StatusChip status={c.status} />
+                  </td>
                   <td className="px-4 py-2">
                     {c.status === 'issued' ? (
-                      <button type="button" onClick={() => revoke(c.id)} className="text-xs text-red-600 hover:underline">
+                      <Button type="button" variant="danger" size="sm" onClick={() => revoke(c.id)}>
                         Revoke
-                      </button>
+                      </Button>
                     ) : null}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TableContainer>
         </div>
       )}
     </div>

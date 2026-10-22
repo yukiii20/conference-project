@@ -16,7 +16,7 @@ export function LandingFooter() {
   const contactEmail = platformSettings?.support_email ?? SITE.contactEmail
 
   return (
-    <footer className="bg-landing-navy-900 text-white">
+    <footer className="bg-brand text-on-brand">
       <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
           <div>
@@ -24,12 +24,12 @@ export function LandingFooter() {
               <LogoMark size={28} />
               <span>{platformName}</span>
             </div>
-            <p className="mt-3 max-w-xs text-sm text-white/70">{footerText}</p>
+            <p className="mt-3 max-w-xs text-sm text-on-brand/70">{footerText}</p>
             <a
               href={gmailComposeHref(contactEmail)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-block text-sm text-white/80 hover:text-white"
+              className="mt-3 inline-block text-sm text-on-brand/80 hover:text-on-brand"
             >
               {contactEmail}
             </a>
@@ -37,18 +37,18 @@ export function LandingFooter() {
 
           {columns.map((col) => (
             <div key={col.heading}>
-              <p className="text-sm font-semibold uppercase tracking-wide text-white/50">{col.heading}</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-on-brand/50">{col.heading}</p>
               <ul className="mt-3 space-y-2 text-sm">
                 {col.links.map((link) =>
                   'to' in link ? (
                     <li key={link.label}>
-                      <Link to={link.to} className="text-white/80 hover:text-white">
+                      <Link to={link.to} className="text-on-brand/80 hover:text-on-brand">
                         {link.label}
                       </Link>
                     </li>
                   ) : (
                     <li key={link.label}>
-                      <a href={link.href} className="text-white/80 hover:text-white">
+                      <a href={link.href} className="text-on-brand/80 hover:text-on-brand">
                         {link.label}
                       </a>
                     </li>
@@ -59,7 +59,7 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-10 border-t border-white/10 pt-6 text-sm text-white/50">
+        <div className="mt-10 border-t border-on-brand/10 pt-6 text-sm text-on-brand/50">
           © {year} {platformName} · Banepa, Nepal
         </div>
       </div>

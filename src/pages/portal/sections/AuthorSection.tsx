@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../../lib/api'
 import { SubmissionsList } from '../../author/SubmissionsList'
 import { SubmissionDetail } from '../../author/SubmissionDetail'
+import { Button, PageHeader, Tabs } from '../../../components/ui'
 
 type Tab = 'new' | 'submissions'
 type Track = { id: string; name: string }
@@ -50,34 +51,19 @@ export function AuthorSection({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <h2 className="text-lg font-medium text-ink">My submissions</h2>
+      <PageHeader title="My submissions" />
 
-      <div className="mt-4 flex gap-2 border-b border-line">
-        <button
-          type="button"
-          onClick={() => {
-            setTab('new')
-            setSelectedId(null)
-          }}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-            tab === 'new' ? 'border-button text-button' : 'border-transparent text-ink/60'
-          }`}
-        >
-          New abstract
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTab('submissions')
-            setSelectedId(null)
-          }}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-            tab === 'submissions' ? 'border-button text-button' : 'border-transparent text-ink/60'
-          }`}
-        >
-          My submissions
-        </button>
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'new', label: 'New abstract' },
+          { id: 'submissions', label: 'My submissions' },
+        ]}
+        active={tab}
+        onChange={(id) => {
+          setTab(id as Tab)
+          setSelectedId(null)
+        }}
+      />
 
       {tab === 'new' ? (
         <SubmissionDetail
@@ -90,9 +76,9 @@ export function AuthorSection({ conferenceId }: { conferenceId: string }) {
         />
       ) : selectedId ? (
         <>
-          <button type="button" onClick={() => setSelectedId(null)} className="mt-4 text-sm text-button underline">
+          <Button type="button" variant="link" onClick={() => setSelectedId(null)} className="mt-4">
             ← Back to my submissions
-          </button>
+          </Button>
           <SubmissionDetail
             conferenceId={conferenceId}
             submissionId={selectedId}

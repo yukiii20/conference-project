@@ -3,6 +3,8 @@ import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/authContext'
 import { getRoleDefinition } from '../lib/roles'
 import { PortalHeader } from '../components/PortalHeader'
+import { PageHeader } from '../components/ui/PageHeader'
+import { Select } from '../components/ui/Input'
 import { PortalSidebar } from './portal/PortalSidebar'
 import { DashboardTab } from './portal/DashboardTab'
 import { MyCertificatesTab } from './portal/MyCertificatesTab'
@@ -92,43 +94,49 @@ function PortalPageInner() {
       <PortalHeader roleLabel={myRoleLabels.length > 0 ? myRoleLabels.join(' · ') : (user?.full_name ?? 'Portal')} />
 
       <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">My portal</h1>
-          <button
-            type="button"
-            onClick={() => setMobileNavOpen((v) => !v)}
-            aria-expanded={mobileNavOpen}
-            aria-controls="portal-sidebar"
-            className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background md:hidden"
-          >
-            {mobileNavOpen ? 'Close menu' : 'Menu'}
-          </button>
-        </div>
+        <PageHeader
+          title="My portal"
+          actions={
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-expanded={mobileNavOpen}
+              aria-controls="portal-sidebar"
+              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-muted md:hidden"
+            >
+              {mobileNavOpen ? 'Close menu' : 'Menu'}
+            </button>
+          }
+          className="mb-0"
+        />
 
         {myConferences.length > 1 ? (
           <div className="mt-3">
-            <label htmlFor="portal-conference" className="block text-xs font-medium text-ink/60">
+            <label htmlFor="portal-conference" className="block text-xs font-medium text-text-muted">
               Conference
             </label>
-            <select
+            <Select
               id="portal-conference"
               value={conferenceId ?? ''}
               onChange={(e) => setConferenceId(e.target.value)}
-              className="mt-1 w-full max-w-sm rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
+              className="mt-1 max-w-sm"
             >
               {myConferences.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         ) : conference ? (
-          <p className="mt-1 text-ink/70">{conference.name}</p>
+          <p className="mt-1 text-text-muted">{conference.name}</p>
         ) : null}
 
         <div className="mt-6 flex flex-col gap-6 md:flex-row">
-          <aside id="portal-sidebar" className={`shrink-0 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}>
+          <aside
+            id="portal-sidebar"
+            className={`shrink-0 rounded-lg bg-surface-muted p-2 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
+          >
             <PortalSidebar base={base} sections={sections} onNavigate={() => setMobileNavOpen(false)} />
           </aside>
 

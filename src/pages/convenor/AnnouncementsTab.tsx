@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { ANNOUNCEMENT_AUDIENCES, announcementSchema, type AnnouncementInput } from '../../lib/validation'
+import { PageHeader, Card, Badge, Button, Input, Textarea, Checkbox, Alert, Spinner } from '../../components/ui'
 
 type Announcement = {
   id: string
@@ -128,93 +129,103 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
     }
   }
 
-  if (loading) return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+  if (loading)
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
 
   return (
     <div className="mt-6 max-w-3xl space-y-6">
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      <PageHeader title="Announcements" subtitle="Draft, schedule, and publish announcements to the conference." />
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {announcements.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">No announcements yet.</p>
+        <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-sm text-text-muted">No announcements yet.</p>
       ) : (
         <div className="space-y-3">
           {announcements.map((a) => (
-            <div key={a.id} className="rounded-lg border border-line bg-white p-4">
+            <Card key={a.id}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium text-ink">{a.title}</p>
-                <span className="rounded-full bg-background px-2 py-0.5 text-xs text-ink/70">{STATUS_LABELS[a.status]}</span>
+                <p className="font-medium text-text">{a.title}</p>
+                <Badge tone="neutral">{STATUS_LABELS[a.status]}</Badge>
               </div>
-              <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{a.body}</p>
-              <p className="mt-2 text-xs text-ink/50">
+              <p className="mt-1 whitespace-pre-line text-sm text-text-muted">{a.body}</p>
+              <p className="mt-2 text-xs text-text-muted">
                 Audience: {a.audience.map((aud) => AUDIENCE_LABELS[aud as keyof typeof AUDIENCE_LABELS] ?? aud).join(', ')}
                 {a.status === 'scheduled' && a.publish_at ? ` · publishes ${new Date(a.publish_at).toLocaleString()}` : ''}
               </p>
               {(a.status === 'draft' || a.status === 'scheduled') && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => handlePublishNow(a)} disabled={busyId === a.id} className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+                  <Button variant="primary" size="sm" onClick={() => handlePublishNow(a)} disabled={busyId === a.id}>
                     Publish now
-                  </button>
+                  </Button>
                   {a.status === 'draft' ? (
-                    <button type="button" onClick={() => handleDelete(a)} disabled={busyId === a.id} className="rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(a)} disabled={busyId === a.id}>
                       Delete
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               )}
               {a.status === 'published' ? (
-                <button type="button" onClick={() => handleArchive(a)} disabled={busyId === a.id} className="mt-3 rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-50">
+                <Button variant="secondary" size="sm" className="mt-3" onClick={() => handleArchive(a)} disabled={busyId === a.id}>
                   Archive
-                </button>
+                </Button>
               ) : null}
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
-      <form className="rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">New announcement</p>
-        {formError ? <p className="mt-2 text-sm text-red-600">{formError}</p> : null}
-        <input
+      <form className="rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">New announcement</p>
+        {formError ? (
+          <div className="mt-2">
+            <Alert variant="danger">{formError}</Alert>
+          </div>
+        ) : null}
+        <Input
           value={form.title}
           onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
           placeholder="Title"
-          className="mt-3 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+          className="mt-3"
         />
-        <textarea
+        <Textarea
           value={form.body}
           onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))}
           placeholder="Announcement text"
           rows={3}
-          className="mt-3 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+          className="mt-3"
         />
         <div className="mt-3 flex flex-wrap gap-3">
           {ANNOUNCEMENT_AUDIENCES.map((aud) => (
-            <label key={aud} className="flex items-center gap-1.5 text-sm">
-              <input type="checkbox" checked={form.audience.includes(aud)} onChange={() => toggleAudience(aud)} />
-              {AUDIENCE_LABELS[aud]}
-            </label>
+            <Checkbox key={aud} label={AUDIENCE_LABELS[aud]} checked={form.audience.includes(aud)} onChange={() => toggleAudience(aud)} />
           ))}
         </div>
-        <label className="mt-3 flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" checked={form.send_email} onChange={(e) => setForm((p) => ({ ...p, send_email: e.target.checked }))} />
-          Also send an email
-        </label>
+        <div className="mt-3">
+          <Checkbox
+            label="Also send an email"
+            checked={form.send_email}
+            onChange={(e) => setForm((p) => ({ ...p, send_email: e.target.checked }))}
+          />
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input
+          <Input
             type="datetime-local"
             value={form.publish_at}
             onChange={(e) => setForm((p) => ({ ...p, publish_at: e.target.value }))}
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+            className="w-auto"
           />
-          <button type="button" disabled={saving} onClick={(e) => handleSubmit(e, 'scheduled')} className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background disabled:opacity-50">
+          <Button type="button" variant="secondary" disabled={saving} onClick={(e) => handleSubmit(e, 'scheduled')}>
             Schedule
-          </button>
-          <button type="button" disabled={saving} onClick={(e) => handleSubmit(e, 'draft')} className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background disabled:opacity-50">
+          </Button>
+          <Button type="button" variant="secondary" disabled={saving} onClick={(e) => handleSubmit(e, 'draft')}>
             Save as draft
-          </button>
-          <button type="button" disabled={saving} onClick={(e) => handleSubmit(e, 'published')} className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+          </Button>
+          <Button type="button" variant="primary" disabled={saving} loading={saving} onClick={(e) => handleSubmit(e, 'published')}>
             {saving ? 'Publishing…' : 'Publish now'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

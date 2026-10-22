@@ -6,6 +6,7 @@ import {
   addConferenceMember,
   createConference,
   createDirectSession,
+  createSubmission,
   createTrack,
   createUser,
   resetDatabase,
@@ -56,6 +57,44 @@ describe('convenor dashboard', () => {
     expect(Array.isArray(res.body.submissions_per_track)).toBe(true)
     expect(res.body.submissions_per_track[0]).toMatchObject({ track_name: 'AI', count: 0 })
     expect(res.body.needs_attention.pending_role_requests).toBe(0)
+  })
+
+  it('counts reviews pending (assigned/in_progress) separately from reviews done (completed) - not a shared bucket', async () => {
+    // Regression guard for the "Reviews pending" stat card (Step 7B+C, docs/finish-7bc-theme-and-ui.md
+    // B3): pending must be assigned-but-not-yet-submitted, done must be submitted (completed), and the
+    // two counts must come out different when the underlying rows differ - not just both read as 0.
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId)
+    const trackId = await createTrack(conferenceId, 'Networks')
+    const { agent } = await loginAs(conferenceId, 'dash-convenor3@example.com', 'convenor')
+    const authorId = await createUser({ email: 'dash-author3@example.com', password: 'Str0ng!Pass' })
+    const reviewer1 = await createUser({ email: 'dash-reviewer1@example.com', password: 'Str0ng!Pass' })
+    const reviewer2 = await createUser({ email: 'dash-reviewer2@example.com', password: 'Str0ng!Pass' })
+    const reviewer3 = await createUser({ email: 'dash-reviewer3@example.com', password: 'Str0ng!Pass' })
+
+    const sub1 = await createSubmission(conferenceId, trackId, authorId, { title: 'Paper One', status: 'under_review' })
+    const sub2 = await createSubmission(conferenceId, trackId, authorId, { title: 'Paper Two', status: 'under_review' })
+    const sub3 = await createSubmission(conferenceId, trackId, authorId, { title: 'Paper Three', status: 'under_review' })
+
+    await pool.query(
+      `INSERT INTO review_assignments (conference_id, submission_id, reviewer_id, round, status, due_at)
+       VALUES (?, ?, ?, 1, 'assigned', DATE_ADD(NOW(3), INTERVAL 7 DAY))`,
+      [conferenceId, sub1, reviewer1],
+    )
+    await pool.query(
+      `INSERT INTO review_assignments (conference_id, submission_id, reviewer_id, round, status, due_at)
+       VALUES (?, ?, ?, 1, 'in_progress', DATE_ADD(NOW(3), INTERVAL 7 DAY))`,
+      [conferenceId, sub2, reviewer2],
+    )
+    await pool.query(
+      `INSERT INTO review_assignments (conference_id, submission_id, reviewer_id, round, status, due_at, completed_at)
+       VALUES (?, ?, ?, 1, 'completed', DATE_ADD(NOW(3), INTERVAL 7 DAY), NOW(3))`,
+      [conferenceId, sub3, reviewer3],
+    )
+
+    const res = await agent.get(`/api/conferences/${conferenceId}/dashboard`)
+    expect(res.status).toBe(200)
+    expect(res.body.reviews).toEqual({ assigned: 2, completed: 1 })
   })
 
   it('counts real registrations, excluding cancelled ones - not a hard-coded 0', async () => {

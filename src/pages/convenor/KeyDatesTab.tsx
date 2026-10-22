@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { fromKathmanduInputValue, toKathmanduInputValue } from '../../lib/datetime'
 import { useToast } from '../../components/ui/Toast'
+import { PageHeader, Card, FormField, Input, Checkbox, Button, Alert, Spinner } from '../../components/ui'
 
 type DeadlineRow = {
   code: string
@@ -120,81 +121,72 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   return (
     <div className="mt-6 max-w-3xl">
+      <PageHeader title="Key Dates" subtitle="Times are shown and saved in Asia/Kathmandu time." />
       {error ? (
-        <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {error}
+        <div className="mb-4">
+          <Alert variant="danger">{error}</Alert>
         </div>
       ) : null}
-
-      <p className="mb-4 text-sm text-ink/60">Times are shown and saved in Asia/Kathmandu time.</p>
 
       <div className="space-y-4">
         {deadlineRows.map((t) => {
           const row = rows[t.code] ?? EMPTY_ROW
           return (
-            <div key={t.code} className="rounded-lg border border-line bg-white p-4">
+            <Card key={t.code}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium text-ink">{t.name}</p>
-                <label className="flex items-center gap-2 text-sm text-ink/70">
-                  <input
-                    type="checkbox"
-                    checked={row.is_public}
-                    onChange={(e) => update(t.code, { is_public: e.target.checked })}
-                  />
-                  Show on public page
-                </label>
+                <p className="font-medium text-text">{t.name}</p>
+                <Checkbox
+                  label="Show on public page"
+                  checked={row.is_public}
+                  onChange={(e) => update(t.code, { is_public: e.target.checked })}
+                />
               </div>
 
               {t.is_window ? (
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-medium text-ink/60">Opens</label>
-                    <input
+                  <FormField label="Opens">
+                    <Input
                       type="datetime-local"
                       value={row.opens_at}
                       onChange={(e) => update(t.code, { opens_at: e.target.value })}
-                      className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-ink/60">Closes</label>
-                    <input
+                  </FormField>
+                  <FormField label="Closes">
+                    <Input
                       type="datetime-local"
                       value={row.closes_at}
                       onChange={(e) => update(t.code, { closes_at: e.target.value })}
-                      className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
                     />
-                  </div>
+                  </FormField>
                 </div>
               ) : (
-                <div className="mt-3">
-                  <label className="block text-xs font-medium text-ink/60">Date</label>
-                  <input
-                    type="datetime-local"
-                    value={row.closes_at}
-                    onChange={(e) => update(t.code, { closes_at: e.target.value })}
-                    className="mt-1 w-full max-w-xs rounded-md border border-line px-3 py-2 focus:border-button"
-                  />
+                <div className="mt-3 max-w-xs">
+                  <FormField label="Date">
+                    <Input
+                      type="datetime-local"
+                      value={row.closes_at}
+                      onChange={(e) => update(t.code, { closes_at: e.target.value })}
+                    />
+                  </FormField>
                 </div>
               )}
-            </div>
+            </Card>
           )
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={saving}
-        className="mt-6 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-      >
+      <Button variant="primary" className="mt-6" onClick={handleSave} disabled={saving} loading={saving}>
         {saving ? 'Saving…' : 'Save key dates'}
-      </button>
+      </Button>
     </div>
   )
 }

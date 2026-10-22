@@ -9,8 +9,7 @@ import {
   RECOMMENDATION_LABELS,
   SUBMISSION_STATUS_LABELS,
 } from '../../lib/submissionDisplay'
-import { StatusChip } from '../../components/ui/Badge'
-import { ConfirmDialog } from '../../components/ui/Modal'
+import { Alert, Badge, Button, Card, CardHeader, ConfirmDialog, Input, Select, StatusChip, Textarea } from '../../components/ui'
 
 type Submission = {
   id: string
@@ -203,203 +202,189 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return <p className="mt-6 text-sm text-text-muted">Loading…</p>
   }
 
   if (error || !submission) {
-    return <p className="mt-6 text-sm text-red-600">{error}</p>
+    return (
+      <div className="mt-6">
+        <Alert variant="danger">{error}</Alert>
+      </div>
+    )
   }
 
   return (
     <div className="mt-4 max-w-4xl space-y-6">
-      {notice ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
-      ) : null}
+      {notice ? <Alert variant="success">{notice}</Alert> : null}
 
-      <div className="rounded-lg border border-line bg-white p-5">
+      <Card>
         <div className="flex flex-wrap items-center gap-3">
-          {submission.submission_code ? <span className="font-mono text-sm text-ink/60">{submission.submission_code}</span> : null}
+          {submission.submission_code ? <span className="font-mono text-sm text-text-muted">{submission.submission_code}</span> : null}
           <StatusChip status={submission.status} labels={SUBMISSION_STATUS_LABELS} />
         </div>
-        <h2 className="mt-2 text-lg font-semibold text-ink">{submission.title}</h2>
-        <p className="mt-3 whitespace-pre-line text-sm text-ink/80">{submission.abstract}</p>
+        <h2 className="mt-2 text-lg font-semibold text-text">{submission.title}</h2>
+        <p className="mt-3 whitespace-pre-line text-sm text-text/80">{submission.abstract}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(submission.keywords ?? []).map((k) => (
-            <span key={k} className="rounded-full bg-background px-3 py-1 text-xs text-ink/70">
+            <Badge key={k} tone="neutral">
               {k}
-            </span>
+            </Badge>
           ))}
         </div>
-      </div>
+      </Card>
 
-      <div className="rounded-lg border border-line bg-white p-5">
-        <h3 className="font-medium text-ink">Authors</h3>
-        <ul className="mt-3 space-y-2 text-sm">
+      <Card>
+        <CardHeader title="Authors" />
+        <ul className="space-y-2 text-sm">
           {authors.map((a) => (
-            <li key={a.id} className="flex items-center gap-2 text-ink/80">
+            <li key={a.id} className="flex items-center gap-2 text-text/80">
               <Avatar photoPath={a.photo_path} name={a.full_name} size="h-7 w-7" />
-              {a.full_name} ({a.email}){a.is_corresponding ? <span className="ml-1 text-xs text-button">corresponding</span> : null}
+              {a.full_name} ({a.email}){a.is_corresponding ? <span className="ml-1 text-xs text-brand">corresponding</span> : null}
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
 
-      <div className="rounded-lg border border-line bg-white p-5">
-        <h3 className="font-medium text-ink">Files</h3>
+      <Card>
+        <CardHeader title="Files" />
         {files.length === 0 ? (
-          <p className="mt-2 text-sm text-ink/60">No files uploaded.</p>
+          <p className="text-sm text-text-muted">No files uploaded.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-line">
+          <ul className="divide-y divide-border">
             {files.map((f) => (
               <li key={f.id} className="flex items-center justify-between py-2 text-sm">
                 <span>
-                  {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} · v{f.version} <span className="text-ink/50">({f.status})</span> — {f.original_filename}
+                  {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} · v{f.version} <span className="text-text-muted">({f.status})</span> — {f.original_filename}
                 </span>
-                <button type="button" onClick={() => handleDownload(f.id)} className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background">
+                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload(f.id)}>
                   Download
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
-      <div className="rounded-lg border border-line bg-white p-5">
-        <h3 className="font-medium text-ink">Reviewers</h3>
+      <Card>
+        <CardHeader title="Reviewers" />
         {assignments.length === 0 ? (
-          <p className="mt-2 text-sm text-ink/60">No reviewers assigned yet.</p>
+          <p className="text-sm text-text-muted">No reviewers assigned yet.</p>
         ) : (
-          <ul className="mt-3 space-y-3">
+          <ul className="space-y-3">
             {assignments.map((a) => (
-              <li key={a.id} className="rounded-md border border-line p-3 text-sm">
-                <p className="font-medium text-ink">
+              <li key={a.id} className="rounded-md border border-border p-3 text-sm">
+                <p className="font-medium text-text">
                   {a.reviewer_name ?? a.reviewer_email ?? 'Reviewer'} — <span className="capitalize">{a.status.replace('_', ' ')}</span>
                 </p>
-                <p className="text-ink/60">Due {new Date(a.due_at).toLocaleDateString()}</p>
+                <p className="text-text-muted">Due {new Date(a.due_at).toLocaleDateString()}</p>
                 {a.review_status === 'submitted' ? (
-                  <div className="mt-2 space-y-1 text-ink/80">
+                  <div className="mt-2 space-y-1 text-text/80">
                     <p>
                       Originality {a.originality} · Quality {a.quality} · Relevance {a.relevance} · Methodology{' '}
                       {a.methodology} · Overall {a.overall_score} · Confidence {a.confidence}
                     </p>
                     <p>Recommendation: {RECOMMENDATION_LABELS[a.recommendation ?? ''] ?? a.recommendation}</p>
                     {a.comments_to_author ? <p>To author: {a.comments_to_author}</p> : null}
-                    {a.confidential_comments ? <p className="text-amber-700">Confidential: {a.confidential_comments}</p> : null}
+                    {a.confidential_comments ? (
+                      <p>
+                        <Badge tone="warning">Confidential</Badge> {a.confidential_comments}
+                      </p>
+                    ) : null}
                   </div>
                 ) : (
-                  <p className="mt-1 text-ink/50">No submitted review yet.</p>
+                  <p className="mt-1 text-text-muted">No submitted review yet.</p>
                 )}
               </li>
             ))}
           </ul>
         )}
 
-        <form onSubmit={handleAssign} className="mt-4 flex flex-wrap items-end gap-2 rounded-md border border-dashed border-line p-3">
-          {assignError ? <p className="w-full text-sm text-red-600">{assignError}</p> : null}
+        <form onSubmit={handleAssign} className="mt-4 flex flex-wrap items-end gap-2 rounded-md border border-dashed border-border p-3">
+          {assignError ? (
+            <div className="w-full">
+              <Alert variant="danger">{assignError}</Alert>
+            </div>
+          ) : null}
           <div>
-            <label className="block text-xs font-medium text-ink/60">Reviewer</label>
-            <select
-              value={reviewerId}
-              onChange={(e) => setReviewerId(e.target.value)}
-              className="mt-1 rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-            >
+            <label className="block text-xs font-medium text-text-muted">Reviewer</label>
+            <Select value={reviewerId} onChange={(e) => setReviewerId(e.target.value)} className="mt-1">
               <option value="">Choose a reviewer</option>
               {reviewerOptions.map((r) => (
                 <option key={r.user_id} value={r.user_id}>
                   {r.full_name ?? r.email}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink/60">Due date</label>
-            <input
-              type="date"
-              value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
-              className="mt-1 rounded-md border border-line px-3 py-2 text-sm focus:border-button"
-            />
+            <label className="block text-xs font-medium text-text-muted">Due date</label>
+            <Input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className="mt-1" />
           </div>
-          <button
-            type="submit"
-            disabled={assigning}
-            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" disabled={assigning}>
             {assigning ? 'Assigning…' : 'Assign reviewer'}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
 
       {decisions.length > 0 ? (
-        <div className="rounded-lg border border-line bg-white p-5">
-          <h3 className="font-medium text-ink">Decision history</h3>
-          <ul className="mt-3 space-y-2 text-sm">
+        <Card>
+          <CardHeader title="Decision history" />
+          <ul className="space-y-2 text-sm">
             {decisions.map((d) => (
-              <li key={d.id} className="text-ink/70">
-                <span className="font-medium text-ink capitalize">
+              <li key={d.id} className="text-text-muted">
+                <span className="font-medium text-text capitalize">
                   {d.stage.replace('_', ' ')}: {DECISION_LABELS[d.decision] ?? d.decision}
                 </span>{' '}
                 — {new Date(d.decided_at).toLocaleString()}
-                {d.comments_to_author ? <span className="block text-ink/60">{d.comments_to_author}</span> : null}
+                {d.comments_to_author ? <span className="block text-text-muted">{d.comments_to_author}</span> : null}
               </li>
             ))}
           </ul>
-        </div>
+        </Card>
       ) : null}
 
-      <form onSubmit={handleDecision} className="rounded-lg border border-line bg-white p-5">
-        <h3 className="font-medium text-ink">Record a decision</h3>
-        {decisionError ? <p className="mt-2 text-sm text-red-600">{decisionError}</p> : null}
+      <Card>
+        <form onSubmit={handleDecision}>
+          <CardHeader title="Record a decision" />
+          {decisionError ? <Alert variant="danger">{decisionError}</Alert> : null}
 
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-ink/60">Stage</label>
-            <select
-              value={stage}
-              onChange={(e) => setStage(e.target.value as (typeof DECISION_STAGES)[number])}
-              className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 text-sm capitalize focus:border-button"
-            >
-              {DECISION_STAGES.map((s) => (
-                <option key={s} value={s} className="capitalize">
-                  {s.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-text-muted">Stage</label>
+              <Select
+                value={stage}
+                onChange={(e) => setStage(e.target.value as (typeof DECISION_STAGES)[number])}
+                className="mt-1 capitalize"
+              >
+                {DECISION_STAGES.map((s) => (
+                  <option key={s} value={s} className="capitalize">
+                    {s.replace('_', ' ')}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted">Decision</label>
+              <Select value={decision} onChange={(e) => setDecision(e.target.value as (typeof DECISIONS)[number])} className="mt-1">
+                {DECISIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {DECISION_LABELS[d]}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-ink/60">Decision</label>
-            <select
-              value={decision}
-              onChange={(e) => setDecision(e.target.value as (typeof DECISIONS)[number])}
-              className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-            >
-              {DECISIONS.map((d) => (
-                <option key={d} value={d}>
-                  {DECISION_LABELS[d]}
-                </option>
-              ))}
-            </select>
+
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-text-muted">Comments to author</label>
+            <Textarea value={decisionComments} onChange={(e) => setDecisionComments(e.target.value)} rows={4} className="mt-1" />
           </div>
-        </div>
 
-        <div className="mt-3">
-          <label className="block text-xs font-medium text-ink/60">Comments to author</label>
-          <textarea
-            value={decisionComments}
-            onChange={(e) => setDecisionComments(e.target.value)}
-            rows={4}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-button"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={decisionSaving}
-          className="mt-3 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {decisionSaving ? 'Saving…' : 'Save decision'}
-        </button>
-      </form>
+          <Button type="submit" variant="primary" className="mt-3" disabled={decisionSaving}>
+            {decisionSaving ? 'Saving…' : 'Save decision'}
+          </Button>
+        </form>
+      </Card>
 
       <ConfirmDialog
         open={pendingDecision !== null}

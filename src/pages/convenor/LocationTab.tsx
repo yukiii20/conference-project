@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { locationSchema, type LocationInput } from '../../lib/validation'
 import { useToast } from '../../components/ui/Toast'
+import { PageHeader, FormField, Input, Button, Alert, Spinner } from '../../components/ui'
 
 type FormState = {
   venue_name: string
@@ -101,111 +102,79 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   return (
-    <div className="mt-6 grid max-w-4xl gap-8 md:grid-cols-2">
+    <div className="mt-6 max-w-4xl">
+      <PageHeader title="Location" subtitle="Venue details and the map shown on the public conference page." />
+      <div className="grid gap-8 md:grid-cols-2">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {formError ? (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {formError}
-          </div>
-        ) : null}
-<div>
-          <label htmlFor="venue_name" className="block text-sm font-medium text-ink">
-            Venue
-          </label>
-          <input
-            id="venue_name"
-            value={form.venue_name}
-            onChange={(e) => update('venue_name', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.venue_name ? <p className="mt-1 text-sm text-red-600">{errors.venue_name}</p> : null}
-        </div>
+        {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
-        <div>
-          <label htmlFor="address" className="block text-sm font-medium text-ink">
-            Address
-          </label>
-          <input
-            id="address"
-            value={form.address}
-            onChange={(e) => update('address', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.address ? <p className="mt-1 text-sm text-red-600">{errors.address}</p> : null}
-        </div>
+        <FormField label="Venue" htmlFor="venue_name" error={errors.venue_name}>
+          <Input id="venue_name" value={form.venue_name} onChange={(e) => update('venue_name', e.target.value)} error={Boolean(errors.venue_name)} />
+        </FormField>
+
+        <FormField label="Address" htmlFor="address" error={errors.address}>
+          <Input id="address" value={form.address} onChange={(e) => update('address', e.target.value)} error={Boolean(errors.address)} />
+        </FormField>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="city" className="block text-sm font-medium text-ink">
-              City
-            </label>
-            <input
-              id="city"
-              value={form.city}
-              onChange={(e) => update('city', e.target.value)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-            />
-            {errors.city ? <p className="mt-1 text-sm text-red-600">{errors.city}</p> : null}
-          </div>
-          <div>
-            <label htmlFor="country" className="block text-sm font-medium text-ink">
-              Country code
-            </label>
-            <input
+          <FormField label="City" htmlFor="city" error={errors.city}>
+            <Input id="city" value={form.city} onChange={(e) => update('city', e.target.value)} error={Boolean(errors.city)} />
+          </FormField>
+          <FormField label="Country code" htmlFor="country" error={errors.country}>
+            <Input
               id="country"
               value={form.country}
               onChange={(e) => update('country', e.target.value)}
               maxLength={2}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 uppercase focus:border-button"
+              className="uppercase"
+              error={Boolean(errors.country)}
             />
-            {errors.country ? <p className="mt-1 text-sm text-red-600">{errors.country}</p> : null}
-          </div>
+          </FormField>
         </div>
 
-        <div>
-          <label htmlFor="location_map_url" className="block text-sm font-medium text-ink">
-            Google Maps embed URL
-          </label>
-          <input
+        <FormField
+          label="Google Maps embed URL"
+          htmlFor="location_map_url"
+          error={errors.location_map_url}
+          help={errors.location_map_url ? undefined : 'In Google Maps: Share → Embed a map → copy the src="..." URL from the code.'}
+        >
+          <Input
             id="location_map_url"
             value={form.location_map_url}
             onChange={(e) => update('location_map_url', e.target.value)}
             placeholder="https://www.google.com/maps/embed?..."
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            error={Boolean(errors.location_map_url)}
           />
-          <p className="mt-1 text-xs text-ink/50">
-            In Google Maps: Share → Embed a map → copy the src="..." URL from the code.
-          </p>
-          {errors.location_map_url ? <p className="mt-1 text-sm text-red-600">{errors.location_map_url}</p> : null}
-        </div>
+        </FormField>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" disabled={saving} loading={saving}>
           {saving ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
       </form>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-ink">Live preview</p>
+        <p className="mb-2 text-sm font-medium text-text">Live preview</p>
         {form.location_map_url && /^https:\/\//i.test(form.location_map_url) ? (
           <iframe
             src={form.location_map_url}
             title="Venue location map"
             loading="lazy"
-            className="h-80 w-full rounded-lg border border-line"
+            className="h-80 w-full rounded-lg border border-border"
           />
         ) : (
-          <div className="flex h-80 w-full items-center justify-center rounded-lg border border-dashed border-line bg-white text-sm text-ink/50">
+          <div className="flex h-80 w-full items-center justify-center rounded-lg border border-dashed border-border bg-surface text-sm text-text-muted">
             Paste an embed URL to see a preview
           </div>
         )}
+      </div>
       </div>
     </div>
   )

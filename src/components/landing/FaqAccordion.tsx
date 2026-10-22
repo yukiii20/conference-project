@@ -7,7 +7,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
   const baseId = useId()
 
   return (
-    <div className="divide-y divide-landing-border rounded-xl border border-landing-border bg-white">
+    <div className="divide-y divide-border rounded-xl border border-border bg-surface">
       {items.map((item, i) => {
         const open = openIndex === i
         const buttonId = `${baseId}-button-${i}`
@@ -21,7 +21,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
                 aria-expanded={open}
                 aria-controls={panelId}
                 onClick={() => setOpenIndex(open ? null : i)}
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-landing-text hover:bg-landing-navy-100/40 sm:text-base"
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-text hover:bg-surface-muted/40 sm:text-base"
               >
                 {item.q}
                 <svg
@@ -30,7 +30,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
                   viewBox="0 0 24 24"
                   fill="none"
                   aria-hidden="true"
-                  className={`shrink-0 text-landing-muted transition-transform ${open ? 'rotate-180' : ''}`}
+                  className={`shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
                 >
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -41,7 +41,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
               role="region"
               aria-labelledby={buttonId}
               hidden={!open}
-              className="px-5 pb-4 text-sm text-landing-muted sm:text-base"
+              className="px-5 pb-4 text-sm text-text-muted sm:text-base"
             >
               {item.a}
             </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { forgotPasswordSchema } from '../lib/validation'
+import { Alert, Button, Card, FormField, Input } from '../components/ui'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -29,63 +30,50 @@ export function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-ink">Check your email</h1>
-          <p className="mt-3 text-sm text-ink/70">
+      <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
+        <Card className="w-full max-w-md text-center">
+          <h1 className="text-xl font-semibold text-text">Check your email</h1>
+          <p className="mt-3 text-sm text-text-muted">
             If an account exists for this email, we've sent a reset link. Check your inbox and spam folder.
           </p>
-          <Link to="/login" className="mt-6 inline-block font-medium text-button underline">
+          <Link to="/login" className="mt-6 inline-block font-medium text-brand underline">
             Back to sign in
           </Link>
-        </div>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-ink">Reset your password</h1>
-        <p className="mt-1 text-sm text-ink/60">
+    <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
+      <Card className="w-full max-w-md">
+        <h1 className="text-xl font-semibold text-text">Reset your password</h1>
+        <p className="mt-1 text-sm text-text-muted">
           Enter your email and we'll send you a link to reset it.
         </p>
 
         {error ? (
-          <div role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {error}
+          <div className="mt-4">
+            <Alert variant="danger">{error}</Alert>
           </div>
         ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-ink">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-            />
-          </div>
+          <FormField label="Email" htmlFor="email">
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </FormField>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-button px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="submit" loading={submitting} className="w-full">
             {submitting ? 'Sending…' : 'Send reset link'}
-          </button>
+          </Button>
         </form>
 
-        <p className="mt-6 text-sm text-ink/70">
-          <Link to="/login" className="font-medium text-button underline">
+        <p className="mt-6 text-sm text-text-muted">
+          <Link to="/login" className="font-medium text-brand underline">
             Back to sign in
           </Link>
         </p>
-      </div>
+      </Card>
     </div>
   )
 }

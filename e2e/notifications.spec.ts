@@ -44,7 +44,7 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
   await expect(row).toHaveCount(0)
 
   // 3. Convenor's own "Email log" tab lists queued/sent email activity.
-  await page.locator('nav').getByRole('link', { name: 'Communication and reports' }).click()
+  await page.locator('nav').getByRole('link', { name: 'Communication', exact: true }).click()
   await page.getByRole('link', { name: 'Email log', exact: true }).click()
   await expect(page.getByText('role_request_approved').first()).toBeVisible()
 
@@ -68,6 +68,6 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
   await page.locator('#sa-password').fill(FIXTURE.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL(/\/super-admin$/)
-  await page.getByRole('button', { name: 'Email log' }).click()
+  await page.getByRole('tab', { name: 'Email log' }).click()
   await expect(page.getByText(authorEmail).first()).toBeVisible()
 })

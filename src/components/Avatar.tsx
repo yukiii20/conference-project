@@ -21,7 +21,7 @@ export function Avatar({
     return <img src={url} alt="" className={`${size} shrink-0 rounded-full object-cover`} />
   }
   return (
-    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-ink/10 text-xs font-medium text-ink/70`}>
+    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-surface-muted text-xs font-medium text-brand`}>
       {getInitials(name)}
     </span>
   )

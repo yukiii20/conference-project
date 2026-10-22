@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
+import { PageHeader, Select, Input, Alert, Button, Table } from '../../components/ui'
+import type { Column } from '../../components/ui/Table'
 
 type Entry = {
   id: number
@@ -63,16 +65,33 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
     load()
   }, [load])
 
+  const columns: Column<Entry>[] = [
+    { key: 'when', header: 'When', render: (e) => <span className="whitespace-nowrap text-text-muted">{formatKathmandu(e.occurred_at)}</span> },
+    { key: 'who', header: 'Who', render: (e) => e.actor_name ?? '—' },
+    { key: 'action', header: 'Action', render: (e) => <span className="font-mono text-xs">{e.action}</span> },
+    {
+      key: 'what',
+      header: 'What',
+      render: (e) => (
+        <span className="text-xs text-text-muted">
+          {e.entity_type}
+          {e.entity_id ? ` · ${e.entity_id.slice(0, 8)}` : ''}
+        </span>
+      ),
+    },
+  ]
+
   return (
     <div className="mt-6 max-w-4xl">
+      <PageHeader title="Activity Log" subtitle="A record of actions taken across this conference." />
       <div className="flex flex-wrap gap-2">
-        <select
+        <Select
           value={actor}
           onChange={(e) => {
             setPage(1)
             setActor(e.target.value)
           }}
-          className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+          className="w-auto"
         >
           <option value="">Everyone</option>
           {members.map((m) => (
@@ -80,88 +99,61 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
               {m.full_name}
             </option>
           ))}
-        </select>
-        <input
+        </Select>
+        <Input
           value={action}
           onChange={(e) => {
             setPage(1)
             setAction(e.target.value)
           }}
           placeholder="Action, e.g. track.create"
-          className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+          className="w-auto"
         />
-        <input
+        <Input
           type="date"
           value={from}
           onChange={(e) => {
             setPage(1)
             setFrom(e.target.value)
           }}
-          className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+          className="w-auto"
         />
-        <input
+        <Input
           type="date"
           value={to}
           onChange={(e) => {
             setPage(1)
             setTo(e.target.value)
           }}
-          className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+          className="w-auto"
         />
       </div>
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-
-      {loading ? (
-        <p className="mt-4 text-sm text-ink/60">Loading…</p>
-      ) : entries.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">No activity found.</p>
-      ) : (
-        <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-ink/60">
-                <th className="px-3 py-2 font-medium">When</th>
-                <th className="px-3 py-2 font-medium">Who</th>
-                <th className="px-3 py-2 font-medium">Action</th>
-                <th className="px-3 py-2 font-medium">What</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {entries.map((e) => (
-                <tr key={e.id}>
-                  <td className="px-3 py-2 whitespace-nowrap text-ink/70">{formatKathmandu(e.occurred_at)}</td>
-                  <td className="px-3 py-2">{e.actor_name ?? '—'}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{e.action}</td>
-                  <td className="px-3 py-2 text-xs text-ink/60">
-                    {e.entity_type}
-                    {e.entity_id ? ` · ${e.entity_id.slice(0, 8)}` : ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error ? (
+        <div className="mt-3">
+          <Alert variant="danger">{error}</Alert>
         </div>
-      )}
+      ) : null}
+
+      <div className="mt-4">
+        <Table
+          columns={columns}
+          rows={entries}
+          rowKey={(e) => String(e.id)}
+          loading={loading}
+          emptyTitle="No activity found."
+          minWidth={720}
+        />
+      </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page === 1}
-          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
-        >
+        <Button variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
           Previous
-        </button>
-        <span className="text-sm text-ink/60">Page {page}</span>
-        <button
-          type="button"
-          onClick={() => setPage((p) => p + 1)}
-          disabled={entries.length < 50}
-          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
-        >
+        </Button>
+        <span className="text-sm text-text-muted">Page {page}</span>
+        <Button variant="secondary" size="sm" onClick={() => setPage((p) => p + 1)} disabled={entries.length < 50}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   )

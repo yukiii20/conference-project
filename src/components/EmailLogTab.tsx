@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { StatusChip } from './ui/Badge'
+import { Alert, Button, Select, Table } from './ui'
+import type { Column } from './ui/Table'
 
 type EmailLogRow = {
   id: number
@@ -64,18 +66,49 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
     }
   }
 
+  const columns: Column<EmailLogRow>[] = [
+    { key: 'recipient', header: 'Recipient', render: (r) => r.recipient_email },
+    { key: 'template', header: 'Template', render: (r) => <span className="font-mono text-xs">{r.template_key}</span> },
+    { key: 'subject', header: 'Subject', render: (r) => r.subject },
+    { key: 'status', header: 'Status', render: (r) => <StatusChip status={r.status} /> },
+    { key: 'attempts', header: 'Attempts', render: (r) => r.attempts },
+    { key: 'queued', header: 'Queued', render: (r) => new Date(r.queued_at).toLocaleString(), className: 'whitespace-nowrap' },
+    {
+      key: 'error',
+      header: 'Error',
+      render: (r) => (
+        <span className="max-w-[220px] truncate text-danger" title={r.error_message ?? ''}>
+          {r.error_message ?? '—'}
+        </span>
+      ),
+      className: 'max-w-[220px] truncate',
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (r) =>
+        r.status === 'failed' ? (
+          <Button type="button" variant="secondary" size="sm" loading={retryingId === r.id} onClick={() => handleRetry(r.id)}>
+            Retry
+          </Button>
+        ) : null,
+    },
+  ]
+
   return (
     <div className="mt-6">
-      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <Alert variant="danger">{error}</Alert>
+      ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <select
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Select
           value={status}
           onChange={(e) => {
             setStatus(e.target.value)
             setPage(1)
           }}
-          className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
+          className="w-auto"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
@@ -83,81 +116,21 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
               {s}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      {loading ? (
-        <p className="mt-6 text-sm text-ink/60">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          No emails match.
-        </p>
-      ) : (
-        <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-ink/60">
-                <th className="px-4 py-2 font-medium">Recipient</th>
-                <th className="px-4 py-2 font-medium">Template</th>
-                <th className="px-4 py-2 font-medium">Subject</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Attempts</th>
-                <th className="px-4 py-2 font-medium">Queued</th>
-                <th className="px-4 py-2 font-medium">Error</th>
-                <th className="px-4 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-4 py-3">{r.recipient_email}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{r.template_key}</td>
-                  <td className="px-4 py-3">{r.subject}</td>
-                  <td className="px-4 py-3">
-                    <StatusChip status={r.status} />
-                  </td>
-                  <td className="px-4 py-3">{r.attempts}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{new Date(r.queued_at).toLocaleString()}</td>
-                  <td className="max-w-[220px] px-4 py-3 truncate text-red-600" title={r.error_message ?? ''}>
-                    {r.error_message ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {r.status === 'failed' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleRetry(r.id)}
-                        disabled={retryingId === r.id}
-                        className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background disabled:opacity-50"
-                      >
-                        {retryingId === r.id ? 'Retrying…' : 'Retry'}
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="mt-4">
+        <Table columns={columns} rows={rows} rowKey={(r) => String(r.id)} loading={loading} emptyTitle="No emails match." minWidth={800} />
+      </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page === 1}
-          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
-        >
+        <Button type="button" variant="secondary" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
           Previous
-        </button>
-        <span className="text-sm text-ink/60">Page {page}</span>
-        <button
-          type="button"
-          onClick={() => setPage((p) => p + 1)}
-          disabled={rows.length === 0}
-          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
-        >
+        </Button>
+        <span className="text-sm text-text-muted">Page {page}</span>
+        <Button type="button" variant="secondary" size="sm" onClick={() => setPage((p) => p + 1)} disabled={rows.length === 0}>
           Next
-        </button>
+        </Button>
       </div>
     </div>
   )

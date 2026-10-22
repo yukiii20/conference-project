@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { publicImageUrl } from '../lib/storage'
 import { useIsAdminViewAsReadOnly } from '../lib/adminViewAsContext'
 import { ConfirmDialog } from './ui/Modal'
+import { Alert, Button } from './ui'
 
 const DEFAULT_ACCEPT = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -181,8 +182,8 @@ export function ImageUpload({
       }}
       onDragLeave={() => setDragOver(false)}
       onDrop={onDrop}
-      className={`flex shrink-0 ${boxSize} items-center justify-center overflow-hidden rounded-lg border border-dashed bg-white ${
-        dragOver ? 'border-button bg-button/5' : 'border-line'
+      className={`flex shrink-0 ${boxSize} items-center justify-center overflow-hidden rounded-lg border border-dashed bg-surface ${
+        dragOver ? 'border-button bg-button/5' : 'border-border'
       }`}
     >
       {displayUrl ? (
@@ -192,7 +193,7 @@ export function ImageUpload({
           className={aspect === 'square' ? 'max-h-full max-w-full object-contain p-1' : 'h-full w-full object-cover'}
         />
       ) : (
-        <div className="flex flex-col items-center gap-1 text-ink/50">
+        <div className="flex flex-col items-center gap-1 text-text-muted">
           <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
             <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="1.5" />
@@ -225,44 +226,31 @@ export function ImageUpload({
         {/* The button's own visible text (Upload.../Replace...) is its accessible
             name and updates with state, so no separate aria-label is needed — same
             keyboard-focusable trigger pattern as the supporter-logo/speaker-photo uploaders. */}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className={`rounded-md bg-button font-medium text-white hover:opacity-90 disabled:opacity-50 ${
-            size === 'sm' ? 'px-3 py-1 text-xs' : 'px-3 py-1.5 text-sm'
-          }`}
-        >
-          {uploading ? 'Uploading…' : hasImage ? resolvedReplaceText : resolvedUploadText}
-        </button>
+        <Button type="button" size="sm" loading={uploading} onClick={() => inputRef.current?.click()} disabled={busy}>
+          {hasImage ? resolvedReplaceText : resolvedUploadText}
+        </Button>
         {currentPath ? (
-          <button
+          <Button
             type="button"
+            variant="danger"
+            size="sm"
+            loading={removing}
             onClick={handleRemove}
             disabled={busy}
             aria-label={`Remove ${label}`}
-            className={`rounded-md border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 ${
-              size === 'sm' ? 'px-3 py-1 text-xs' : 'px-3 py-1.5 text-sm'
-            }`}
           >
-            {removing ? 'Removing…' : 'Remove'}
-          </button>
+            Remove
+          </Button>
         ) : null}
       </div>
-      {hasImage && displayName ? <p className="truncate text-xs text-ink/50">{displayName}</p> : null}
+      {hasImage && displayName ? <p className="truncate text-xs text-text-muted">{displayName}</p> : null}
     </div>
   )
 
   const messages = (
     <>
-      {error ? (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {error}
-        </div>
-      ) : null}
-      {success ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</div>
-      ) : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
+      {success ? <Alert variant="success">{success}</Alert> : null}
     </>
   )
 

@@ -49,8 +49,15 @@ export function NotificationBell() {
         setOpen(false)
       }
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside)
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [open])
 
   async function handleOpen() {
@@ -97,39 +104,39 @@ export function NotificationBell() {
           <path d="M9.5 20.5a2.5 2.5 0 0 0 5 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
         {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-20 mt-2 w-[90vw] max-w-sm rounded-lg border border-line bg-white text-ink shadow-lg">
-          <div className="flex items-center justify-between border-b border-line px-3 py-2">
+        <div className="absolute right-0 z-20 mt-2 w-[90vw] max-w-sm rounded-lg border border-border bg-surface text-text shadow-lg">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="text-sm font-medium">Notifications</span>
             <button type="button" onClick={handleMarkAllRead} className="text-xs text-button underline disabled:opacity-50" disabled={unreadCount === 0}>
               Mark all read
             </button>
           </div>
 
-          {error ? <p className="px-3 py-3 text-sm text-red-600">{error}</p> : null}
+          {error ? <p className="px-3 py-3 text-sm text-danger">{error}</p> : null}
 
-          <ul className="max-h-96 divide-y divide-line overflow-y-auto">
+          <ul className="max-h-96 divide-y divide-border overflow-y-auto">
             {notifications.length === 0 && !error ? (
-              <li className="px-3 py-6 text-center text-sm text-ink/50">No notifications yet.</li>
+              <li className="px-3 py-6 text-center text-sm text-text-muted">No notifications yet.</li>
             ) : (
               notifications.map((n) => (
                 <li key={n.id}>
                   <button
                     type="button"
                     onClick={() => handleSelect(n)}
-                    className={`block w-full px-3 py-2.5 text-left text-sm hover:bg-background ${n.read_at ? '' : 'bg-button/5'}`}
+                    className={`block w-full px-3 py-2.5 text-left text-sm hover:bg-surface-muted ${n.read_at ? '' : 'bg-button/5'}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className={`font-medium ${n.read_at ? 'text-ink/70' : 'text-ink'}`}>{n.title}</span>
-                      <span className="shrink-0 text-xs text-ink/40">{timeAgo(n.created_at)}</span>
+                      <span className={`font-medium ${n.read_at ? 'text-text-muted' : 'text-text'}`}>{n.title}</span>
+                      <span className="shrink-0 text-xs text-text-muted/70">{timeAgo(n.created_at)}</span>
                     </div>
-                    {n.body ? <p className="mt-0.5 text-ink/60">{n.body}</p> : null}
+                    {n.body ? <p className="mt-0.5 text-text-muted">{n.body}</p> : null}
                   </button>
                 </li>
               ))

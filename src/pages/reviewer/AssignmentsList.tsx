@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { StatusChip } from '../../components/ui/Badge'
+import { Alert, Button, EmptyState, SkeletonText, Textarea } from '../../components/ui'
 
 type Assignment = {
   id: string
@@ -78,89 +79,76 @@ export function AssignmentsList({
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return <SkeletonText lines={4} className="mt-6" />
   }
 
   if (error) {
-    return <p className="mt-6 text-sm text-red-600">{error}</p>
+    return <Alert variant="danger">{error}</Alert>
   }
 
   if (rows.length === 0) {
     return (
-      <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-        No review assignments yet.
-      </p>
+      <div className="mt-6 rounded-lg border border-dashed border-border bg-surface">
+        <EmptyState title="No review assignments yet." />
+      </div>
     )
   }
 
   return (
-    <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
+    <ul className="mt-6 divide-y divide-border rounded-lg border border-border bg-surface">
       {rows.map((a) => (
         <li key={a.id} className="px-4 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              {a.submission_code ? <p className="font-mono text-xs text-ink/50">{a.submission_code}</p> : null}
-              <p className="font-medium text-ink">{a.title}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/60">
+              {a.submission_code ? <p className="font-mono text-xs text-text-muted">{a.submission_code}</p> : null}
+              <p className="font-medium text-text">{a.title}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-muted">
                 <StatusChip status={a.status} labels={STATUS_LABELS} />
                 {a.due_at ? <span>Due {new Date(a.due_at).toLocaleDateString()}</span> : null}
-                {a.is_overdue ? <span className="font-medium text-red-600">Overdue</span> : null}
+                {a.is_overdue ? <span className="font-medium text-danger">Overdue</span> : null}
               </div>
             </div>
 
             <div className="flex shrink-0 gap-2">
               {a.status === 'assigned' ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => handleAccept(a.id)}
-                    disabled={busyId === a.id}
-                    className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-                  >
+                  <Button type="button" size="sm" loading={busyId === a.id} onClick={() => handleAccept(a.id)}>
                     Accept
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    onClick={() => setDecliningId(a.id)}
+                    variant="secondary"
+                    size="sm"
                     disabled={busyId === a.id}
-                    className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-50"
+                    onClick={() => setDecliningId(a.id)}
                   >
                     Decline
-                  </button>
+                  </Button>
                 </>
               ) : a.status === 'in_progress' || a.status === 'completed' ? (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => onOpen({ assignmentId: a.id, submissionId: a.submission_id })}
-                  className="rounded-md border border-button px-3 py-1 text-sm font-medium text-button hover:bg-button/5"
                 >
                   {a.status === 'completed' ? 'View review' : 'Write review'}
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>
 
           {decliningId === a.id ? (
-            <div className="mt-3 rounded-md border border-line bg-background p-3">
-              <label className="block text-sm font-medium">Reason (optional)</label>
-              <textarea
-                value={declineReason}
-                onChange={(e) => setDeclineReason(e.target.value)}
-                rows={2}
-                className="mt-1 block w-full rounded-md border border-line px-3 py-2"
-              />
+            <div className="mt-3 rounded-md border border-border bg-surface-muted p-3">
+              <label className="block text-sm font-medium text-text">Reason (optional)</label>
+              <Textarea value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} rows={2} className="mt-1" />
               <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDeclineConfirm(a.id)}
-                  disabled={busyId === a.id}
-                  className="rounded-md bg-red-600 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
-                >
+                <Button type="button" variant="danger" size="sm" loading={busyId === a.id} onClick={() => handleDeclineConfirm(a.id)}>
                   Confirm decline
-                </button>
-                <button type="button" onClick={() => setDecliningId(null)} className="rounded-md border border-line px-3 py-1 text-sm">
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setDecliningId(null)}>
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}

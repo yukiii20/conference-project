@@ -16,9 +16,9 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <header ref={ref} className="sticky top-0 z-30 border-b border-landing-border bg-white">
+    <header ref={ref} className="sticky top-0 z-30 border-b border-brand-hover bg-brand text-on-brand">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link to="/" className="flex items-center gap-2 font-semibold text-landing-text">
+        <Link to="/" className="flex items-center gap-2 font-semibold text-on-brand">
           <LogoMark />
           <span>{SITE.name}</span>
         </Link>
@@ -33,14 +33,14 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
                 aria-current={activeSection === item.id ? 'true' : undefined}
                 className={
                   activeSection === item.id
-                    ? 'font-medium text-landing-navy-600'
-                    : 'text-landing-muted hover:text-landing-text'
+                    ? 'font-medium text-on-brand underline underline-offset-4'
+                    : 'text-on-brand/80 hover:text-on-brand'
                 }
               >
                 {item.label}
               </button>
             ) : (
-              <Link key={item.id} to={`/#${item.id}`} className="text-landing-muted hover:text-landing-text">
+              <Link key={item.id} to={`/#${item.id}`} className="text-on-brand/80 hover:text-on-brand">
                 {item.label}
               </Link>
             ),
@@ -50,13 +50,13 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
         <div className="hidden items-center gap-3 md:flex">
           <Link
             to="/login"
-            className="rounded-md border border-landing-border px-4 py-2 text-sm font-medium text-landing-text hover:bg-landing-navy-100"
+            className="rounded-md border border-on-brand/40 px-4 py-2 text-sm font-medium text-on-brand hover:bg-white/10"
           >
             Sign in
           </Link>
           <Link
             to="/signup"
-            className="rounded-md bg-landing-navy-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-on-brand hover:bg-button-hover"
           >
             Register
           </Link>
@@ -68,7 +68,7 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
           aria-controls="landing-mobile-menu"
           aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
           onClick={() => setMobileOpen((v) => !v)}
-          className="rounded-md p-2 text-landing-text hover:bg-landing-navy-100 md:hidden"
+          className="rounded-md p-2 text-on-brand hover:bg-white/10 md:hidden"
         >
           {mobileOpen ? (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -83,7 +83,7 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
       </div>
 
       {mobileOpen ? (
-        <div id="landing-mobile-menu" className="border-t border-landing-border bg-white px-4 py-3 md:hidden">
+        <div id="landing-mobile-menu" className="border-t border-brand-hover bg-brand px-4 py-3 md:hidden">
           <nav className="flex flex-col gap-1">
             {SITE.nav.map((item) =>
               onNavigate ? (
@@ -96,7 +96,7 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
                   }}
                   aria-current={activeSection === item.id ? 'true' : undefined}
                   className={`rounded-md px-2 py-2.5 text-left text-base ${
-                    activeSection === item.id ? 'font-medium text-landing-navy-600' : 'text-landing-text'
+                    activeSection === item.id ? 'font-medium text-on-brand underline underline-offset-4' : 'text-on-brand/80'
                   }`}
                 >
                   {item.label}
@@ -106,25 +106,25 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
                   key={item.id}
                   to={`/#${item.id}`}
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-md px-2 py-2.5 text-base text-landing-text"
+                  className="rounded-md px-2 py-2.5 text-base text-on-brand/80"
                 >
                   {item.label}
                 </Link>
               ),
             )}
           </nav>
-          <div className="mt-3 flex gap-2 border-t border-landing-border pt-3">
+          <div className="mt-3 flex gap-2 border-t border-brand-hover pt-3">
             <Link
               to="/login"
               onClick={() => setMobileOpen(false)}
-              className="flex-1 rounded-md border border-landing-border px-3 py-2 text-center text-sm font-medium"
+              className="flex-1 rounded-md border border-on-brand/40 px-3 py-2 text-center text-sm font-medium text-on-brand"
             >
               Sign in
             </Link>
             <Link
               to="/signup"
               onClick={() => setMobileOpen(false)}
-              className="flex-1 rounded-md bg-landing-navy-600 px-3 py-2 text-center text-sm font-medium text-white"
+              className="flex-1 rounded-md bg-button px-3 py-2 text-center text-sm font-medium text-on-brand"
             >
               Register
             </Link>
@@ -139,7 +139,7 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
 export function LogoMark({ size = 28 }: { size?: number }) {
   const [failed, setFailed] = useState(false)
   if (failed) {
-    return <span className="font-bold text-landing-navy-600">{SITE.shortName}</span>
+    return <span className="font-bold text-on-brand">{SITE.shortName}</span>
   }
   return (
     <img

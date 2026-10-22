@@ -18,7 +18,7 @@ export interface Column<T> {
  */
 export function TableContainer({ children, minWidth = 640 }: { children: ReactNode; minWidth?: number }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-white">
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
       <table className="w-full text-left text-sm" style={{ minWidth }}>
         {children}
       </table>
@@ -46,7 +46,7 @@ export function Table<T>({
   return (
     <TableContainer minWidth={minWidth}>
       <thead>
-        <tr className="border-b border-line text-ink/60">
+        <tr className="border-b border-border bg-surface-muted text-text-muted">
           {columns.map((c) => (
             <th key={c.key} className={`px-4 py-2 font-medium ${c.className ?? ''}`}>
               {c.header}
@@ -54,7 +54,7 @@ export function Table<T>({
           ))}
         </tr>
       </thead>
-      <tbody className="divide-y divide-line">
+      <tbody className="divide-y divide-border">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <tr key={`skeleton-${i}`}>
@@ -73,7 +73,7 @@ export function Table<T>({
           </tr>
         ) : (
           rows.map((row) => (
-            <tr key={rowKey(row)}>
+            <tr key={rowKey(row)} className="hover:bg-surface-muted">
               {columns.map((c) => (
                 <td key={c.key} className={`px-4 py-3 ${c.className ?? ''}`}>
                   {c.render(row)}
@@ -103,7 +103,7 @@ export function Pagination({
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, total)
   return (
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-ink/60">
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-text-muted">
       <span>
         {from}-{to} of {total}
       </span>
@@ -113,7 +113,7 @@ export function Pagination({
           aria-label="Previous page"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="flex h-10 w-10 items-center justify-center rounded-md border border-line disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-md border border-border hover:bg-surface-muted disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </button>
@@ -125,7 +125,7 @@ export function Pagination({
           aria-label="Next page"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="flex h-10 w-10 items-center justify-center rounded-md border border-line disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-md border border-border hover:bg-surface-muted disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <ChevronRightIcon className="h-4 w-4" />
         </button>

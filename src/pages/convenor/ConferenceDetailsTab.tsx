@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { conferenceDetailsSchema, portalTextsSchema, type ConferenceDetailsInput } from '../../lib/validation'
 import { useToast } from '../../components/ui/Toast'
+import { Alert, Button, Input, Spinner, Textarea } from '../../components/ui'
 
 type ConferenceDetailsData = {
   slug: string
@@ -61,79 +62,73 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
   }
 
   return (
-    <div className="mt-10 max-w-2xl border-t border-line pt-8">
+    <div className="mt-10 max-w-2xl border-t border-border pt-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-ink">Portal texts</h2>
+        <h2 className="text-lg font-semibold text-text">Portal texts</h2>
         {data.slug ? (
           <a
             href={`/c/${data.slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background"
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-muted"
           >
             Preview public page
           </a>
         ) : null}
       </div>
-      <p className="mt-1 text-sm text-ink/60">
+      <p className="mt-1 text-sm text-text-muted">
         Shown on the public submission page. Plain text only — line breaks are kept, and any https:// link becomes
         clickable, but no formatting or HTML is rendered.
       </p>
 
       <form onSubmit={handleSave} className="mt-4 space-y-4">
-        {formError ? (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {formError}
-          </div>
-        ) : null}
+        {formError ? <Alert variant="danger">{formError}</Alert> : null}
         <div>
           <div className="flex items-center justify-between">
-            <label htmlFor="welcome_text" className="block text-sm font-medium text-ink">
+            <label htmlFor="welcome_text" className="block text-sm font-medium text-text">
               Welcome text
             </label>
-            <span className="text-xs text-ink/50">{welcomeText.length} / 3000</span>
+            <span className="text-xs text-text-muted">{welcomeText.length} / 3000</span>
           </div>
-          <textarea
+          <Textarea
             id="welcome_text"
             value={welcomeText}
             onChange={(e) => setWelcomeText(e.target.value)}
             maxLength={3000}
             rows={4}
             placeholder="Welcome to the submission page for... Please create an account to submit your abstract."
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.welcome_text)}
           />
-          {errors.welcome_text ? <p className="mt-1 text-sm text-red-600">{errors.welcome_text}</p> : null}
+          {errors.welcome_text ? <p className="mt-1 text-sm text-danger">{errors.welcome_text}</p> : null}
         </div>
 
         <div>
           <div className="flex items-center justify-between">
-            <label htmlFor="guidelines" className="block text-sm font-medium text-ink">
+            <label htmlFor="guidelines" className="block text-sm font-medium text-text">
               Submission guidelines
             </label>
-            <span className="text-xs text-ink/50">{guidelines.length} / 10000</span>
+            <span className="text-xs text-text-muted">{guidelines.length} / 10000</span>
           </div>
-          <p className="mt-1 text-xs text-ink/50">
+          <p className="mt-1 text-xs text-text-muted">
             The word limit, allowed file types, max file size, and review mode are shown automatically above this text
             — no need to repeat them here.
           </p>
-          <textarea
+          <Textarea
             id="guidelines"
             value={guidelines}
             onChange={(e) => setGuidelines(e.target.value)}
             maxLength={10000}
             rows={10}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.submission_guidelines)}
           />
-          {errors.submission_guidelines ? <p className="mt-1 text-sm text-red-600">{errors.submission_guidelines}</p> : null}
+          {errors.submission_guidelines ? <p className="mt-1 text-sm text-danger">{errors.submission_guidelines}</p> : null}
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
+        <Button type="submit" loading={saving}>
+          Save
+        </Button>
       </form>
     </div>
   )
@@ -234,158 +229,163 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   if (loadError || !data || !form) {
-    return <p className="mt-6 text-sm text-red-600">{loadError ?? 'Could not load conference details.'}</p>
+    return <Alert variant="danger">{loadError ?? 'Could not load conference details.'}</Alert>
   }
 
   return (
     <>
       <form onSubmit={handleSubmit} className="mt-6 max-w-2xl space-y-4">
-        {formError ? (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {formError}
-          </div>
-        ) : null}
+        {formError ? <Alert variant="danger">{formError}</Alert> : null}
         <div>
-          <label className="block text-sm font-medium text-ink">Conference code</label>
-          <p className="mt-1 rounded-md border border-line bg-background px-3 py-2 text-ink/70">{code}</p>
-          <p className="mt-1 text-xs text-ink/50">Used in sign-up and the public page. Not editable here.</p>
+          <label className="block text-sm font-medium text-text">Conference code</label>
+          <p className="mt-1 rounded-md border border-border bg-page-bg px-3 py-2 text-text-muted">{code}</p>
+          <p className="mt-1 text-xs text-text-muted">Used in sign-up and the public page. Not editable here.</p>
         </div>
 
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-ink">
+          <label htmlFor="name" className="block text-sm font-medium text-text">
             Name
           </label>
-          <input
+          <Input
             id="name"
             value={form.name}
             onChange={(e) => update('name', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.name)}
           />
-          {errors.name ? <p className="mt-1 text-sm text-red-600">{errors.name}</p> : null}
+          {errors.name ? <p className="mt-1 text-sm text-danger">{errors.name}</p> : null}
         </div>
 
         <div>
-          <label htmlFor="short_name" className="block text-sm font-medium text-ink">
+          <label htmlFor="short_name" className="block text-sm font-medium text-text">
             Short name
           </label>
-          <input
+          <Input
             id="short_name"
             value={form.short_name}
             onChange={(e) => update('short_name', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.short_name)}
           />
-          {errors.short_name ? <p className="mt-1 text-sm text-red-600">{errors.short_name}</p> : null}
+          {errors.short_name ? <p className="mt-1 text-sm text-danger">{errors.short_name}</p> : null}
         </div>
 
         <div>
-          <label htmlFor="theme" className="block text-sm font-medium text-ink">
+          <label htmlFor="theme" className="block text-sm font-medium text-text">
             Theme
           </label>
-          <input
+          <Input
             id="theme"
             value={form.theme}
             onChange={(e) => update('theme', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.theme)}
           />
-          {errors.theme ? <p className="mt-1 text-sm text-red-600">{errors.theme}</p> : null}
+          {errors.theme ? <p className="mt-1 text-sm text-danger">{errors.theme}</p> : null}
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-ink">
+          <label htmlFor="description" className="block text-sm font-medium text-text">
             About the conference
           </label>
-          <textarea
+          <Textarea
             id="description"
             value={form.description}
             onChange={(e) => update('description', e.target.value)}
             rows={6}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.description)}
           />
-          {errors.description ? <p className="mt-1 text-sm text-red-600">{errors.description}</p> : null}
+          {errors.description ? <p className="mt-1 text-sm text-danger">{errors.description}</p> : null}
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="start_date" className="block text-sm font-medium text-ink">
+            <label htmlFor="start_date" className="block text-sm font-medium text-text">
               Start date
             </label>
-            <input
+            <Input
               id="start_date"
               type="date"
               value={form.start_date}
               onChange={(e) => update('start_date', e.target.value)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
+              error={Boolean(errors.start_date)}
             />
-            {errors.start_date ? <p className="mt-1 text-sm text-red-600">{errors.start_date}</p> : null}
+            {errors.start_date ? <p className="mt-1 text-sm text-danger">{errors.start_date}</p> : null}
           </div>
           <div>
-            <label htmlFor="end_date" className="block text-sm font-medium text-ink">
+            <label htmlFor="end_date" className="block text-sm font-medium text-text">
               End date
             </label>
-            <input
+            <Input
               id="end_date"
               type="date"
               value={form.end_date}
               onChange={(e) => update('end_date', e.target.value)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
+              error={Boolean(errors.end_date)}
             />
-            {errors.end_date ? <p className="mt-1 text-sm text-red-600">{errors.end_date}</p> : null}
+            {errors.end_date ? <p className="mt-1 text-sm text-danger">{errors.end_date}</p> : null}
           </div>
         </div>
 
         <div>
-          <label htmlFor="contact_email" className="block text-sm font-medium text-ink">
+          <label htmlFor="contact_email" className="block text-sm font-medium text-text">
             Contact email
           </label>
-          <input
+          <Input
             id="contact_email"
             type="email"
             value={form.contact_email}
             onChange={(e) => update('contact_email', e.target.value)}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.contact_email)}
           />
-          {errors.contact_email ? <p className="mt-1 text-sm text-red-600">{errors.contact_email}</p> : null}
+          {errors.contact_email ? <p className="mt-1 text-sm text-danger">{errors.contact_email}</p> : null}
         </div>
 
         <div>
-          <label htmlFor="contact_phone" className="block text-sm font-medium text-ink">
+          <label htmlFor="contact_phone" className="block text-sm font-medium text-text">
             Contact phone
           </label>
-          <input
+          <Input
             id="contact_phone"
             value={form.contact_phone}
             onChange={(e) => update('contact_phone', e.target.value)}
             placeholder="98XXXXXXXX"
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.contact_phone)}
           />
-          {errors.contact_phone ? <p className="mt-1 text-sm text-red-600">{errors.contact_phone}</p> : null}
+          {errors.contact_phone ? <p className="mt-1 text-sm text-danger">{errors.contact_phone}</p> : null}
         </div>
 
         <div>
-          <label htmlFor="website_url" className="block text-sm font-medium text-ink">
+          <label htmlFor="website_url" className="block text-sm font-medium text-text">
             Website
           </label>
-          <input
+          <Input
             id="website_url"
             value={form.website_url}
             onChange={(e) => update('website_url', e.target.value)}
             placeholder="https://"
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
+            error={Boolean(errors.website_url)}
           />
-          {errors.website_url ? <p className="mt-1 text-sm text-red-600">{errors.website_url}</p> : null}
+          {errors.website_url ? <p className="mt-1 text-sm text-danger">{errors.website_url}</p> : null}
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
+        <Button type="submit" loading={saving}>
+          Save
+        </Button>
       </form>
 
       <PortalTextsSection conferenceId={conferenceId} data={data} />

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertCircleIcon, CheckIcon, InfoIcon, XIcon } from './icons'
+import { toneBannerClasses } from '../../lib/status'
 
 type ToastVariant = 'success' | 'error' | 'info'
 
@@ -17,10 +18,11 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
+// Same tones as StatusChip/Alert — a success toast must be the same green as a success alert.
 const VARIANT_CLASSES: Record<ToastVariant, string> = {
-  success: 'bg-ink text-white [&_svg]:text-green-400',
-  error: 'bg-ink text-white [&_svg]:text-red-400',
-  info: 'bg-ink text-white [&_svg]:text-blue-300',
+  success: `border ${toneBannerClasses('success')}`,
+  error: `border ${toneBannerClasses('danger')}`,
+  info: `border ${toneBannerClasses('info')}`,
 }
 
 const VARIANT_ICON: Record<ToastVariant, typeof InfoIcon> = {

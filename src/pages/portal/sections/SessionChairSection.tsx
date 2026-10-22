@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../../lib/api'
 import { formatKathmandu } from '../../../lib/datetime'
+import { Alert, Button, EmptyState, PageHeader, SkeletonText } from '../../../components/ui'
 
 // Lazy for the same reason as the staff check-in page — zxing (~450 KB)
 // only needs to load for a chair who actually opens this panel.
@@ -82,33 +83,33 @@ function MarkAttendancePanel({
 
   return (
     <div>
-      <button type="button" onClick={onBack} className="text-sm text-button underline">
+      <Button type="button" variant="link" onClick={onBack}>
         ← Back to my sessions
-      </button>
+      </Button>
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {!detail ? (
-        <p className="mt-6 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={3} className="mt-6" />
       ) : (
-        <div className="mt-4 rounded-lg border border-line bg-white p-5">
-          <h2 className="text-lg font-semibold text-ink">{detail.title}</h2>
-          <p className="mt-1 text-sm text-ink/60">
+        <div className="mt-4 rounded-lg border border-border bg-surface p-5">
+          <h2 className="text-lg font-semibold text-text">{detail.title}</h2>
+          <p className="mt-1 text-sm text-text-muted">
             {formatKathmandu(detail.starts_at)} – {formatKathmandu(detail.ends_at)}
             {detail.room ? ` · ${detail.room.name}` : ''}
           </p>
 
-          <p className="mt-5 text-sm font-medium text-ink">Presentations</p>
+          <p className="mt-5 text-sm font-medium text-text">Presentations</p>
           {detail.presentations.length === 0 ? (
-            <p className="mt-2 text-sm text-ink/60">Nothing scheduled in this session yet.</p>
+            <p className="mt-2 text-sm text-text-muted">Nothing scheduled in this session yet.</p>
           ) : (
             <ul className="mt-2 space-y-2">
               {detail.presentations.map((p) => (
-                <li key={p.id} className="rounded-md border border-line px-3 py-2 text-sm">
+                <li key={p.id} className="rounded-md border border-border px-3 py-2 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="font-medium">{p.title}</p>
-                      <p className="text-xs text-ink/60">
+                      <p className="font-medium text-text">{p.title}</p>
+                      <p className="text-xs text-text-muted">
                         {formatKathmandu(p.starts_at)} – {formatKathmandu(p.ends_at)}
                         {p.authors && p.authors.length > 0
                           ? ` · ${p.authors.join(', ')}`
@@ -116,25 +117,15 @@ function MarkAttendancePanel({
                             ? ` · ${p.speaker_name}`
                             : ''}
                       </p>
-                      <p className="mt-1 text-xs capitalize text-ink/50">Status: {p.status}</p>
+                      <p className="mt-1 text-xs capitalize text-text-muted">Status: {p.status}</p>
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => mark(p.id, 'presented')}
-                        disabled={busyId === p.id}
-                        className="rounded-md border border-green-200 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
-                      >
+                      <Button type="button" variant="outline" size="sm" disabled={busyId === p.id} onClick={() => mark(p.id, 'presented')}>
                         Presented
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => mark(p.id, 'absent')}
-                        disabled={busyId === p.id}
-                        className="rounded-md border border-yellow-200 px-3 py-1 text-xs font-medium text-yellow-700 hover:bg-yellow-50 disabled:opacity-50"
-                      >
+                      </Button>
+                      <Button type="button" variant="secondary" size="sm" disabled={busyId === p.id} onClick={() => mark(p.id, 'absent')}>
                         Absent
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </li>
@@ -142,17 +133,13 @@ function MarkAttendancePanel({
             </ul>
           )}
 
-          <div className="mt-5 border-t border-line pt-4">
-            <button
-              type="button"
-              onClick={() => setShowCheckIn((v) => !v)}
-              className="text-sm font-medium text-button hover:underline"
-            >
+          <div className="mt-5 border-t border-border pt-4">
+            <Button type="button" variant="link" onClick={() => setShowCheckIn((v) => !v)}>
               {showCheckIn ? 'Hide session check-in' : 'Check attendees into this session'}
-            </button>
+            </Button>
             {showCheckIn ? (
               <div className="mt-3">
-                <Suspense fallback={<p className="text-sm text-ink/60">Loading…</p>}>
+                <Suspense fallback={<SkeletonText lines={3} />}>
                   <CheckInPanel conferenceId={conferenceId} scope={{ type: 'session', sessionId }} />
                 </Suspense>
               </div>
@@ -190,43 +177,39 @@ export function SessionChairSection() {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <h2 className="text-lg font-medium text-ink">My sessions</h2>
+      <PageHeader title="My sessions" />
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {open ? (
         <div className="mt-4">
           <MarkAttendancePanel conferenceId={open.conferenceId} sessionId={open.sessionId} onBack={() => setOpen(null)} />
         </div>
       ) : loading ? (
-        <p className="mt-4 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={3} className="mt-4" />
       ) : sessions.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          You are not assigned to chair any sessions yet.
-        </p>
+        <div className="mt-4 rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="You are not assigned to chair any sessions yet." />
+        </div>
       ) : (
         <ul className="mt-4 space-y-3">
           {sessions.map((s) => (
             <li
               key={s.session_id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-4"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4"
             >
               <div>
-                <p className="font-medium text-ink">{s.title}</p>
-                <p className="text-sm text-ink/60">
+                <p className="font-medium text-text">{s.title}</p>
+                <p className="text-sm text-text-muted">
                   {s.conference_name} · {s.room_name}
                 </p>
-                <p className="text-sm text-ink/60">
+                <p className="text-sm text-text-muted">
                   {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpen({ conferenceId: s.conference_id, sessionId: s.session_id })}
-                className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-              >
+              <Button type="button" onClick={() => setOpen({ conferenceId: s.conference_id, sessionId: s.session_id })}>
                 Mark attendance
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

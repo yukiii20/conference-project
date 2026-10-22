@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { SUBMISSION_STATUS_LABELS } from '../../lib/submissionDisplay'
-import { StatusChip } from '../../components/ui/Badge'
+import { StatusChip, Spinner, EmptyState, ErrorState } from '../../components/ui'
 
 type Row = {
   id: string
@@ -42,34 +42,42 @@ export function SubmissionsList({
   }, [load, refreshKey])
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   if (error) {
-    return <p className="mt-6 text-sm text-red-600">{error}</p>
+    return (
+      <div className="mt-6">
+        <ErrorState message={error} onRetry={load} />
+      </div>
+    )
   }
 
   if (rows.length === 0) {
     return (
-      <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-        You haven't submitted anything yet.
-      </p>
+      <div className="mt-6 rounded-lg border border-dashed border-border bg-surface">
+        <EmptyState title="You haven't submitted anything yet." />
+      </div>
     )
   }
 
   return (
-    <ul className="mt-6 divide-y divide-line rounded-lg border border-line bg-white">
+    <ul className="mt-6 divide-y divide-border rounded-lg border border-border bg-surface">
       {rows.map((r) => (
         <li key={r.id}>
           <button
             type="button"
             onClick={() => onSelect(r.id)}
-            className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left hover:bg-background"
+            className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left hover:bg-surface-muted"
           >
             <div>
-              {r.submission_code ? <p className="font-mono text-xs text-ink/50">{r.submission_code}</p> : null}
-              <p className="font-medium text-ink">{r.title}</p>
-              <p className="text-xs text-ink/50">{r.track_name}</p>
+              {r.submission_code ? <p className="font-mono text-xs text-text-muted">{r.submission_code}</p> : null}
+              <p className="font-medium text-text">{r.title}</p>
+              <p className="text-xs text-text-muted">{r.track_name}</p>
             </div>
             <StatusChip status={r.status} labels={SUBMISSION_STATUS_LABELS} />
           </button>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api'
 import type { NotificationRow } from '../../lib/types'
 import { formatKathmandu } from '../../lib/datetime'
+import { Alert, Button, EmptyState, PageHeader, SkeletonText } from '../../components/ui'
 
 export function NotificationsTab() {
   const navigate = useNavigate()
@@ -48,40 +49,39 @@ export function NotificationsTab() {
 
   return (
     <div className="mt-6 max-w-2xl">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium text-ink">Notifications</h2>
-        <button
-          type="button"
-          onClick={handleMarkAllRead}
-          disabled={unreadCount === 0}
-          className="text-sm text-button underline disabled:opacity-50"
-        >
-          Mark all read
-        </button>
-      </div>
+      <PageHeader
+        title="Notifications"
+        actions={
+          <Button type="button" variant="link" onClick={handleMarkAllRead} disabled={unreadCount === 0}>
+            Mark all read
+          </Button>
+        }
+      />
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <Alert variant="danger">{error}</Alert>
+      ) : null}
 
       {loading ? (
-        <p className="mt-4 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={4} className="mt-4" />
       ) : notifications.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          No notifications yet.
-        </p>
+        <div className="mt-4 rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No notifications yet." />
+        </div>
       ) : (
-        <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-white">
+        <ul className="mt-4 divide-y divide-border rounded-lg border border-border bg-surface">
           {notifications.map((n) => (
             <li key={n.id}>
               <button
                 type="button"
                 onClick={() => handleSelect(n)}
-                className={`block w-full px-4 py-3 text-left hover:bg-background ${n.read_at ? '' : 'bg-button/5'}`}
+                className={`block w-full px-4 py-3 text-left hover:bg-surface-muted ${n.read_at ? '' : 'bg-brand/5'}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className={`text-sm font-medium ${n.read_at ? 'text-ink/70' : 'text-ink'}`}>{n.title}</span>
-                  <span className="shrink-0 text-xs text-ink/40">{formatKathmandu(n.created_at)}</span>
+                  <span className={`text-sm font-medium ${n.read_at ? 'text-text-muted' : 'text-text'}`}>{n.title}</span>
+                  <span className="shrink-0 text-xs text-text-muted">{formatKathmandu(n.created_at)}</span>
                 </div>
-                {n.body ? <p className="mt-1 text-sm text-ink/60">{n.body}</p> : null}
+                {n.body ? <p className="mt-1 text-sm text-text-muted">{n.body}</p> : null}
               </button>
             </li>
           ))}

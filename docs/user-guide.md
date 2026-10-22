@@ -152,7 +152,7 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
   - *Certificates* — design a template per certificate type, generate them
     in bulk (or issue a best-paper/speaker one by hand), and release them
     to recipients.
-- **Communication and reports**: announcements, email templates, the email
+- **Communication**: announcements, email templates, the email
   log, exportable reports (CSV/XLSX), and the activity log (who did what).
 
 ---

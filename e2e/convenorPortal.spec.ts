@@ -42,7 +42,7 @@ const PAGES: Array<{ label: string; tabs: string[] }> = [
   { label: 'People', tabs: ['Role requests', 'Members and roles', 'Committees', 'Speakers'] },
   { label: 'Papers', tabs: ['Submissions', 'Reviews and decisions', 'Review settings'] },
   { label: 'Event', tabs: ['Programme', 'Attendance', 'Certificates'] },
-  { label: 'Communication and reports', tabs: ['Announcements', 'Email templates', 'Email log', 'Reports', 'Activity log'] },
+  { label: 'Communication', tabs: ['Announcements', 'Email templates', 'Email log', 'Reports', 'Activity log'] },
 ]
 
 test('convenor opens every sidebar page and tab without console errors (desktop)', async ({ page }) => {
@@ -91,7 +91,7 @@ test('convenor sidebar shows People/Papers badges and hides manager-only tabs ar
   // The convenor (unlike a manager) sees every tab, including the manager-hidden ones.
   await page.locator('nav').getByRole('link', { name: 'People' }).click()
   await expect(page.getByRole('link', { name: 'Members and roles', exact: true })).toBeVisible()
-  await page.locator('nav').getByRole('link', { name: 'Communication and reports' }).click()
+  await page.locator('nav').getByRole('link', { name: 'Communication', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Activity log', exact: true })).toBeVisible()
 })
 
@@ -153,7 +153,7 @@ test('convenor adds a committee member and it shows on the public page', async (
 
   await page.getByPlaceholder('Committee name').fill(committeeName)
   await page.getByRole('button', { name: 'Add committee' }).click()
-  const committeeCard = page.locator('div.rounded-lg.border.border-line.bg-white.p-4', { hasText: committeeName })
+  const committeeCard = page.locator('div.rounded-lg.border.border-border.bg-surface.p-4', { hasText: committeeName })
   await expect(committeeCard).toBeVisible()
 
   await committeeCard.getByPlaceholder('Or type a name').fill(memberName)

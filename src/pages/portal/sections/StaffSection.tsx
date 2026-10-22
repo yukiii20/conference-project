@@ -4,6 +4,7 @@ import { formatKathmanduTime, kathmanduDateKey } from '../../../lib/datetime'
 import { AttendanceDashboard } from '../../../components/attendance/AttendanceDashboard'
 import { RecentCheckins } from '../../../components/attendance/RecentCheckins'
 import { RegistrationsList } from '../../../components/attendance/RegistrationsList'
+import { EmptyState, PageHeader, SkeletonText } from '../../../components/ui'
 
 // Lazy for the same reason as the convenor Attendance tab — zxing only
 // needs to load for someone actually on this screen.
@@ -38,17 +39,17 @@ function TodaysProgramme({ conferenceId }: { conferenceId: string }) {
     }
   }, [conferenceId])
 
-  if (sessions === null) return <p className="mt-3 text-sm text-ink/60">Loading…</p>
-  if (sessions.length === 0) return <p className="mt-3 text-sm text-ink/60">No published sessions today.</p>
+  if (sessions === null) return <SkeletonText lines={2} className="mt-3" />
+  if (sessions.length === 0) return <EmptyState title="No published sessions today." />
 
   return (
     <ul className="mt-3 space-y-1.5">
       {sessions
         .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
         .map((s) => (
-          <li key={s.id} className="rounded-md border border-line bg-white px-3 py-2 text-sm">
-            <span className="font-medium text-ink">{formatKathmanduTime(s.starts_at)}</span> {s.title}
-            {s.room ? <span className="text-ink/60"> · {s.room.name}</span> : null}
+          <li key={s.id} className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
+            <span className="font-medium text-text">{formatKathmanduTime(s.starts_at)}</span> {s.title}
+            {s.room ? <span className="text-text-muted"> · {s.room.name}</span> : null}
           </li>
         ))}
     </ul>
@@ -60,33 +61,33 @@ export function StaffSection({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-5xl">
-      <h2 className="text-lg font-medium text-ink">Check-in desk</h2>
+      <PageHeader title="Check-in desk" />
 
       <div className="mt-4">
         <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
       </div>
 
       <div className="mt-10">
-        <h3 className="text-sm font-semibold text-ink">Check in an attendee</h3>
+        <h3 className="text-sm font-semibold text-text">Check in an attendee</h3>
         <div className="mt-3">
-          <Suspense fallback={<p className="text-sm text-ink/60">Loading…</p>}>
+          <Suspense fallback={<SkeletonText lines={3} />}>
             <CheckInPanel conferenceId={conferenceId} onCheckedIn={() => setRefreshKey((k) => k + 1)} />
           </Suspense>
         </div>
       </div>
 
       <div className="mt-10">
-        <h3 className="text-sm font-semibold text-ink">Recent check-ins</h3>
+        <h3 className="text-sm font-semibold text-text">Recent check-ins</h3>
         <RecentCheckins conferenceId={conferenceId} refreshKey={refreshKey} />
       </div>
 
       <div className="mt-10">
-        <h3 className="text-sm font-semibold text-ink">Today's programme</h3>
+        <h3 className="text-sm font-semibold text-text">Today's programme</h3>
         <TodaysProgramme conferenceId={conferenceId} />
       </div>
 
       <div className="mt-10">
-        <h3 className="text-sm font-semibold text-ink">Registrations</h3>
+        <h3 className="text-sm font-semibold text-text">Registrations</h3>
         <RegistrationsList conferenceId={conferenceId} readOnly />
       </div>
     </div>

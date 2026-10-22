@@ -29,19 +29,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-background px-4 text-ink">
-          <div className="max-w-md rounded-xl border border-line bg-white p-8 text-center shadow-sm">
-            <h1 className="text-xl font-semibold">Something went wrong</h1>
-            <p className="mt-2 text-sm text-ink/70">
+        <div className="flex min-h-screen items-center justify-center bg-page-bg px-4 text-text">
+          <div className="max-w-md rounded-xl border border-border bg-surface p-8 text-center shadow-sm">
+            <h1 className="text-xl font-semibold text-brand">Something went wrong</h1>
+            <p className="mt-2 text-sm text-text-muted">
               This page hit an unexpected error. Reloading usually fixes it; if it keeps happening, please let us know.
             </p>
-            <p className="mt-3 break-words rounded-md bg-background px-3 py-2 text-left text-xs text-ink/50">
+            <p className="mt-3 break-words rounded-md bg-surface-muted px-3 py-2 text-left text-xs text-text-muted">
               {this.state.error.message}
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-6 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="mt-6 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:bg-button-hover"
             >
               Reload the page
             </button>

@@ -3,6 +3,8 @@ import { api, ApiError } from '../../lib/api'
 import { registrationCategorySchema } from '../../lib/validation'
 import { AttendanceDashboard } from '../../components/attendance/AttendanceDashboard'
 import { RegistrationsList } from '../../components/attendance/RegistrationsList'
+import { PageHeader, Table, StatusChip, Button, FormField, Input, Checkbox, Alert, Spinner } from '../../components/ui'
+import type { Column } from '../../components/ui/Table'
 
 // Lazy: CheckInPanel pulls in the zxing QR-scanning library (~450 KB) that
 // only the small fraction of visitors who reach this tab actually need.
@@ -79,85 +81,71 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
     }
   }
 
+  const columns: Column<Category>[] = [
+    { key: 'code', header: 'Code', render: (c) => <span className="font-mono text-xs">{c.code}</span> },
+    { key: 'name', header: 'Name', render: (c) => c.name },
+    { key: 'status', header: 'Status', render: (c) => <StatusChip status={c.is_active ? 'active' : 'inactive'} /> },
+    {
+      key: 'actions',
+      header: '',
+      render: (c) => (
+        <Button variant="link" size="sm" onClick={() => startEdit(c)}>
+          Edit
+        </Button>
+      ),
+    },
+  ]
+
   return (
     <div>
-      <h3 className="text-lg font-medium text-ink">Registration categories</h3>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-
-      {loading ? (
-        <p className="mt-3 text-sm text-ink/60">Loading…</p>
-      ) : (
-        <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[500px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-ink/60">
-                <th className="px-4 py-2 font-medium">Code</th>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {categories.map((c) => (
-                <tr key={c.id}>
-                  <td className="px-4 py-2 font-mono text-xs">{c.code}</td>
-                  <td className="px-4 py-2">{c.name}</td>
-                  <td className="px-4 py-2">{c.is_active ? 'Active' : 'Inactive'}</td>
-                  <td className="px-4 py-2">
-                    <button type="button" onClick={() => startEdit(c)} className="text-xs text-button hover:underline">
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <h3 className="text-lg font-medium text-text">Registration categories</h3>
+      {error ? (
+        <div className="mt-2">
+          <Alert variant="danger">{error}</Alert>
         </div>
-      )}
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line bg-white p-4">
-        <div>
-          <label className="block text-xs font-medium text-ink/60">Code</label>
-          <input
+      <div className="mt-3">
+        <Table columns={columns} rows={categories} rowKey={(c) => c.id} loading={loading} emptyTitle="No categories yet." minWidth={500} />
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-border bg-surface p-4">
+        <FormField label="Code">
+          <Input
             value={form.code}
             onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
             placeholder="student"
-            className="mt-1 w-32 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="w-32"
           />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-ink/60">Name</label>
-          <input
+        </FormField>
+        <FormField label="Name">
+          <Input
             value={form.name}
             onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
             placeholder="Student"
-            className="mt-1 w-40 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="w-40"
           />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-ink/60">Order</label>
-          <input
+        </FormField>
+        <FormField label="Order">
+          <Input
             type="number"
             value={form.display_order}
             onChange={(e) => setForm((p) => ({ ...p, display_order: Number(e.target.value) }))}
-            className="mt-1 w-20 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="w-20"
           />
-        </div>
-        <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} />
-          Active
-        </label>
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
+        </FormField>
+        <Checkbox
+          label="Active"
+          checked={form.is_active}
+          onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
+        />
+        <Button type="submit" variant="primary" disabled={saving} loading={saving}>
           {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add category'}
-        </button>
+        </Button>
         {editingId ? (
-          <button type="button" onClick={resetForm} className="rounded-md border border-line px-4 py-2 text-sm hover:bg-background">
+          <Button type="button" variant="secondary" onClick={resetForm}>
             Cancel
-          </button>
+          </Button>
         ) : null}
       </form>
     </div>
@@ -168,18 +156,25 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
   const [refreshKey, setRefreshKey] = useState(0)
   return (
     <div className="mt-6 max-w-5xl">
+      <PageHeader title="Attendance" subtitle="Registration categories, registrations, and event check-in." />
       <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
       <div className="mt-10">
         <CategoriesSection conferenceId={conferenceId} onChanged={() => setRefreshKey((k) => k + 1)} />
       </div>
       <div className="mt-10">
-        <h3 className="text-lg font-medium text-ink">Registrations</h3>
+        <h3 className="text-lg font-medium text-text">Registrations</h3>
         <RegistrationsList conferenceId={conferenceId} />
       </div>
       <div className="mt-10">
-        <h3 className="text-lg font-medium text-ink">Check-in</h3>
+        <h3 className="text-lg font-medium text-text">Check-in</h3>
         <div className="mt-3">
-          <Suspense fallback={<p className="text-sm text-ink/60">Loading…</p>}>
+          <Suspense
+            fallback={
+              <div className="flex items-center gap-2 text-sm text-text-muted">
+                <Spinner size="sm" /> Loading…
+              </div>
+            }
+          >
             <CheckInPanel conferenceId={conferenceId} />
           </Suspense>
         </div>

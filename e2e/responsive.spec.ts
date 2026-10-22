@@ -139,7 +139,7 @@ for (const width of WIDTHS) {
       await signInAdmin(page)
       await expectNoHorizontalOverflow(page, `super-admin dashboard`)
       for (const tab of ['Conferences', 'Users', 'Admins', 'Platform settings', 'Email log']) {
-        await page.getByRole('button', { name: tab, exact: true }).click()
+        await page.getByRole('tab', { name: tab, exact: true }).click()
         await expectNoHorizontalOverflow(page, `super-admin / ${tab}`)
       }
     })

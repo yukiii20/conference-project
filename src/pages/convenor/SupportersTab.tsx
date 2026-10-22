@@ -3,6 +3,7 @@ import { api, ApiError } from '../../lib/api'
 import { SUPPORTER_TIERS, supporterSchema, type SupporterTier } from '../../lib/validation'
 import { ImageUpload } from '../../components/ImageUpload'
 import { ConfirmDialog } from '../../components/ui/Modal'
+import { Alert, Button, EmptyState, Input, Select, Spinner } from '../../components/ui'
 
 const MAX_MB = 2
 
@@ -181,7 +182,11 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   const grouped = SUPPORTER_TIERS.map((tier) => ({
@@ -191,27 +196,31 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-3xl">
-      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <div className="mb-4">
+          <Alert variant="danger">{error}</Alert>
+        </div>
+      ) : null}
 
       {supporters.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-          No supporters yet.
-        </p>
+        <div className="rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No supporters yet." />
+        </div>
       ) : (
         <div className="space-y-6">
           {grouped.map((group) => (
             <div key={group.tier}>
-              <h3 className="mb-2 text-sm font-semibold text-ink/70">{TIER_LABELS[group.tier]}</h3>
+              <h3 className="mb-2 text-sm font-semibold text-text-muted">{TIER_LABELS[group.tier]}</h3>
               <div className="space-y-3">
                 {group.items.map((supporter, i) => {
                   const edit = edits[supporter.id] ?? toEditState(supporter)
                   return (
                     <div
                       key={supporter.id}
-                      className={`rounded-lg border border-line bg-white p-4 ${supporter.is_active ? '' : 'opacity-60'}`}
+                      className={`rounded-lg border border-border bg-surface p-4 ${supporter.is_active ? '' : 'opacity-60'}`}
                     >
                       {rowErrors[supporter.id] ? (
-                        <p className="mb-2 text-sm text-red-600">{rowErrors[supporter.id]}</p>
+                        <p className="mb-2 text-sm text-danger">{rowErrors[supporter.id]}</p>
                       ) : null}
                       <div className="flex flex-wrap gap-4">
                         <ImageUpload
@@ -226,74 +235,73 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
                           onRemoved={() => load()}
                         />
                         <div className="min-w-[220px] flex-1 space-y-2">
-                          <input
+                          <Input
                             value={edit.name}
                             onChange={(e) => updateEdit(supporter.id, { name: e.target.value })}
                             placeholder="Name"
-                            className="w-full rounded-md border border-line px-3 py-2 focus:border-button"
                           />
                           <div className="flex flex-wrap gap-2">
-                            <select
+                            <Select
                               value={edit.tier}
                               onChange={(e) => updateEdit(supporter.id, { tier: e.target.value as SupporterTier })}
-                              className="rounded-md border border-line bg-white px-3 py-2 focus:border-button"
+                              className="w-auto"
                             >
                               {SUPPORTER_TIERS.map((t) => (
                                 <option key={t} value={t}>
                                   {TIER_LABELS[t]}
                                 </option>
                               ))}
-                            </select>
-                            <input
+                            </Select>
+                            <Input
                               value={edit.website_url}
                               onChange={(e) => updateEdit(supporter.id, { website_url: e.target.value })}
                               placeholder="https://"
-                              className="flex-1 rounded-md border border-line px-3 py-2 focus:border-button"
+                              className="flex-1"
                             />
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveRow(supporter)}
-                          disabled={busyId === supporter.id}
-                          className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-                        >
+                        <Button type="button" size="sm" onClick={() => handleSaveRow(supporter)} disabled={busyId === supporter.id}>
                           Save
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           onClick={() => handleMove(supporter, 'up')}
                           disabled={busyId === supporter.id || i === 0}
-                          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
                         >
                           ↑
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           onClick={() => handleMove(supporter, 'down')}
                           disabled={busyId === supporter.id || i === group.items.length - 1}
-                          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
                         >
                           ↓
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           onClick={() => handleToggleActive(supporter)}
                           disabled={busyId === supporter.id}
-                          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-50"
                         >
                           {supporter.is_active ? 'Hide' : 'Show'}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="danger"
+                          size="sm"
+                          className="ml-auto"
                           onClick={() => setConfirmingRemove(supporter)}
                           disabled={busyId === supporter.id}
-                          className="ml-auto rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
                         >
                           Delete supporter
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )
@@ -304,42 +312,42 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">Add a supporter</p>
-        {newError ? <p className="mt-2 text-sm text-red-600">{newError}</p> : null}
+      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">Add a supporter</p>
+        {newError ? (
+          <div className="mt-2">
+            <Alert variant="danger">{newError}</Alert>
+          </div>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
-          <input
+          <Input
             value={newSupporter.name}
             onChange={(e) => setNewSupporter((p) => ({ ...p, name: e.target.value }))}
             placeholder="Name"
-            className="flex-1 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="flex-1"
           />
-          <select
+          <Select
             value={newSupporter.tier}
             onChange={(e) => setNewSupporter((p) => ({ ...p, tier: e.target.value as SupporterTier }))}
-            className="rounded-md border border-line bg-white px-3 py-2 focus:border-button"
+            className="w-auto"
           >
             {SUPPORTER_TIERS.map((t) => (
               <option key={t} value={t}>
                 {TIER_LABELS[t]}
               </option>
             ))}
-          </select>
-          <input
+          </Select>
+          <Input
             value={newSupporter.website_url}
             onChange={(e) => setNewSupporter((p) => ({ ...p, website_url: e.target.value }))}
             placeholder="https://"
-            className="flex-1 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="flex-1"
           />
         </div>
-        <p className="mt-2 text-xs text-ink/50">Add the logo after creating, from the row below.</p>
-        <button
-          type="submit"
-          disabled={creating}
-          className="mt-3 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {creating ? 'Adding…' : 'Add supporter'}
-        </button>
+        <p className="mt-2 text-xs text-text-muted">Add the logo after creating, from the row below.</p>
+        <Button type="submit" className="mt-3" loading={creating}>
+          Add supporter
+        </Button>
       </form>
 
       <ConfirmDialog

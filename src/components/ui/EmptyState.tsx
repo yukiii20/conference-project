@@ -18,8 +18,8 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center gap-2 py-10 text-center">
       {icon}
-      <p className="font-medium text-ink">{title}</p>
-      {message ? <p className="max-w-sm text-sm text-ink/60">{message}</p> : null}
+      <p className="font-medium text-text">{title}</p>
+      {message ? <p className="max-w-sm text-sm text-text-muted">{message}</p> : null}
       {actionLabel && onAction ? (
         <Button variant="primary" size="sm" className="mt-2" onClick={onAction}>
           {actionLabel}
@@ -38,8 +38,8 @@ export function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center gap-2 py-10 text-center">
-      <AlertTriangleIcon className="h-8 w-8 text-red-500" />
-      <p className="font-medium text-ink">{message}</p>
+      <AlertTriangleIcon className="h-8 w-8 text-danger" />
+      <p className="font-medium text-text">{message}</p>
       {onRetry ? (
         <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
           Retry

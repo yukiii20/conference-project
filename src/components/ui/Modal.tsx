@@ -52,10 +52,10 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? labelledBy ?? 'modal-title' : undefined}
         tabIndex={-1}
-        className={`max-h-full w-full overflow-y-auto rounded-lg bg-white p-5 shadow-lg focus:outline-none ${SIZE_CLASSES[size]}`}
+        className={`max-h-full w-full overflow-y-auto rounded-lg bg-surface p-5 shadow-lg focus:outline-none ${SIZE_CLASSES[size]}`}
       >
         {title ? (
-          <h2 id={labelledBy ?? 'modal-title'} className="text-lg font-semibold text-ink">
+          <h2 id={labelledBy ?? 'modal-title'} className="text-lg font-semibold text-text">
             {title}
           </h2>
         ) : null}
@@ -89,7 +89,7 @@ export function ConfirmDialog({
 }) {
   return (
     <Modal open={open} onClose={onCancel} title={title} size="sm">
-      <div className="mt-2 text-sm text-ink/70">{message}</div>
+      <div className="mt-2 text-sm text-text-muted">{message}</div>
       <div className="mt-4 flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
           {cancelLabel}

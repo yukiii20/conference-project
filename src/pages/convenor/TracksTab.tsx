@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { trackSchema } from '../../lib/validation'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { PageHeader, Card, FormField, Input, Textarea, Button, Alert, Spinner } from '../../components/ui'
 
 type Track = {
   id: string
@@ -127,124 +128,106 @@ export function TracksTab({ conferenceId }: { conferenceId: string }) {
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   const sorted = [...tracks].sort((a, b) => a.display_order - b.display_order)
 
   return (
     <div className="mt-6 max-w-3xl">
-      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      <PageHeader title="Tracks" subtitle="Create and order the submission tracks for this conference." />
+      {error ? (
+        <div className="mb-4">
+          <Alert variant="danger">{error}</Alert>
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         {sorted.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-line bg-white">
+          <div className="rounded-lg border border-dashed border-border bg-surface">
             <EmptyState title="No tracks yet." message="Add your first track using the form below." />
           </div>
         ) : (
           sorted.map((track, i) => {
             const edit = edits[track.id] ?? toEditState(track)
             return (
-              <div key={track.id} className={`rounded-lg border border-line bg-white p-4 ${track.is_active ? '' : 'opacity-60'}`}>
-                {rowErrors[track.id] ? <p className="mb-2 text-sm text-red-600">{rowErrors[track.id]}</p> : null}
+              <Card key={track.id} className={track.is_active ? '' : 'opacity-60'}>
+                {rowErrors[track.id] ? (
+                  <div className="mb-2">
+                    <Alert variant="danger">{rowErrors[track.id]}</Alert>
+                  </div>
+                ) : null}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px]">
-                  <div>
-                    <label className="block text-xs font-medium text-ink/60">Name</label>
-                    <input
-                      value={edit.name}
-                      onChange={(e) => updateEdit(track.id, { name: e.target.value })}
-                      className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-ink/60">Code</label>
-                    <input
-                      value={edit.code}
-                      onChange={(e) => updateEdit(track.id, { code: e.target.value })}
-                      className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-                    />
-                  </div>
+                  <FormField label="Name">
+                    <Input value={edit.name} onChange={(e) => updateEdit(track.id, { name: e.target.value })} />
+                  </FormField>
+                  <FormField label="Code">
+                    <Input value={edit.code} onChange={(e) => updateEdit(track.id, { code: e.target.value })} />
+                  </FormField>
                 </div>
                 <div className="mt-3">
-                  <label className="block text-xs font-medium text-ink/60">Description</label>
-                  <textarea
-                    value={edit.description}
-                    onChange={(e) => updateEdit(track.id, { description: e.target.value })}
-                    rows={2}
-                    className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-                  />
+                  <FormField label="Description">
+                    <Textarea value={edit.description} onChange={(e) => updateEdit(track.id, { description: e.target.value })} rows={2} />
+                  </FormField>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSaveRow(track)}
-                    disabled={busyId === track.id}
-                    className="rounded-md bg-button px-3 py-1 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-                  >
+                  <Button variant="primary" size="sm" onClick={() => handleSaveRow(track)} disabled={busyId === track.id}>
                     Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMove(track, 'up')}
-                    disabled={busyId === track.id || i === 0}
-                    className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
-                  >
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleMove(track, 'up')} disabled={busyId === track.id || i === 0}>
                     ↑
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => handleMove(track, 'down')}
                     disabled={busyId === track.id || i === sorted.length - 1}
-                    className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-40"
                   >
                     ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleActive(track)}
-                    disabled={busyId === track.id}
-                    className="ml-auto rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button variant="secondary" size="sm" className="ml-auto" onClick={() => handleToggleActive(track)} disabled={busyId === track.id}>
                     {track.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             )
           })
         )}
       </div>
 
-      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">Add a track</p>
-        {newError ? <p className="mt-2 text-sm text-red-600">{newError}</p> : null}
+      <form onSubmit={handleCreate} className="mt-6 rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">Add a track</p>
+        {newError ? (
+          <div className="mt-2">
+            <Alert variant="danger">{newError}</Alert>
+          </div>
+        ) : null}
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px]">
-          <input
+          <Input
             value={newTrack.name}
             onChange={(e) => setNewTrack((p) => ({ ...p, name: e.target.value }))}
             placeholder="Track name"
-            className="rounded-md border border-line px-3 py-2 focus:border-button"
           />
-          <input
+          <Input
             value={newTrack.code}
             onChange={(e) => setNewTrack((p) => ({ ...p, code: e.target.value }))}
             placeholder="Code (optional)"
-            className="rounded-md border border-line px-3 py-2 focus:border-button"
           />
         </div>
-        <textarea
+        <Textarea
           value={newTrack.description}
           onChange={(e) => setNewTrack((p) => ({ ...p, description: e.target.value }))}
           placeholder="Description (optional)"
           rows={2}
-          className="mt-3 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+          className="mt-3"
         />
-        <button
-          type="submit"
-          disabled={creating}
-          className="mt-3 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" className="mt-3" disabled={creating} loading={creating}>
           {creating ? 'Adding…' : 'Add track'}
-        </button>
+        </Button>
       </form>
     </div>
   )

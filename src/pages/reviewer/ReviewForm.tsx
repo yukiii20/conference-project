@@ -3,7 +3,7 @@ import { api, ApiError } from '../../lib/api'
 import { downloadSubmissionFile } from '../../lib/submissionFiles'
 import { RECOMMENDATIONS, reviewFormSchema, type ReviewFormInput } from '../../lib/validation'
 import { FILE_KIND_LABELS } from '../../lib/submissionDisplay'
-import { ConfirmDialog } from '../../components/ui/Modal'
+import { Alert, Button, Card, ConfirmDialog, FormField, Select, SkeletonText, Textarea } from '../../components/ui'
 
 type AssignmentDetail = {
   assignment: { id: string; status: string }
@@ -138,43 +138,33 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return <SkeletonText lines={4} className="mt-6" />
   }
 
   const locked = reviewStatus === 'submitted'
 
   return (
     <div className="mt-6 max-w-3xl space-y-6">
-      {formError ? (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-          {formError}
-        </div>
-      ) : null}
-      {saved ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">Draft saved.</div>
-      ) : null}
-      {locked ? (
-        <div className="rounded-md border border-line bg-white px-3 py-2 text-sm text-ink/70">
-          This review has been submitted and can no longer be edited.
-        </div>
-      ) : null}
+      {formError ? <Alert variant="danger">{formError}</Alert> : null}
+      {saved ? <Alert variant="success">Draft saved.</Alert> : null}
+      {locked ? <Alert variant="info">This review has been submitted and can no longer be edited.</Alert> : null}
 
       {submission ? (
-        <div className="rounded-lg border border-line bg-white p-5">
-          <h2 className="text-lg font-semibold text-ink">{submission.title}</h2>
-          <p className="mt-1 text-sm text-ink/60">Track: {submission.track_name || '—'}</p>
-          <p className="mt-4 whitespace-pre-line text-sm text-ink/80">{submission.abstract}</p>
+        <Card>
+          <h2 className="text-lg font-semibold text-text">{submission.title}</h2>
+          <p className="mt-1 text-sm text-text-muted">Track: {submission.track_name || '—'}</p>
+          <p className="mt-4 whitespace-pre-line text-sm text-text/80">{submission.abstract}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {(submission.keywords ?? []).map((k) => (
-              <span key={k} className="rounded-full bg-background px-3 py-1 text-xs text-ink/70">
+              <span key={k} className="rounded-full bg-surface-muted px-3 py-1 text-xs text-text-muted">
                 {k}
               </span>
             ))}
           </div>
 
           {files.length > 0 ? (
-            <div className="mt-4 border-t border-line pt-4">
-              <h3 className="text-sm font-medium text-ink">Files</h3>
+            <div className="mt-4 border-t border-border pt-4">
+              <h3 className="text-sm font-medium text-text">Files</h3>
               <ul className="mt-2 space-y-3">
                 {files.map((f) => (
                   <li key={f.id} className="text-sm">
@@ -182,24 +172,20 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
                       <span>
                         {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} (v{f.version})
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(f.id)}
-                        className="rounded-md border border-line px-3 py-1 text-xs hover:bg-background"
-                      >
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownload(f.id)}>
                         Download
-                      </button>
+                      </Button>
                     </div>
                   </li>
                 ))}
               </ul>
             </div>
           ) : null}
-        </div>
+        </Card>
       ) : null}
 
-      <fieldset disabled={locked} className="space-y-4 rounded-lg border border-line bg-white p-5">
-        <h3 className="font-medium text-ink">Your review</h3>
+      <fieldset disabled={locked} className="space-y-4 rounded-lg border border-border bg-surface p-5">
+        <h3 className="font-medium text-text">Your review</h3>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {(
@@ -212,78 +198,46 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
               ['confidence', 'Confidence'],
             ] as const
           ).map(([key, label]) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-ink/60">{label} (1-5)</label>
-              <select
-                value={form[key]}
-                onChange={(e) => update(key, e.target.value)}
-                className="mt-1 w-full rounded-md border border-line bg-white px-2 py-2 text-sm focus:border-button"
-              >
+            <FormField key={key} label={`${label} (1-5)`} error={errors[key]}>
+              <Select value={form[key]} onChange={(e) => update(key, e.target.value)}>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <option key={n} value={n}>
                     {n}
                   </option>
                 ))}
-              </select>
-              {errors[key] ? <p className="mt-1 text-xs text-red-600">{errors[key]}</p> : null}
-            </div>
+              </Select>
+            </FormField>
           ))}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-ink">Recommendation</label>
-          <select
+        <FormField label="Recommendation">
+          <Select
             value={form.recommendation}
             onChange={(e) => update('recommendation', e.target.value as (typeof RECOMMENDATIONS)[number])}
-            className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 focus:border-button"
           >
             {RECOMMENDATIONS.map((r) => (
               <option key={r} value={r}>
                 {r.replace('_', ' ')}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-medium text-ink">Comments to author</label>
-          <textarea
-            value={form.comments_to_author}
-            onChange={(e) => update('comments_to_author', e.target.value)}
-            rows={5}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.comments_to_author ? <p className="mt-1 text-sm text-red-600">{errors.comments_to_author}</p> : null}
-        </div>
+        <FormField label="Comments to author" error={errors.comments_to_author}>
+          <Textarea value={form.comments_to_author} onChange={(e) => update('comments_to_author', e.target.value)} rows={5} />
+        </FormField>
 
-        <div>
-          <label className="block text-sm font-medium text-ink">Confidential comments to convenor</label>
-          <textarea
-            value={form.confidential_comments}
-            onChange={(e) => update('confidential_comments', e.target.value)}
-            rows={3}
-            className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
-          />
-          {errors.confidential_comments ? <p className="mt-1 text-sm text-red-600">{errors.confidential_comments}</p> : null}
-        </div>
+        <FormField label="Confidential comments to convenor" error={errors.confidential_comments}>
+          <Textarea value={form.confidential_comments} onChange={(e) => update('confidential_comments', e.target.value)} rows={3} />
+        </FormField>
 
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={saving}
-            className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save draft'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmingSubmit(true)}
-            disabled={submitting}
-            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
-            {submitting ? 'Submitting…' : 'Submit review'}
-          </button>
+          <Button type="button" variant="secondary" loading={saving} onClick={handleSaveDraft}>
+            Save draft
+          </Button>
+          <Button type="button" loading={submitting} onClick={() => setConfirmingSubmit(true)}>
+            Submit review
+          </Button>
         </div>
       </fieldset>
 

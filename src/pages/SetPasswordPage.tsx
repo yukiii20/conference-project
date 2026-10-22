@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
+import { Alert, Badge, Button, Card, FormField, Input } from '../components/ui'
 
 /** Landed on from the invitation email link: /set-password?token=... */
 export function SetPasswordPage() {
@@ -38,81 +39,70 @@ export function SetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-ink">Link expired</h1>
-          <p className="mt-3 text-sm text-ink/70">
+      <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
+        <Card className="w-full max-w-md text-center">
+          <h1 className="text-xl font-semibold text-text">Link expired</h1>
+          <p className="mt-3 text-sm text-text-muted">
             This link has expired. Ask the administrator to send a new invitation.
           </p>
-        </div>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-ink">Set your password</h1>
-        <p className="mt-1 text-sm text-ink/60">Choose a password to finish setting up your account.</p>
+    <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
+      <Card className="w-full max-w-md">
+        <h1 className="text-xl font-semibold text-text">Set your password</h1>
+        <p className="mt-1 text-sm text-text-muted">Choose a password to finish setting up your account.</p>
 
         {error ? (
-          <div role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {error}
+          <div className="mt-4">
+            <Alert variant="danger">{error}</Alert>
           </div>
         ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
             <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-sm font-medium text-ink">
+              <label htmlFor="password" className="block text-sm font-medium text-text">
                 Password
               </label>
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="text-sm text-button underline"
-              >
+              <Button type="button" variant="link" className="text-sm" onClick={() => setShowPassword((v) => !v)}>
                 {showPassword ? 'Hide' : 'Show'}
-              </button>
+              </Button>
             </div>
-            <input
+            <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
             />
-            <ul className="mt-2 space-y-1 text-sm">
+            <ul className="mt-2 space-y-1">
               {getPasswordChecklist(password).map((rule) => (
-                <li key={rule.id} className={rule.passed ? 'text-green-700' : 'text-ink/50'}>
-                  {rule.passed ? '✓' : '○'} {rule.label}
+                <li key={rule.id}>
+                  <Badge tone={rule.passed ? 'success' : 'neutral'}>
+                    {rule.passed ? '✓' : '○'} {rule.label}
+                  </Badge>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div>
-            <label htmlFor="confirm_password" className="block text-sm font-medium text-ink">
-              Confirm password
-            </label>
-            <input
+          <FormField label="Confirm password" htmlFor="confirm_password">
+            <Input
               id="confirm_password"
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
             />
-          </div>
+          </FormField>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-button px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="submit" loading={submitting} className="w-full">
             {submitting ? 'Saving…' : 'Set password and continue'}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   )
 }

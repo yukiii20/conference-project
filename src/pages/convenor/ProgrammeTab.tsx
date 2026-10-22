@@ -20,7 +20,20 @@ import {
   sessionSchema,
   type SessionInput,
 } from '../../lib/validation'
-import { ConfirmDialog } from '../../components/ui/Modal'
+import {
+  Alert,
+  Button,
+  Checkbox,
+  ConfirmDialog,
+  EmptyState,
+  Input,
+  Modal,
+  Select,
+  SkeletonText,
+  StatusChip,
+  Tabs,
+  Textarea,
+} from '../../components/ui'
 
 const TRACK_COLORS = ['#DCEEFB', '#FDE7D8', '#E3F2DF', '#F3E3F5', '#FFF4CC', '#E2E8F0'] as const
 
@@ -125,20 +138,22 @@ function WarningsPanel({ conferenceId, refreshKey }: { conferenceId: string; ref
   if (total === 0) return null
 
   return (
-    <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900">
-      <p className="font-medium">Needs attention</p>
-      {warnings.unscheduled_papers.length > 0 ? (
-        <p className="mt-1">
-          {warnings.unscheduled_papers.length} accepted paper{warnings.unscheduled_papers.length === 1 ? '' : 's'} not
-          yet scheduled: {warnings.unscheduled_papers.map((p) => p.title).join(', ')}
-        </p>
-      ) : null}
-      {warnings.sessions_without_chair.length > 0 ? (
-        <p className="mt-1">
-          {warnings.sessions_without_chair.length} published session{warnings.sessions_without_chair.length === 1 ? '' : 's'} with
-          no chair: {warnings.sessions_without_chair.map((s) => s.title).join(', ')}
-        </p>
-      ) : null}
+    <div className="mb-6">
+      <Alert variant="warning">
+        <p className="font-medium">Needs attention</p>
+        {warnings.unscheduled_papers.length > 0 ? (
+          <p className="mt-1">
+            {warnings.unscheduled_papers.length} accepted paper{warnings.unscheduled_papers.length === 1 ? '' : 's'} not
+            yet scheduled: {warnings.unscheduled_papers.map((p) => p.title).join(', ')}
+          </p>
+        ) : null}
+        {warnings.sessions_without_chair.length > 0 ? (
+          <p className="mt-1">
+            {warnings.sessions_without_chair.length} published session{warnings.sessions_without_chair.length === 1 ? '' : 's'} with
+            no chair: {warnings.sessions_without_chair.map((s) => s.title).join(', ')}
+          </p>
+        ) : null}
+      </Alert>
     </div>
   )
 }
@@ -214,20 +229,20 @@ function RoomsSection({ conferenceId, onRoomsChanged }: { conferenceId: string; 
 
   return (
     <div>
-      <h3 className="text-lg font-medium text-ink">Rooms</h3>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      <h3 className="text-lg font-medium text-text">Rooms</h3>
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (
-        <p className="mt-3 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={3} className="mt-3" />
       ) : rooms.length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-line bg-white px-4 py-4 text-sm text-ink/70">
-          No rooms yet.
-        </p>
+        <div className="mt-3 rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No rooms yet." />
+        </div>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-white">
+        <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-surface">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-line text-ink/60">
+              <tr className="border-b border-border bg-surface-muted text-text-muted">
                 <th className="px-4 py-2 font-medium">Name</th>
                 <th className="px-4 py-2 font-medium">Building / floor</th>
                 <th className="px-4 py-2 font-medium">Capacity</th>
@@ -236,30 +251,27 @@ function RoomsSection({ conferenceId, onRoomsChanged }: { conferenceId: string; 
                 <th className="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody className="divide-y divide-border">
               {rooms.map((r) => (
                 <tr key={r.id}>
                   <td className="px-4 py-2">
                     {r.name}
-                    {r.room_number ? <span className="text-ink/50"> ({r.room_number})</span> : null}
+                    {r.room_number ? <span className="text-text-muted"> ({r.room_number})</span> : null}
                   </td>
                   <td className="px-4 py-2">{[r.building, r.floor].filter(Boolean).join(' · ') || '—'}</td>
                   <td className="px-4 py-2">{r.capacity ?? '—'}</td>
-                  <td className="px-4 py-2 text-xs text-ink/70">
+                  <td className="px-4 py-2 text-xs text-text/70">
                     {r.equipment.length > 0
                       ? r.equipment.map((e) => ROOM_EQUIPMENT_LABELS[e as keyof typeof ROOM_EQUIPMENT_LABELS] ?? e).join(', ')
                       : '—'}
                   </td>
-                  <td className="px-4 py-2 capitalize">{r.status}</td>
                   <td className="px-4 py-2">
-                    <button
-                      type="button"
-                      onClick={() => handleToggle(r)}
-                      disabled={busyId === r.id}
-                      className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background disabled:opacity-50"
-                    >
+                    <StatusChip status={r.status} />
+                  </td>
+                  <td className="px-4 py-2">
+                    <Button type="button" variant="secondary" size="sm" onClick={() => handleToggle(r)} disabled={busyId === r.id}>
                       {r.status === 'active' ? 'Deactivate' : 'Activate'}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -268,79 +280,77 @@ function RoomsSection({ conferenceId, onRoomsChanged }: { conferenceId: string; 
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="mt-4 space-y-3 rounded-lg border border-dashed border-line bg-white p-4">
+      <form onSubmit={handleCreate} className="mt-4 space-y-3 rounded-lg border border-dashed border-border bg-surface p-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
-            <label className="block text-xs font-medium text-ink/60">Name</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Name</label>
+            <Input
               value={newRoom.name}
               onChange={(e) => setNewRoom((p) => ({ ...p, name: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink/60">Room number</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Room number</label>
+            <Input
               value={newRoom.room_number}
               onChange={(e) => setNewRoom((p) => ({ ...p, room_number: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink/60">Building</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Building</label>
+            <Input
               value={newRoom.building}
               onChange={(e) => setNewRoom((p) => ({ ...p, building: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink/60">Floor</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Floor</label>
+            <Input
               value={newRoom.floor}
               onChange={(e) => setNewRoom((p) => ({ ...p, floor: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
-            <label className="block text-xs font-medium text-ink/60">Capacity</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Capacity</label>
+            <Input
               type="number"
               min={1}
               value={newRoom.capacity}
               onChange={(e) => setNewRoom((p) => ({ ...p, capacity: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
           <div className="col-span-2 sm:col-span-3">
-            <label className="block text-xs font-medium text-ink/60">Description</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Description</label>
+            <Input
               value={newRoom.description}
               onChange={(e) => setNewRoom((p) => ({ ...p, description: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
         </div>
         <div>
-          <p className="text-xs font-medium text-ink/60">Equipment</p>
+          <p className="text-xs font-medium text-text-muted">Equipment</p>
           <div className="mt-1 flex flex-wrap gap-3">
             {ROOM_EQUIPMENT.map((item) => (
-              <label key={item} className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" checked={newRoom.equipment.includes(item)} onChange={() => toggleEquipment(item)} />
-                {ROOM_EQUIPMENT_LABELS[item]}
-              </label>
+              <Checkbox
+                key={item}
+                label={ROOM_EQUIPMENT_LABELS[item]}
+                checked={newRoom.equipment.includes(item)}
+                onChange={() => toggleEquipment(item)}
+              />
             ))}
           </div>
         </div>
-        <button
-          type="submit"
-          disabled={creating}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" disabled={creating}>
           {creating ? 'Adding…' : 'Add room'}
-        </button>
+        </Button>
       </form>
     </div>
   )
@@ -466,119 +476,96 @@ function TimeSlotsSection({ conferenceId, onSlotsChanged }: { conferenceId: stri
 
   return (
     <div className="mt-10">
-      <h3 className="text-lg font-medium text-ink">Time slots</h3>
-      <p className="mt-1 text-sm text-ink/60">
+      <h3 className="text-lg font-medium text-text">Time slots</h3>
+      <p className="mt-1 text-sm text-text-muted">
         Optional helpers (e.g. "Morning 1, 09:00–10:30") — pick one when creating a session to fill its start/end
         automatically.
       </p>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (
-        <p className="mt-3 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={3} className="mt-3" />
       ) : slots.length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-line bg-white px-4 py-4 text-sm text-ink/70">
-          No time slots yet.
-        </p>
+        <div className="mt-3 rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No time slots yet." />
+        </div>
       ) : (
         <ul className="mt-3 space-y-2">
           {slots.map((s) => (
             <li
               key={s.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm"
             >
               <span>
-                <span className="font-medium">{s.label}</span>{' '}
-                <span className="text-ink/60">
+                <span className="font-medium text-text">{s.label}</span>{' '}
+                <span className="text-text-muted">
                   {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
                 </span>
               </span>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => startEdit(s)} className="text-xs text-button hover:underline">
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="link" size="sm" onClick={() => startEdit(s)}>
                   Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingDeleteSlot(s)}
-                  disabled={busyId === s.id}
-                  className="text-xs text-red-600 hover:underline disabled:opacity-50"
-                >
+                </Button>
+                <Button type="button" variant="danger" size="sm" onClick={() => setConfirmingDeleteSlot(s)} disabled={busyId === s.id}>
                   Delete
-                </button>
+                </Button>
               </div>
             </li>
           ))}
         </ul>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line bg-white p-4">
+      <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-border bg-surface p-4">
         <div>
-          <label className="block text-xs font-medium text-ink/60">Label</label>
-          <input
+          <label className="block text-xs font-medium text-text-muted">Label</label>
+          <Input
             value={form.label}
             onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))}
             placeholder="Morning 1"
-            className="mt-1 w-40 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1 w-40"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-ink/60">Starts</label>
-          <input
+          <label className="block text-xs font-medium text-text-muted">Starts</label>
+          <Input
             type="datetime-local"
             value={form.starts_at}
             onChange={(e) => setForm((p) => ({ ...p, starts_at: e.target.value }))}
-            className="mt-1 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-ink/60">Ends</label>
-          <input
+          <label className="block text-xs font-medium text-text-muted">Ends</label>
+          <Input
             type="datetime-local"
             value={form.ends_at}
             onChange={(e) => setForm((p) => ({ ...p, ends_at: e.target.value }))}
-            className="mt-1 rounded-md border border-line px-3 py-2 focus:border-button"
+            className="mt-1"
           />
         </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
+        <Button type="submit" variant="primary" disabled={saving}>
           {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add slot'}
-        </button>
+        </Button>
         {editingId ? (
-          <button type="button" onClick={resetForm} className="rounded-md border border-line px-4 py-2 text-sm hover:bg-background">
+          <Button type="button" variant="secondary" onClick={resetForm}>
             Cancel
-          </button>
+          </Button>
         ) : null}
       </form>
 
-      <form onSubmit={handleCopyDay} className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line bg-white p-4">
+      <form onSubmit={handleCopyDay} className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-border bg-surface p-4">
         <div>
-          <label className="block text-xs font-medium text-ink/60">Copy day from</label>
-          <input
-            type="date"
-            value={copyFrom}
-            onChange={(e) => setCopyFrom(e.target.value)}
-            className="mt-1 rounded-md border border-line px-3 py-2 focus:border-button"
-          />
+          <label className="block text-xs font-medium text-text-muted">Copy day from</label>
+          <Input type="date" value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} className="mt-1" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-ink/60">To</label>
-          <input
-            type="date"
-            value={copyTo}
-            onChange={(e) => setCopyTo(e.target.value)}
-            className="mt-1 rounded-md border border-line px-3 py-2 focus:border-button"
-          />
+          <label className="block text-xs font-medium text-text-muted">To</label>
+          <Input type="date" value={copyTo} onChange={(e) => setCopyTo(e.target.value)} className="mt-1" />
         </div>
-        <button
-          type="submit"
-          disabled={copying || !copyFrom || !copyTo}
-          className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background disabled:opacity-50"
-        >
+        <Button type="submit" variant="secondary" disabled={copying || !copyFrom || !copyTo}>
           {copying ? 'Copying…' : 'Copy day'}
-        </button>
-        {copyMessage ? <span className="text-sm text-ink/60">{copyMessage}</span> : null}
+        </Button>
+        {copyMessage ? <span className="text-sm text-text-muted">{copyMessage}</span> : null}
       </form>
 
       <ConfirmDialog
@@ -732,188 +719,162 @@ function SessionManagePanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-ink">{detail?.title ?? 'Session'}</h3>
-          <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-line px-4 py-2 text-sm hover:bg-background">
-            Close
-          </button>
-        </div>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+    <Modal open={true} onClose={onClose} size="lg">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-text">{detail?.title ?? 'Session'}</h3>
+        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
-        <div className="mt-5">
-          <p className="text-sm font-medium text-ink">Chairs</p>
-          {detail && detail.chairs.length > 0 ? (
-            <ul className="mt-2 space-y-1">
-              {detail.chairs.map((c) => (
-                <li key={c.user_id} className="flex items-center justify-between rounded-md border border-line px-3 py-1.5 text-sm">
-                  <span>
-                    {c.full_name} <span className="text-ink/50">({c.chair_role === 'chair' ? 'Chair' : 'Co-chair'})</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeChair(c.user_id)}
-                    disabled={busy}
-                    className="text-xs text-red-600 hover:underline disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-1 text-sm text-ink/60">No chairs assigned yet.</p>
-          )}
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <select
-              value={chairUserId}
-              onChange={(e) => setChairUserId(e.target.value)}
-              className="rounded-md border border-line bg-white px-3 py-1.5 text-sm focus:border-button"
-            >
-              <option value="">Choose a person</option>
-              {candidates.map((c) => (
-                <option key={c.user_id} value={c.user_id}>
-                  {c.full_name}
+      <div className="mt-5">
+        <p className="text-sm font-medium text-text">Chairs</p>
+        {detail && detail.chairs.length > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {detail.chairs.map((c) => (
+              <li key={c.user_id} className="flex items-center justify-between rounded-md border border-border px-3 py-1.5 text-sm">
+                <span>
+                  {c.full_name} <span className="text-text-muted">({c.chair_role === 'chair' ? 'Chair' : 'Co-chair'})</span>
+                </span>
+                <Button type="button" variant="danger" size="sm" onClick={() => removeChair(c.user_id)} disabled={busy}>
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-sm text-text-muted">No chairs assigned yet.</p>
+        )}
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <Select value={chairUserId} onChange={(e) => setChairUserId(e.target.value)} className="w-auto">
+            <option value="">Choose a person</option>
+            {candidates.map((c) => (
+              <option key={c.user_id} value={c.user_id}>
+                {c.full_name}
+              </option>
+            ))}
+          </Select>
+          <Select value={chairRole} onChange={(e) => setChairRole(e.target.value as 'chair' | 'co_chair')} className="w-auto">
+            <option value="chair">Chair</option>
+            <option value="co_chair">Co-chair</option>
+          </Select>
+          <Button type="button" variant="secondary" size="sm" onClick={addChair} disabled={busy || !chairUserId}>
+            Add chair
+          </Button>
+        </div>
+        {candidates.length === 0 ? (
+          <p className="mt-1 text-xs text-text-muted">
+            No one holds the session chair role yet — add it from People &gt; Members and roles.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-6">
+        <p className="text-sm font-medium text-text">Papers and talks</p>
+        {detail && detail.presentations.length > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {detail.presentations.map((p, i) => (
+              <li key={p.id} className="rounded-md border border-border px-3 py-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-text">{p.title}</p>
+                    <p className="text-xs text-text-muted">
+                      {formatKathmandu(p.starts_at)} – {formatKathmandu(p.ends_at)}
+                      {p.authors ? ` · ${p.authors.join(', ')}` : p.speaker_name ? ` · ${p.speaker_name}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => move(i, -1)} disabled={busy || i === 0}>
+                      ↑
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => move(i, 1)}
+                      disabled={busy || i === detail.presentations.length - 1}
+                    >
+                      ↓
+                    </Button>
+                    <Button type="button" variant="link" size="sm" onClick={() => mark(p.id, 'presented')} disabled={busy}>
+                      Presented
+                    </Button>
+                    <Button type="button" variant="link" size="sm" onClick={() => mark(p.id, 'absent')} disabled={busy}>
+                      Absent
+                    </Button>
+                    <Button type="button" variant="danger" size="sm" onClick={() => setConfirmingRemoveId(p.id)} disabled={busy}>
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-sm text-text-muted">Nothing scheduled in this session yet.</p>
+        )}
+
+        <div className="mt-3 rounded-md border border-dashed border-border p-3">
+          <p className="text-xs font-medium text-text-muted">Add an accepted paper</p>
+          <div className="mt-1 flex flex-wrap items-end gap-2">
+            <Select value={paperId} onChange={(e) => setPaperId(e.target.value)} className="min-w-[200px] flex-1">
+              <option value="">Choose a paper</option>
+              {submissions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.submission_code ? `${s.submission_code} — ` : ''}
+                  {s.title}
                 </option>
               ))}
-            </select>
-            <select
-              value={chairRole}
-              onChange={(e) => setChairRole(e.target.value as 'chair' | 'co_chair')}
-              className="rounded-md border border-line bg-white px-3 py-1.5 text-sm focus:border-button"
-            >
-              <option value="chair">Chair</option>
-              <option value="co_chair">Co-chair</option>
-            </select>
-            <button
-              type="button"
-              onClick={addChair}
-              disabled={busy || !chairUserId}
-              className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background disabled:opacity-50"
-            >
-              Add chair
-            </button>
+            </Select>
+            <Input
+              type="number"
+              min={1}
+              value={paperMinutes}
+              onChange={(e) => setPaperMinutes(e.target.value)}
+              className="w-20"
+              title="Minutes"
+            />
+            <Button type="button" variant="secondary" onClick={addPaper} disabled={busy || !paperId}>
+              Add
+            </Button>
           </div>
-          {candidates.length === 0 ? (
-            <p className="mt-1 text-xs text-ink/50">
-              No one holds the session chair role yet — add it from People &gt; Members and roles.
-            </p>
-          ) : null}
         </div>
 
-        <div className="mt-6">
-          <p className="text-sm font-medium text-ink">Papers and talks</p>
-          {detail && detail.presentations.length > 0 ? (
-            <ul className="mt-2 space-y-1">
-              {detail.presentations.map((p, i) => (
-                <li key={p.id} className="rounded-md border border-line px-3 py-2 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{p.title}</p>
-                      <p className="text-xs text-ink/60">
-                        {formatKathmandu(p.starts_at)} – {formatKathmandu(p.ends_at)}
-                        {p.authors ? ` · ${p.authors.join(', ')}` : p.speaker_name ? ` · ${p.speaker_name}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button type="button" onClick={() => move(i, -1)} disabled={busy || i === 0} className="px-1.5 text-ink/60 disabled:opacity-30">
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => move(i, 1)}
-                        disabled={busy || i === detail.presentations.length - 1}
-                        className="px-1.5 text-ink/60 disabled:opacity-30"
-                      >
-                        ↓
-                      </button>
-                      <button type="button" onClick={() => mark(p.id, 'presented')} disabled={busy} className="text-xs text-green-700 hover:underline disabled:opacity-50">
-                        Presented
-                      </button>
-                      <button type="button" onClick={() => mark(p.id, 'absent')} disabled={busy} className="text-xs text-yellow-700 hover:underline disabled:opacity-50">
-                        Absent
-                      </button>
-                      <button type="button" onClick={() => setConfirmingRemoveId(p.id)} disabled={busy} className="text-xs text-red-600 hover:underline disabled:opacity-50">
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                </li>
+        <div className="mt-3 rounded-md border border-dashed border-border p-3">
+          <p className="text-xs font-medium text-text-muted">Add a speaker talk</p>
+          <div className="mt-1 flex flex-wrap items-end gap-2">
+            <Select value={speakerId} onChange={(e) => setSpeakerId(e.target.value)} className="w-auto">
+              <option value="">Choose a speaker</option>
+              {speakers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name}
+                </option>
               ))}
-            </ul>
-          ) : (
-            <p className="mt-1 text-sm text-ink/60">Nothing scheduled in this session yet.</p>
-          )}
-
-          <div className="mt-3 rounded-md border border-dashed border-line p-3">
-            <p className="text-xs font-medium text-ink/60">Add an accepted paper</p>
-            <div className="mt-1 flex flex-wrap items-end gap-2">
-              <select
-                value={paperId}
-                onChange={(e) => setPaperId(e.target.value)}
-                className="min-w-[200px] flex-1 rounded-md border border-line bg-white px-3 py-1.5 text-sm focus:border-button"
-              >
-                <option value="">Choose a paper</option>
-                {submissions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.submission_code ? `${s.submission_code} — ` : ''}
-                    {s.title}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                value={paperMinutes}
-                onChange={(e) => setPaperMinutes(e.target.value)}
-                className="w-20 rounded-md border border-line px-3 py-1.5 text-sm focus:border-button"
-                title="Minutes"
-              />
-              <button type="button" onClick={addPaper} disabled={busy || !paperId} className="min-h-10 rounded-md border border-line px-4 py-2 text-sm hover:bg-background disabled:opacity-50">
-                Add
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-3 rounded-md border border-dashed border-line p-3">
-            <p className="text-xs font-medium text-ink/60">Add a speaker talk</p>
-            <div className="mt-1 flex flex-wrap items-end gap-2">
-              <select
-                value={speakerId}
-                onChange={(e) => setSpeakerId(e.target.value)}
-                className="rounded-md border border-line bg-white px-3 py-1.5 text-sm focus:border-button"
-              >
-                <option value="">Choose a speaker</option>
-                {speakers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.full_name}
-                  </option>
-                ))}
-              </select>
-              <input
-                value={speakerTitle}
-                onChange={(e) => setSpeakerTitle(e.target.value)}
-                placeholder="Talk title"
-                className="min-w-[160px] flex-1 rounded-md border border-line px-3 py-1.5 text-sm focus:border-button"
-              />
-              <input
-                type="number"
-                min={1}
-                value={speakerMinutes}
-                onChange={(e) => setSpeakerMinutes(e.target.value)}
-                className="w-20 rounded-md border border-line px-3 py-1.5 text-sm focus:border-button"
-                title="Minutes"
-              />
-              <button
-                type="button"
-                onClick={addSpeakerTalk}
-                disabled={busy || !speakerId || !speakerTitle.trim()}
-                className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background disabled:opacity-50"
-              >
-                Add
-              </button>
-            </div>
+            </Select>
+            <Input
+              value={speakerTitle}
+              onChange={(e) => setSpeakerTitle(e.target.value)}
+              placeholder="Talk title"
+              className="min-w-[160px] flex-1"
+            />
+            <Input
+              type="number"
+              min={1}
+              value={speakerMinutes}
+              onChange={(e) => setSpeakerMinutes(e.target.value)}
+              className="w-20"
+              title="Minutes"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={addSpeakerTalk}
+              disabled={busy || !speakerId || !speakerTitle.trim()}
+            >
+              Add
+            </Button>
           </div>
         </div>
       </div>
@@ -927,7 +888,7 @@ function SessionManagePanel({
         onConfirm={() => confirmingRemoveId && removePresentation(confirmingRemoveId)}
         onCancel={() => setConfirmingRemoveId(null)}
       />
-    </div>
+    </Modal>
   )
 }
 
@@ -1100,55 +1061,39 @@ function SessionsSection({
       <WarningsPanel conferenceId={conferenceId} refreshKey={warningsKey} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-medium text-ink">Sessions</h3>
+        <h3 className="text-lg font-medium text-text">Sessions</h3>
         {/* Grid collapses to the list on narrow screens regardless of the toggle. */}
-        <div className="hidden gap-1 rounded-md border border-line bg-white p-0.5 sm:flex">
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            className={`rounded px-3 py-1 text-xs font-medium ${view === 'list' ? 'bg-button text-white' : 'text-ink/60'}`}
-          >
+        <div className="hidden gap-1 rounded-md border border-border bg-surface p-0.5 sm:flex">
+          <Button type="button" variant={view === 'list' ? 'primary' : 'ghost'} size="sm" onClick={() => setView('list')}>
             List
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('grid')}
-            className={`rounded px-3 py-1 text-xs font-medium ${view === 'grid' ? 'bg-button text-white' : 'text-ink/60'}`}
-          >
+          </Button>
+          <Button type="button" variant={view === 'grid' ? 'primary' : 'ghost'} size="sm" onClick={() => setView('grid')}>
             Grid
-          </button>
+          </Button>
         </div>
       </div>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {days.length > 1 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {days.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setActiveDay(d)}
-              className={`rounded-md border px-3 py-1 text-sm ${
-                activeDay === d ? 'border-button bg-button text-white' : 'border-line bg-white text-ink/70'
-              }`}
-            >
-              {formatKathmandu(`${d}T00:00:00Z`, { dateOnly: true })}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="mt-3"
+          tabs={days.map((d) => ({ id: d, label: formatKathmandu(`${d}T00:00:00Z`, { dateOnly: true }) }))}
+          active={activeDay ?? ''}
+          onChange={(id) => setActiveDay(id)}
+        />
       ) : null}
 
       {loading ? (
-        <p className="mt-3 text-sm text-ink/60">Loading…</p>
+        <SkeletonText lines={4} className="mt-3" />
       ) : visibleSessions.length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-line bg-white px-4 py-4 text-sm text-ink/70">
-          No sessions yet.
-        </p>
+        <div className="mt-3 rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No sessions yet." />
+        </div>
       ) : view === 'grid' ? (
-        <div className="mt-3 hidden overflow-x-auto rounded-lg border border-line bg-white sm:block">
+        <div className="mt-3 hidden overflow-x-auto rounded-lg border border-border bg-surface sm:block">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-line text-ink/60">
+              <tr className="border-b border-border bg-surface-muted text-text-muted">
                 <th className="px-3 py-2 font-medium">Time</th>
                 {rooms.map((r) => (
                   <th key={r.id} className="px-3 py-2 font-medium">
@@ -1157,12 +1102,12 @@ function SessionsSection({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody className="divide-y divide-border">
               {[...visibleSessions]
                 .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
                 .map((s) => (
                   <tr key={s.id}>
-                    <td className="whitespace-nowrap px-3 py-2 text-ink/60">{formatKathmanduTime(s.starts_at)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-text-muted">{formatKathmanduTime(s.starts_at)}</td>
                     {rooms.map((r) => (
                       <td key={r.id} className="px-3 py-2">
                         {r.id === s.room_id ? (
@@ -1170,7 +1115,7 @@ function SessionsSection({
                             type="button"
                             onClick={() => setManageSessionId(s.id)}
                             style={{ backgroundColor: trackColor(s.track_id, tracks) }}
-                            className="w-full rounded-md px-2 py-1 text-left text-xs font-medium text-ink/80 hover:opacity-80"
+                            className="w-full rounded-md px-2 py-1 text-left text-xs font-medium text-text/80 hover:opacity-80"
                           >
                             {s.title}
                           </button>
@@ -1184,10 +1129,10 @@ function SessionsSection({
         </div>
       ) : null}
       {visibleSessions.length > 0 ? (
-        <div className={`mt-3 overflow-x-auto rounded-lg border border-line bg-white ${view === 'grid' ? 'sm:hidden' : ''}`}>
+        <div className={`mt-3 overflow-x-auto rounded-lg border border-border bg-surface ${view === 'grid' ? 'sm:hidden' : ''}`}>
           <table className="w-full min-w-[800px] text-left text-sm">
               <thead>
-                <tr className="border-b border-line text-ink/60">
+                <tr className="border-b border-border bg-surface-muted text-text-muted">
                   <th className="px-4 py-2 font-medium">Title</th>
                   <th className="px-4 py-2 font-medium">Type</th>
                   <th className="px-4 py-2 font-medium">Track</th>
@@ -1197,7 +1142,7 @@ function SessionsSection({
                   <th className="px-4 py-2 font-medium"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-border">
                 {visibleSessions.map((s) => (
                   <tr key={s.id} style={{ backgroundColor: s.track_id ? trackColor(s.track_id, tracks) : undefined }}>
                     <td className="px-4 py-2">{s.title}</td>
@@ -1207,31 +1152,26 @@ function SessionsSection({
                     <td className="px-4 py-2 whitespace-nowrap">
                       {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
                     </td>
-                    <td className="px-4 py-2 capitalize">{s.status}</td>
+                    <td className="px-4 py-2">
+                      <StatusChip status={s.status} />
+                    </td>
                     <td className="px-4 py-2">
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setManageSessionId(s.id)}
-                          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background"
-                        >
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setManageSessionId(s.id)}>
                           Manage
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => startEdit(s)}
-                          className="rounded-md border border-line px-3 py-1 text-sm hover:bg-background"
-                        >
+                        </Button>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => startEdit(s)}>
                           Edit
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="danger"
+                          size="sm"
                           onClick={() => setConfirmingDeleteSession(s)}
                           disabled={busyId === s.id}
-                          className="rounded-md border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
                         >
                           Delete
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -1241,136 +1181,110 @@ function SessionsSection({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">{editingId ? 'Edit session' : 'Add a session'}</p>
-        {formError ? (
-          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-            {formError}
-          </div>
-        ) : null}
+      <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">{editingId ? 'Edit session' : 'Add a session'}</p>
+        {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
-        <input
+        <Input
           value={form.title}
           onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
           placeholder="Title"
-          className="w-full rounded-md border border-line px-3 py-2 focus:border-button"
         />
 
-        <textarea
+        <Textarea
           value={form.description}
           onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
           placeholder="Description (optional)"
           rows={2}
-          className="w-full rounded-md border border-line px-3 py-2 focus:border-button"
         />
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <select
+          <Select
             value={form.session_type}
             onChange={(e) => setForm((p) => ({ ...p, session_type: e.target.value as (typeof SESSION_TYPES)[number] }))}
-            className="rounded-md border border-line bg-white px-3 py-2 capitalize focus:border-button"
+            className="capitalize"
           >
             {SESSION_TYPES.map((t) => (
               <option key={t} value={t} className="capitalize">
                 {t}
               </option>
             ))}
-          </select>
+          </Select>
 
-          <select
-            value={form.track_id}
-            onChange={(e) => setForm((p) => ({ ...p, track_id: e.target.value }))}
-            className="rounded-md border border-line bg-white px-3 py-2 focus:border-button"
-          >
+          <Select value={form.track_id} onChange={(e) => setForm((p) => ({ ...p, track_id: e.target.value }))}>
             <option value="">No track</option>
             {tracks.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>
             ))}
-          </select>
+          </Select>
 
-          <select
-            value={form.room_id}
-            onChange={(e) => setForm((p) => ({ ...p, room_id: e.target.value }))}
-            className="rounded-md border border-line bg-white px-3 py-2 focus:border-button"
-          >
+          <Select value={form.room_id} onChange={(e) => setForm((p) => ({ ...p, room_id: e.target.value }))}>
             <option value="">Choose a room</option>
             {rooms.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
               </option>
             ))}
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={form.status}
             onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as (typeof SESSION_STATUSES)[number] }))}
-            className="rounded-md border border-line bg-white px-3 py-2 capitalize focus:border-button"
+            className="capitalize"
           >
             {SESSION_STATUSES.map((s) => (
               <option key={s} value={s} className="capitalize">
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {slots.length > 0 ? (
           <div>
-            <label className="block text-xs font-medium text-ink/60">Time slot (optional — fills start/end below)</label>
-            <select
-              value={form.slot_id}
-              onChange={(e) => applySlot(e.target.value)}
-              className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2 focus:border-button"
-            >
+            <label className="block text-xs font-medium text-text-muted">Time slot (optional — fills start/end below)</label>
+            <Select value={form.slot_id} onChange={(e) => applySlot(e.target.value)} className="mt-1">
               <option value="">No slot — set times manually</option>
               {slots.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.label} ({formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         ) : null}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="block text-xs font-medium text-ink/60">Starts (Asia/Kathmandu)</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Starts (Asia/Kathmandu)</label>
+            <Input
               type="datetime-local"
               value={form.starts_at}
               onChange={(e) => setForm((p) => ({ ...p, starts_at: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink/60">Ends (Asia/Kathmandu)</label>
-            <input
+            <label className="block text-xs font-medium text-text-muted">Ends (Asia/Kathmandu)</label>
+            <Input
               type="datetime-local"
               value={form.ends_at}
               onChange={(e) => setForm((p) => ({ ...p, ends_at: e.target.value }))}
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
             />
           </div>
         </div>
 
         <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" disabled={saving}>
             {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add session'}
-          </button>
+          </Button>
           {editingId ? (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-background"
-            >
+            <Button type="button" variant="secondary" onClick={resetForm}>
               Cancel
-            </button>
+            </Button>
           ) : null}
         </div>
       </form>

@@ -3,7 +3,9 @@ import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { StatusChip } from '../ui/Badge'
 import { ConfirmDialog } from '../ui/Modal'
-import { Pagination } from '../ui/Table'
+import { Table, Pagination } from '../ui/Table'
+import type { Column } from '../ui/Table'
+import { Alert, Button, Input, Select } from '../ui'
 
 type Category = { id: string; name: string }
 
@@ -103,109 +105,95 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
     }
   }
 
+  const columns: Column<AdminRegistration>[] = [
+    { key: 'number', header: 'Number', render: (r) => <span className="font-mono text-xs">{r.registration_number}</span> },
+    {
+      key: 'name',
+      header: 'Name',
+      render: (r) => (
+        <>
+          {r.full_name}
+          <div className="text-xs text-text-muted">{r.email}</div>
+        </>
+      ),
+    },
+    { key: 'category', header: 'Category', render: (r) => r.category_name },
+    { key: 'status', header: 'Status', render: (r) => <StatusChip status={r.status} /> },
+    { key: 'registered', header: 'Registered', render: (r) => formatKathmandu(r.registered_at), className: 'whitespace-nowrap' },
+    ...(readOnly
+      ? []
+      : [
+          {
+            key: 'actions',
+            header: '',
+            render: (r: AdminRegistration) => (
+              <div className="flex gap-2">
+                {r.status === 'pending' ? (
+                  <Button type="button" variant="link" size="sm" disabled={busyId === r.id} onClick={() => confirmRegistration(r.id)}>
+                    Confirm
+                  </Button>
+                ) : null}
+                {r.status !== 'cancelled' ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="!text-danger"
+                    disabled={busyId === r.id}
+                    onClick={() => setConfirmingCancelId(r.id)}
+                  >
+                    Cancel
+                  </Button>
+                ) : null}
+              </div>
+            ),
+          },
+        ]),
+  ]
+
   return (
     <div>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <input
+        <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search name, email or number"
-          className="min-w-[220px] flex-1 rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+          className="min-w-[220px] flex-1"
         />
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-        >
+        <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-auto">
           <option value="">Any status</option>
           <option value="pending">Pending</option>
           <option value="confirmed">Confirmed</option>
           <option value="cancelled">Cancelled</option>
-        </select>
-        <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-        >
+        </Select>
+        <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="w-auto">
           <option value="">Any category</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
-        </select>
+        </Select>
         <a
           href={`${API_BASE}/conferences/${conferenceId}/registrations/export.csv`}
-          className="rounded-md border border-line px-3 py-2 text-sm hover:bg-background"
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-button px-4 py-2 text-sm font-medium text-button hover:bg-outline-hover"
         >
           Export CSV
         </a>
       </div>
 
-      {loading ? (
-        <p className="mt-3 text-sm text-ink/60">Loading…</p>
-      ) : registrations.length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-line bg-white px-4 py-4 text-sm text-ink/70">No registrations yet.</p>
-      ) : (
-        <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-ink/60">
-                <th className="px-4 py-2 font-medium">Number</th>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Category</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Registered</th>
-                {readOnly ? null : <th className="px-4 py-2 font-medium"></th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {registrations.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-4 py-2 font-mono text-xs">{r.registration_number}</td>
-                  <td className="px-4 py-2">
-                    {r.full_name}
-                    <div className="text-xs text-ink/50">{r.email}</div>
-                  </td>
-                  <td className="px-4 py-2">{r.category_name}</td>
-                  <td className="px-4 py-2">
-                    <StatusChip status={r.status} />
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">{formatKathmandu(r.registered_at)}</td>
-                  {readOnly ? null : (
-                    <td className="px-4 py-2">
-                      <div className="flex gap-2">
-                        {r.status === 'pending' ? (
-                          <button
-                            type="button"
-                            onClick={() => confirmRegistration(r.id)}
-                            disabled={busyId === r.id}
-                            className="text-xs text-green-700 hover:underline disabled:opacity-50"
-                          >
-                            Confirm
-                          </button>
-                        ) : null}
-                        {r.status !== 'cancelled' ? (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmingCancelId(r.id)}
-                            disabled={busyId === r.id}
-                            className="text-xs text-red-600 hover:underline disabled:opacity-50"
-                          >
-                            Cancel
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="mt-3">
+        <Table
+          columns={columns}
+          rows={registrations}
+          rowKey={(r) => r.id}
+          loading={loading}
+          emptyTitle="No registrations yet."
+          minWidth={800}
+        />
+      </div>
 
       <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
 

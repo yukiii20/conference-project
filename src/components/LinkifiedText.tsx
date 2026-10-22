@@ -16,7 +16,7 @@ export function LinkifiedText({ text, className }: { text: string; className?: s
                 href={part}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="break-all text-button underline"
+                className="break-all text-brand underline"
               >
                 {part}
               </a>

@@ -4,6 +4,10 @@ import { api, setAdminViewAs } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { AdminViewAsProvider } from '../lib/adminViewAsContext'
 import { PortalHeader } from '../components/PortalHeader'
+import { PageHeader } from '../components/ui/PageHeader'
+import { Alert } from '../components/ui/Alert'
+import { Select } from '../components/ui/Input'
+import { Spinner } from '../components/ui/Spinner'
 import { ConvenorSidebar } from './convenor/ConvenorSidebar'
 import { DashboardTab } from './convenor/DashboardTab'
 import { SetupSection } from './convenor/sections/SetupSection'
@@ -132,11 +136,13 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
       <div className="min-h-screen bg-background text-ink">
         <PortalHeader roleLabel={isManagerPortal ? 'Manager' : 'Convenor'} />
         <div className="mx-auto max-w-7xl px-4 py-8">
-          <h1 className="text-2xl font-semibold">{isManagerPortal ? 'Manager' : 'Convenor'}</h1>
+          <PageHeader title={isManagerPortal ? 'Manager' : 'Convenor'} />
           {loading ? (
-            <p className="mt-6 text-sm text-ink/60">Loading…</p>
+            <div className="mt-6 flex justify-center">
+              <Spinner size="lg" />
+            </div>
           ) : (
-            <p className="mt-6 rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
+            <p className="mt-6 rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-sm text-text-muted">
               You are not set up as {isManagerPortal ? 'a manager' : 'convenor'} of any conference yet.
             </p>
           )}
@@ -151,65 +157,69 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
 
       <div className="mx-auto max-w-7xl px-4 py-8">
         {viewAs ? (
-          <div
-            role="status"
-            className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800"
-          >
-            <span>
-              Viewing <strong>{viewAs.conferenceName}</strong> as admin — read-only.
-            </span>
-            <Link
-              to="/super-admin"
-              className="rounded-md border border-amber-400 px-3 py-1 font-medium hover:bg-amber-100"
-            >
-              Exit
-            </Link>
+          <div role="status" className="mb-4">
+            <Alert variant="warning">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>
+                  Viewing <strong>{viewAs.conferenceName}</strong> as admin — read-only.
+                </span>
+                <Link to="/super-admin" className="font-medium underline">
+                  Exit
+                </Link>
+              </div>
+            </Alert>
           </div>
         ) : null}
 
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{isManagerPortal ? 'Manager' : 'Convenor'}</h1>
-          <button
-            type="button"
-            onClick={() => setMobileNavOpen((v) => !v)}
-            aria-expanded={mobileNavOpen}
-            aria-controls="convenor-sidebar"
-            className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background md:hidden"
-          >
-            {mobileNavOpen ? 'Close menu' : 'Menu'}
-          </button>
-        </div>
+        <PageHeader
+          title={isManagerPortal ? 'Manager' : 'Convenor'}
+          actions={
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-expanded={mobileNavOpen}
+              aria-controls="convenor-sidebar"
+              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-muted md:hidden"
+            >
+              {mobileNavOpen ? 'Close menu' : 'Menu'}
+            </button>
+          }
+          className="mb-0"
+        />
 
         {myConferences.length > 1 ? (
           <div className="mt-3">
-            <label htmlFor="convenor-conference" className="block text-xs font-medium text-ink/60">
+            <label htmlFor="convenor-conference" className="block text-xs font-medium text-text-muted">
               Conference
             </label>
-            <select
+            <Select
               id="convenor-conference"
               value={conferenceId ?? ''}
               onChange={(e) => setConferenceId(e.target.value)}
-              className="mt-1 w-full max-w-sm rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
+              className="mt-1 max-w-sm"
             >
               {myConferences.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         ) : conferenceName ? (
-          <p className="mt-1 text-ink/70">{conferenceName}</p>
+          <p className="mt-1 text-text-muted">{conferenceName}</p>
         ) : null}
 
         {missingAbstractDates ? (
-          <div role="alert" className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-            Authors cannot submit until you set the Abstract submission dates in Key dates.
+          <div className="mt-4">
+            <Alert variant="warning">Authors cannot submit until you set the Abstract submission dates in Key dates.</Alert>
           </div>
         ) : null}
 
         <div className="mt-6 flex flex-col gap-6 md:flex-row">
-          <aside id="convenor-sidebar" className={`shrink-0 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}>
+          <aside
+            id="convenor-sidebar"
+            className={`shrink-0 rounded-lg bg-surface-muted p-2 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
+          >
             <ConvenorSidebar
               base={base}
               isManager={isManagerPortal}

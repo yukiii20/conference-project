@@ -23,13 +23,13 @@ export function AttendanceDashboard({ conferenceId, refreshKey }: { conferenceId
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-      <div className="rounded-lg border border-line bg-white p-4">
-        <p className="text-xs text-ink/60">Confirmed registrations</p>
-        <p className="mt-1 text-2xl font-semibold text-ink">{dashboard.registered}</p>
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <p className="text-xs text-text-muted">Confirmed registrations</p>
+        <p className="mt-1 text-2xl font-semibold text-text">{dashboard.registered}</p>
       </div>
-      <div className="rounded-lg border border-line bg-white p-4">
-        <p className="text-xs text-ink/60">Checked in today</p>
-        <p className="mt-1 text-2xl font-semibold text-ink">{dashboard.checked_in_today}</p>
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <p className="text-xs text-text-muted">Checked in today</p>
+        <p className="mt-1 text-2xl font-semibold text-text">{dashboard.checked_in_today}</p>
       </div>
     </div>
   )

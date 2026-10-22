@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AssignmentsList } from '../../reviewer/AssignmentsList'
 import { ReviewForm } from '../../reviewer/ReviewForm'
+import { Button, PageHeader } from '../../../components/ui'
 
 export function ReviewerSection({ conferenceId }: { conferenceId: string }) {
   const [open, setOpen] = useState<{ assignmentId: string; submissionId: string } | null>(null)
@@ -8,20 +9,21 @@ export function ReviewerSection({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <h2 className="text-lg font-medium text-ink">My reviews</h2>
+      <PageHeader title="My reviews" />
 
       {open ? (
         <>
-          <button
+          <Button
             type="button"
+            variant="link"
             onClick={() => {
               setOpen(null)
               setRefreshKey((k) => k + 1)
             }}
-            className="mt-4 text-sm text-button underline"
+            className="mt-4"
           >
             ← Back to my assignments
-          </button>
+          </Button>
           <ReviewForm assignmentId={open.assignmentId} submissionId={open.submissionId} />
         </>
       ) : (

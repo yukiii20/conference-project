@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/authContext'
 import { formatKathmandu } from '../../lib/datetime'
 import { getRoleDefinition } from '../../lib/roles'
 import { DEADLINE_LABELS } from '../conference/types'
+import { Card, CardHeader, SkeletonText } from '../../components/ui'
 
 type Deadline = { deadline_type: string; opens_at: string; closes_at: string | null }
 type Submission = { id: string; title: string; status: string }
@@ -142,51 +143,51 @@ export function DashboardTab({
 
   return (
     <div className="mt-6 max-w-3xl space-y-6">
-      <div className="rounded-lg border border-line bg-white p-5">
-        <h2 className="text-lg font-medium text-ink">Welcome, {user?.full_name || user?.email}</h2>
-        {myRoleLabels.length > 0 ? (
-          <p className="mt-1 text-sm text-ink/60">Your roles: {myRoleLabels.join(', ')}</p>
-        ) : null}
-      </div>
+      <Card>
+        <CardHeader
+          title={`Welcome, ${user?.full_name || user?.email}`}
+          subtitle={myRoleLabels.length > 0 ? `Your roles: ${myRoleLabels.join(', ')}` : undefined}
+        />
+      </Card>
 
-      <div className="rounded-lg border border-line bg-white p-5">
-        <h3 className="text-sm font-semibold text-ink">To-dos</h3>
+      <Card>
+        <h3 className="text-sm font-semibold text-text">To-dos</h3>
         {loading ? (
-          <p className="mt-2 text-sm text-ink/60">Loading…</p>
+          <SkeletonText lines={2} className="mt-2" />
         ) : todos.length === 0 ? (
-          <p className="mt-2 text-sm text-ink/60">Nothing needs your attention right now.</p>
+          <p className="mt-2 text-sm text-text-muted">Nothing needs your attention right now.</p>
         ) : (
           <ul className="mt-2 space-y-1.5">
             {todos.map((t, i) =>
               t.linkPath ? (
                 <li key={i}>
-                  <Link to={t.linkPath} className="text-sm text-button hover:underline">
+                  <Link to={t.linkPath} className="text-sm text-brand hover:underline">
                     {t.text}
                   </Link>
                 </li>
               ) : (
-                <li key={i} className="text-sm text-ink/80">
+                <li key={i} className="text-sm text-text/80">
                   {t.text}
                 </li>
               ),
             )}
           </ul>
         )}
-      </div>
+      </Card>
 
       {conferenceId ? (
-        <div className="rounded-lg border border-line bg-white p-5">
-          <h3 className="text-sm font-semibold text-ink">Next key dates</h3>
+        <Card>
+          <h3 className="text-sm font-semibold text-text">Next key dates</h3>
           {loading ? (
-            <p className="mt-2 text-sm text-ink/60">Loading…</p>
+            <SkeletonText lines={2} className="mt-2" />
           ) : upcomingDeadlines.length === 0 ? (
-            <p className="mt-2 text-sm text-ink/60">No upcoming dates.</p>
+            <p className="mt-2 text-sm text-text-muted">No upcoming dates.</p>
           ) : (
             <ul className="mt-2 space-y-1.5 text-sm">
               {upcomingDeadlines.map((d) => (
                 <li key={d.deadline_type} className="flex items-center justify-between gap-2">
-                  <span className="text-ink/80">{DEADLINE_LABELS[d.deadline_type] ?? d.deadline_type}</span>
-                  <span className="text-ink/60">
+                  <span className="text-text/80">{DEADLINE_LABELS[d.deadline_type] ?? d.deadline_type}</span>
+                  <span className="text-text-muted">
                     {formatKathmandu(d.opens_at, { dateOnly: true })}
                     {d.closes_at ? ` – ${formatKathmandu(d.closes_at, { dateOnly: true })}` : ''}
                   </span>
@@ -194,7 +195,7 @@ export function DashboardTab({
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       ) : null}
     </div>
   )

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { formatKathmandu } from '../lib/datetime'
+import { Alert, Card, Spinner } from '../components/ui'
 
 type VerifyResult = {
   valid: boolean
@@ -48,43 +49,52 @@ export function VerifyCertificatePage() {
   }, [token])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10 text-ink">
-      <div className="w-full max-w-md rounded-xl border border-line bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold">Certificate verification</h1>
+    <div className="flex min-h-screen items-center justify-center bg-page-bg px-4 py-10">
+      <Card className="w-full max-w-md">
+        <h1 className="text-xl font-semibold text-text">Certificate verification</h1>
 
         {loading ? (
-          <p className="mt-6 text-sm text-ink/60">Checking…</p>
+          <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+            <Spinner size="sm" />
+            Checking…
+          </div>
         ) : error ? (
-          <p className="mt-6 text-sm text-red-600">{error}</p>
+          <div className="mt-6">
+            <Alert variant="danger">{error}</Alert>
+          </div>
         ) : !result ? (
-          <div className="mt-6 rounded-md bg-red-50 px-4 py-3 text-red-700">
-            <p className="font-medium">Not found</p>
-            <p className="mt-1 text-sm">This certificate link does not match any issued certificate.</p>
+          <div className="mt-6">
+            <Alert variant="danger">
+              <p className="font-medium">Not found</p>
+              <p className="mt-1">This certificate link does not match any issued certificate.</p>
+            </Alert>
           </div>
         ) : (
-          <div className={`mt-6 rounded-md px-4 py-4 ${result.valid ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}>
-            <p className="text-lg font-semibold">{result.valid ? 'Valid certificate' : 'Revoked certificate'}</p>
-            <dl className="mt-3 space-y-1 text-sm">
-              <div>
-                <dt className="inline font-medium">Name: </dt>
-                <dd className="inline">{result.recipient_name}</dd>
-              </div>
-              <div>
-                <dt className="inline font-medium">Type: </dt>
-                <dd className="inline">{TYPE_LABELS[result.certificate_type] ?? result.certificate_type}</dd>
-              </div>
-              <div>
-                <dt className="inline font-medium">Conference: </dt>
-                <dd className="inline">{result.conference_name}</dd>
-              </div>
-              <div>
-                <dt className="inline font-medium">Issued: </dt>
-                <dd className="inline">{formatKathmandu(result.issued_at)}</dd>
-              </div>
-            </dl>
+          <div className="mt-6">
+            <Alert variant={result.valid ? 'success' : 'danger'}>
+              <p className="text-lg font-semibold">{result.valid ? 'Valid certificate' : 'Revoked certificate'}</p>
+              <dl className="mt-3 space-y-1 text-sm">
+                <div>
+                  <dt className="inline font-medium">Name: </dt>
+                  <dd className="inline">{result.recipient_name}</dd>
+                </div>
+                <div>
+                  <dt className="inline font-medium">Type: </dt>
+                  <dd className="inline">{TYPE_LABELS[result.certificate_type] ?? result.certificate_type}</dd>
+                </div>
+                <div>
+                  <dt className="inline font-medium">Conference: </dt>
+                  <dd className="inline">{result.conference_name}</dd>
+                </div>
+                <div>
+                  <dt className="inline font-medium">Issued: </dt>
+                  <dd className="inline">{formatKathmandu(result.issued_at)}</dd>
+                </div>
+              </dl>
+            </Alert>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

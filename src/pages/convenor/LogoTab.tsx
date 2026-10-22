@@ -5,6 +5,7 @@ import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } f
 import { publicImageUrl } from '../../lib/storage'
 import { ImageUpload } from '../../components/ImageUpload'
 import { useToast } from '../../components/ui/Toast'
+import { Alert, Button, Input, Spinner } from '../../components/ui'
 
 const MAX_LOGO_MB = 2
 const MAX_BANNER_MB = 3
@@ -149,19 +150,23 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
   }
 
   if (loading) {
-    return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
   }
 
   if (loadError || !data) {
-    return <p className="mt-6 text-sm text-red-600">{loadError ?? 'Could not load branding.'}</p>
+    return <Alert variant="danger">{loadError ?? 'Could not load branding.'}</Alert>
   }
 
   return (
     <div className="mt-6 flex flex-col gap-10 lg:flex-row">
       <div className="max-w-md flex-1 space-y-8">
         <div>
-          <p className="text-sm font-medium text-ink">Logo</p>
-          <p className="mt-1 text-xs text-ink/50">
+          <p className="text-sm font-medium text-text">Logo</p>
+          <p className="mt-1 text-xs text-text-muted">
             Square image, up to {MAX_LOGO_MB} MB. Shown top-left on the conference page.
           </p>
           <div className="mt-2">
@@ -178,29 +183,27 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
           </div>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4 border-t border-line pt-6">
-          {formError ? (
-            <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-              {formError}
-            </div>
-          ) : null}
-<div>
-            <label htmlFor="tagline" className="block text-sm font-medium text-ink">
+        <form onSubmit={handleSave} className="space-y-4 border-t border-border pt-6">
+          {formError ? <Alert variant="danger">{formError}</Alert> : null}
+          <div>
+            <label htmlFor="tagline" className="block text-sm font-medium text-text">
               Tagline
             </label>
-            <input
+            <Input
               id="tagline"
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
               maxLength={200}
               placeholder="A short line shown under the conference name"
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+              className="mt-1"
+              error={Boolean(errors.tagline)}
             />
-            {errors.tagline ? <p className="mt-1 text-sm text-red-600">{errors.tagline}</p> : null}
+            {errors.tagline ? <p className="mt-1 text-sm text-danger">{errors.tagline}</p> : null}
           </div>
 
+          {/* Colour-picker control: a deliberate per-conference branding feature, kept byte-for-byte. */}
           <div>
-            <label htmlFor="primary_color" className="block text-sm font-medium text-ink">
+            <label htmlFor="primary_color" className="block text-sm font-medium text-text">
               Primary colour
             </label>
             <div className="mt-1 flex items-center gap-2">
@@ -218,22 +221,18 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
                 className="flex-1 rounded-md border border-line px-3 py-2 font-mono uppercase focus:border-button"
               />
             </div>
-            {errors.primary_color ? <p className="mt-1 text-sm text-red-600">{errors.primary_color}</p> : null}
-            <p className="mt-1 text-xs text-ink/50">Used for buttons, links, and the conference page background.</p>
+            {errors.primary_color ? <p className="mt-1 text-sm text-danger">{errors.primary_color}</p> : null}
+            <p className="mt-1 text-xs text-text-muted">Used for buttons, links, and the conference page background.</p>
           </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
+          <Button type="submit" loading={saving}>
+            Save
+          </Button>
         </form>
 
-        <div className="border-t border-line pt-6">
-          <p className="text-sm font-medium text-ink">Banner image</p>
-          <p className="mt-1 text-xs text-ink/50">
+        <div className="border-t border-border pt-6">
+          <p className="text-sm font-medium text-text">Banner image</p>
+          <p className="mt-1 text-xs text-text-muted">
             PNG, JPG, or WEBP, up to {MAX_BANNER_MB} MB. Shown behind the conference name.
           </p>
           <div className="mt-2">
@@ -252,7 +251,7 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
       </div>
 
       <div className="flex-1">
-        <p className="text-sm font-medium text-ink">Live preview</p>
+        <p className="text-sm font-medium text-text">Live preview</p>
         <div className="mt-2">
           <LivePreview
             name={data.name}

@@ -83,23 +83,23 @@ function setMetaDescription(content: string) {
 
 function SkeletonCard() {
   return (
-    <div className="animate-pulse rounded-xl border border-landing-border bg-white p-5">
+    <div className="animate-pulse rounded-xl border border-border bg-surface p-5">
       <div className="flex items-start gap-3">
-        <div className="h-12 w-12 shrink-0 rounded-md bg-landing-navy-100" />
+        <div className="h-12 w-12 shrink-0 rounded-md bg-surface-muted" />
         <div className="min-w-0 flex-1">
-          <div className="h-4 w-3/4 rounded bg-landing-navy-100" />
-          <div className="mt-2 h-3 w-1/2 rounded bg-landing-navy-100" />
+          <div className="h-4 w-3/4 rounded bg-surface-muted" />
+          <div className="mt-2 h-3 w-1/2 rounded bg-surface-muted" />
         </div>
       </div>
-      <div className="mt-4 h-3 w-2/3 rounded bg-landing-navy-100" />
-      <div className="mt-3 h-5 w-24 rounded-full bg-landing-navy-100" />
+      <div className="mt-4 h-3 w-2/3 rounded bg-surface-muted" />
+      <div className="mt-3 h-5 w-24 rounded-full bg-surface-muted" />
     </div>
   )
 }
 
 function StepIcon({ index }: { index: number }) {
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-landing-navy-600 text-sm font-semibold text-white">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-on-brand">
       {index + 1}
     </div>
   )
@@ -322,10 +322,10 @@ export function HomePage() {
       : SITE.conferences.emptyStates[tab]
 
   return (
-    <div className="min-h-screen bg-landing-bg text-landing-text">
+    <div className="min-h-screen bg-page-bg text-text">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-landing-navy-900 focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-brand focus:shadow-lg"
       >
         Skip to main content
       </a>
@@ -392,7 +392,7 @@ export function HomePage() {
       >
         <Reveal>
         <h2 className="text-2xl font-semibold sm:text-3xl">{SITE.conferences.heading}</h2>
-        <p className="mt-2 text-landing-muted">{SITE.conferences.description}</p>
+        <p className="mt-2 text-text-muted">{SITE.conferences.description}</p>
 
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
@@ -403,8 +403,8 @@ export function HomePage() {
                 onClick={() => setTab(t.id as TabId)}
                 className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
                   tab === t.id
-                    ? 'border-landing-navy-600 bg-landing-navy-600 text-white'
-                    : 'border-landing-border text-landing-muted hover:bg-landing-navy-100'
+                    ? 'border-brand bg-brand text-on-brand'
+                    : 'border-border text-text-muted hover:bg-surface-muted'
                 }`}
               >
                 {t.label}
@@ -415,17 +415,17 @@ export function HomePage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={SITE.conferences.searchPlaceholder}
-            className="w-full rounded-md border border-landing-border px-3 py-2 text-sm focus:border-landing-navy-600 sm:w-72"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-button sm:w-72"
           />
         </div>
 
         {error ? (
-          <div className="mt-8 rounded-xl border border-dashed border-landing-border bg-white px-4 py-10 text-center">
-            <p className="text-sm text-landing-muted">{SITE.conferences.loadError}</p>
+          <div className="mt-8 rounded-xl border border-dashed border-border bg-surface px-4 py-10 text-center">
+            <p className="text-sm text-text-muted">{SITE.conferences.loadError}</p>
             <button
               type="button"
               onClick={() => loadConferences()}
-              className="mt-4 rounded-md bg-landing-navy-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-hover"
             >
               {SITE.conferences.retry}
             </button>
@@ -437,7 +437,7 @@ export function HomePage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="mt-8 rounded-xl border border-dashed border-landing-border bg-white px-4 py-10 text-center text-sm text-landing-muted">
+          <p className="mt-8 rounded-xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
             {emptyMessage}
           </p>
         ) : (
@@ -450,18 +450,18 @@ export function HomePage() {
                   key={c.id}
                   to={`/c/${c.slug}`}
                   style={{ borderTopColor: accent }}
-                  className="rounded-xl border border-landing-border border-t-4 bg-white p-5 shadow-sm transition hover:shadow-md"
+                  className="rounded-xl border border-border border-t-4 bg-surface p-5 shadow-sm transition hover:shadow-md"
                 >
                   <div className="flex items-start gap-3">
                     {logoUrl ? (
                       <img src={logoUrl} alt="" loading="lazy" className="h-12 w-12 shrink-0 object-contain" />
                     ) : null}
                     <div className="min-w-0">
-                      <h3 className="truncate font-semibold text-landing-text">{c.name}</h3>
-                      {c.tagline ? <p className="truncate text-sm text-landing-muted">{c.tagline}</p> : null}
+                      <h3 className="truncate font-semibold text-text">{c.name}</h3>
+                      {c.tagline ? <p className="truncate text-sm text-text-muted">{c.tagline}</p> : null}
                     </div>
                   </div>
-                  <p className="mt-3 text-sm text-landing-muted">
+                  <p className="mt-3 text-sm text-text-muted">
                     {formatDateRange(c.start_date, c.end_date)}
                     {c.city ? ` · ${c.city}` : ''}
                   </p>
@@ -491,15 +491,15 @@ export function HomePage() {
             {announcements.map((a) => {
               const bodyLines = a.body.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2).join(' ')
               return (
-                <div key={a.id} className="rounded-xl border border-landing-border bg-white p-5">
+                <div key={a.id} className="rounded-xl border border-border bg-surface p-5">
                   {a.conference_name ? (
-                    <p className="text-xs font-semibold uppercase tracking-wide text-landing-navy-600">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-brand">
                       {a.conference_name}
                     </p>
                   ) : null}
-                  <h3 className="mt-1 font-semibold text-landing-text">{a.title}</h3>
-                  <p className="mt-2 line-clamp-2 text-sm text-landing-muted">{bodyLines}</p>
-                  <p className="mt-3 text-xs text-landing-muted">
+                  <h3 className="mt-1 font-semibold text-text">{a.title}</h3>
+                  <p className="mt-2 line-clamp-2 text-sm text-text-muted">{bodyLines}</p>
+                  <p className="mt-3 text-xs text-text-muted">
                     {formatKathmandu(a.publish_at ?? a.created_at, { dateOnly: true })}
                   </p>
                 </div>
@@ -517,18 +517,18 @@ export function HomePage() {
           sectionRefs.current['how-it-works'] = el
         }}
         style={{ scrollMarginTop: headerHeight + 8 }}
-        className="bg-landing-navy-100"
+        className="bg-surface-muted"
       >
         <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6">
           <Reveal>
           <h2 className="text-center text-2xl font-semibold sm:text-3xl">{SITE.steps.heading}</h2>
           <div className="relative mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="absolute top-5 left-0 right-0 hidden h-px bg-landing-border lg:block" aria-hidden="true" />
+            <div className="absolute top-5 left-0 right-0 hidden h-px bg-border lg:block" aria-hidden="true" />
             {SITE.steps.items.map((step, i) => (
               <div key={step.title} className="relative flex flex-col items-center text-center lg:items-start lg:text-left">
                 <StepIcon index={i} />
                 <p className="mt-4 font-semibold">{step.title}</p>
-                <p className="mt-1 text-sm text-landing-muted">{step.description}</p>
+                <p className="mt-1 text-sm text-text-muted">{step.description}</p>
               </div>
             ))}
           </div>
@@ -549,12 +549,12 @@ export function HomePage() {
         <h2 className="text-center text-2xl font-semibold sm:text-3xl">{SITE.roles.heading}</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {SITE.roles.items.map((role) => (
-            <div key={role.title} className="rounded-xl border border-landing-border bg-white p-5">
+            <div key={role.title} className="rounded-xl border border-border bg-surface p-5">
               <h3 className="font-semibold">{role.title}</h3>
-              <ul className="mt-3 space-y-2 text-sm text-landing-muted">
+              <ul className="mt-3 space-y-2 text-sm text-text-muted">
                 {role.bullets.map((b) => (
                   <li key={b} className="flex gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-landing-gold" />
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
                     {b}
                   </li>
                 ))}
@@ -562,7 +562,7 @@ export function HomePage() {
             </div>
           ))}
         </div>
-        <p className="mt-6 text-center text-sm text-landing-muted">{SITE.roles.note}</p>
+        <p className="mt-6 text-center text-sm text-text-muted">{SITE.roles.note}</p>
 
         <h2 className="mt-20 text-center text-2xl font-semibold sm:text-3xl">{SITE.whyPlatform.heading}</h2>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -578,12 +578,12 @@ export function HomePage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
-                className="mx-auto text-landing-navy-600 lg:mx-0"
+                className="mx-auto text-brand lg:mx-0"
               >
                 {WHY_ICONS[i]}
               </svg>
               <p className="mt-3 font-semibold">{item.title}</p>
-              <p className="mt-1 text-sm text-landing-muted">{item.description}</p>
+              <p className="mt-1 text-sm text-text-muted">{item.description}</p>
             </div>
           ))}
         </div>
@@ -597,7 +597,7 @@ export function HomePage() {
           sectionRefs.current.faq = el
         }}
         style={{ scrollMarginTop: headerHeight + 8 }}
-        className="bg-landing-navy-100"
+        className="bg-surface-muted"
       >
         <div className="mx-auto max-w-[760px] px-4 py-16 sm:px-6">
           <Reveal>
@@ -616,16 +616,16 @@ export function HomePage() {
           sectionRefs.current.contact = el
         }}
         style={{ scrollMarginTop: headerHeight + 8 }}
-        className="bg-landing-navy-800 text-white"
+        className="bg-brand text-on-brand"
       >
         <Reveal className="mx-auto flex max-w-[1200px] flex-col items-center gap-4 px-4 py-14 text-center sm:px-6">
           <h2 className="text-2xl font-semibold sm:text-3xl">{SITE.contactBand.heading}</h2>
-          <p className="max-w-xl text-white/80">{SITE.contactBand.description}</p>
+          <p className="max-w-xl text-on-brand/80">{SITE.contactBand.description}</p>
           <a
             href={contactGmailHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 rounded-md bg-white px-5 py-2.5 font-medium text-landing-navy-900 hover:opacity-90"
+            className="mt-2 rounded-md bg-surface px-5 py-2.5 font-medium text-brand hover:opacity-90"
           >
             {SITE.contactBand.cta}
           </a>

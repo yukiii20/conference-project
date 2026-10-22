@@ -1,14 +1,39 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-ink: #172033;
-  --color-background: #f3f5f8;
-  --color-line: #d9dee7;
-  --color-button: #2747a0;
-  --color-accent: #e3a21a;
+  /* Step 7B+C app theme — Cosmic Latte / Mocha Cream / Deep Burgundy. Applies to
+     the whole app (home page except the hero, login/signup/forgot/reset,
+     /portal, convenor portal, super admin, /verify, check-in desk, header,
+     footer, toasts, dialogs) including the shared ui/ library used everywhere.
+     The legacy --color-ink/background/line/button names are kept (every page
+     already references them) but repointed to this palette, so the whole app
+     updates from one place. Change colours only through these tokens, never
+     hard-coded hex in pages. CONFERENCE pages still layer the convenor's own
+     primary_color on top via inline styles/props — that mechanism is untouched. */
+  --color-ink: #2b2420;
+  --color-background: #f7f2ea;
+  --color-line: #b7a89a;
+  --color-button: #1e3a8a;
+  --color-button-hover: #172f6e;
+  --color-button-active: #13285c;
+  --color-outline-hover: #e8edf8;
+  --color-danger: #b42318;
+  --color-danger-hover: #912018;
 
-  /* Landing page (/, /privacy, /terms) only — never used by the portal, the
-     conference pages, or login. Keep the two palettes separate. */
+  /* Semantic names for new/updated markup. */
+  --color-page-bg: #f7f2ea;
+  --color-surface: #fffdf9;
+  --color-surface-muted: #e8dcc6;
+  --color-border: #b7a89a;
+  --color-border-soft: #ddd1c2;
+  --color-brand: #722f37;
+  --color-brand-hover: #5c252c;
+  --color-text: #2b2420;
+  --color-text-muted: #6b5e52;
+  --color-on-brand: #ffffff;
+
+  /* Landing page (/, /privacy, /terms) hero only — the rest of the home page
+     moved to the app theme above in Step 7B+C. Keep the two palettes separate. */
   --color-landing-navy-900: #0a1a33;
   --color-landing-navy-800: #12284c;
   --color-landing-navy-600: #1f3f73;

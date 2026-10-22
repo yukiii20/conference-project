@@ -96,3 +96,130 @@ auth pages, table headers, card containers, plain inputs) was left as-is. Those 
 already visually consistent with no behaviour or appearance change needed from a migration, so
 the fix queue here prioritised the rows that were actual bugs (colour disagreements, no
 confirm dialog, no feedback, wrong touch size) over a cosmetic-only refactor of ~30-50 files.
+
+## Step 7B+C — colour theme (Cosmic Latte / Mocha Cream / Deep Burgundy) + the remaining migration
+
+Date: 2026-10-18. Scope: `docs/finish-7bc-theme-and-ui.md`. Finishes exactly the "Not done" item
+above (the full `<button>`/`<input>`/card migration) and rolls out the new brand palette.
+
+### A. Tokens
+
+Every colour now comes from one place, `src/index.css`'s `@theme` block:
+
+| Token | Hex | Used for |
+|---|---|---|
+| `page-bg` (= legacy `background`) | `#F7F2EA` | page background |
+| `surface` | `#FFFDF9` | cards, tables, dialogs, inputs |
+| `surface-muted` | `#E8DCC6` | table header row, sidebar background, selected/hover rows, tag backgrounds |
+| `border` (= legacy `line`) | `#B7A89A` | card/input/table borders, dividers |
+| `border-soft` | `#DDD1C2` | light dividers inside cards |
+| `brand` | `#722F37` | top bar, footer, page-title accents, active sidebar item + left bar, active tab underline, links |
+| `brand-hover` | `#5C252C` | brand hover |
+| `text` (= legacy `ink`) | `#2B2420` | main text |
+| `text-muted` | `#6B5E52` | secondary text |
+| `on-brand` | `#FFFFFF` | text/icons on the burgundy bar |
+| `button` (= legacy `button`, repointed) | `#1E3A8A` | primary action buttons (Save/Create/Submit/Sign in/Register), NAVY, distinct from the brand burgundy |
+| `button-hover` / `button-active` | `#172F6E` / `#13285C` | primary button states |
+| `outline-hover` | `#E8EDF8` | outline-button hover background |
+| `danger` / `danger-hover` | `#B42318` / `#912018` | Delete/Revoke/Reject — a clear red, distinct from the burgundy brand |
+
+The legacy names (`background`/`ink`/`line`/`button`) were **repointed** to this same palette
+rather than renamed everywhere, so every page that already referenced them (including the ones
+this step didn't touch directly) picked up the new look automatically. `src/lib/status.ts`'s
+`StatusChip`/`Alert`/`Toast` tones were updated to the brief's exact hex values (success
+`#166534`/`#DCFCE7`/`#86EFAC`, warning `#92400E`/`#FEF3C7`, info `#1E3A8A`/`#E0E7FF`, danger
+`#991B1B`/`#FEE2E2`, withdrawn/neutral `#57534E`/`#E7E5E4`) and a success toast now renders with
+the exact same green classes as a success `Alert`/`StatusChip` (previously all three toast
+variants shared one dark `bg-ink` background with only the icon colour changing — not what the
+brief asked for).
+
+**Intentionally left outside this theme** (same reasoning as the brief's own exemptions):
+- **Conference pages** (`ConferencePage.tsx`, `src/pages/conference/*`) — keep the convenor's own
+  `primary_color` branding untouched; they still use the legacy `background`/`ink`/`line` token
+  names for neutral chrome, which now render in the new palette too since those tokens were
+  repointed (not renamed) — the per-conference accent mechanism itself was not touched.
+- **The brick-wall home hero** — unchanged brown/brick/white design; only the rest of the home
+  page (conferences list, announcements, how-it-works, features, FAQ, contact band) and the
+  shared `LandingHeader`/`LandingFooter` moved to the new palette.
+- **`SuperAdminLoginPage.tsx`** (`.sa-login__*` classes) — the deliberate, separately-documented
+  "plain institutional" design from an earlier step; left byte-for-byte as before.
+- **`LogoTab.tsx`'s live branding preview** and the `primary_color` picker control — per-conference
+  branding feature, not this theme.
+- **`MyTicketTab.tsx`'s `PORTAL_ACCENT` constant** — feeds `RegistrationPanel`'s `accent` prop,
+  the same conference-branding mechanism.
+- **`ProgrammeTab.tsx`'s `TRACK_COLORS`** — each track's own colour in the Sessions grid, a
+  separate per-track identity system, not part of the app chrome.
+- **Privacy/Terms pages** — not listed in the brief's scope; still use the landing palette.
+
+### B. Contrast (WCAG AA)
+
+Computed (relative luminance, not estimated) for every documented pair in the brief:
+
+| Pair | Ratio | AA normal text (≥4.5) |
+|---|---|---|
+| text `#2B2420` on page-bg `#F7F2EA` | 13.70 | PASS |
+| text-muted `#6B5E52` on page-bg | 5.63 | PASS |
+| text on surface `#FFFDF9` | 15.02 | PASS |
+| text-muted on surface | 6.17 | PASS |
+| brand `#722F37` on surface (links/page titles) | 9.49 | PASS |
+| on-brand white on brand bg (top bar/footer) | 9.65 | PASS |
+| white on button navy `#1E3A8A` (primary) | 10.36 | PASS |
+| white on button-hover `#172F6E` | 12.59 | PASS |
+| white on button-active `#13285C` | 14.13 | PASS |
+| button-navy text on white (outline button) | 10.36 | PASS |
+| button-navy text on outline-hover `#E8EDF8` | 8.83 | PASS |
+| white on danger `#B42318` | 6.57 | PASS |
+| white on danger-hover `#912018` | 8.66 | PASS |
+| success text `#166534` on `#DCFCE7` | 6.49 | PASS |
+| warning text `#92400E` on `#FEF3C7` | 6.37 | PASS |
+| info text `#1E3A8A` on `#E0E7FF` | 8.41 | PASS |
+| danger-chip text `#991B1B` on `#FEE2E2` | 6.80 | PASS |
+| neutral/withdrawn text `#57534E` on `#E7E5E4` | 6.08 | PASS |
+| text-muted on surface-muted `#E8DCC6` (table header row) | 4.62 | PASS |
+| brand text on surface-muted (avatar initials) | 7.11 | PASS |
+| sidebar inactive text (`text/70`) on hover `#DDD1C2` | 5.01 | PASS |
+
+Every documented text/background pair clears WCAG AA (4.5:1) for normal text — nothing needed to
+be darkened. (`border` on `page-bg` is 2.08:1, but that pair is never text — it's the card/input
+border colour, which only needs the much lower non-text contrast minimum, not checked against
+the text threshold.) All inputs render at 16px (`text-base` in the shared `Input`/`Select`/
+`Textarea`), text is ≥14px everywhere via the shared components, and every interactive element
+keeps a visible `focus-visible` outline (the shared `Button`'s outline colour is the primary
+navy; native elements inherit the global `:focus-visible` rule in `index.css`).
+
+### C. The rest of the migration
+
+Every remaining page/tab was migrated to the shared `src/components/ui/` library (Button,
+Input/Select/Textarea/Checkbox, FormField, Card, PageHeader, Tabs, Table/Pagination,
+Badge/StatusChip, Modal/ConfirmDialog, Toast, Spinner/Skeleton, EmptyState/ErrorState, Alert) and
+every page now starts with the shared `PageHeader`. Convenor dashboard (B3): "Reviews assigned"
+renamed to "Reviews pending" (the underlying SQL was already counting assigned-but-not-submitted
+vs. submitted correctly — added `server/tests/dashboard.test.ts`'s new test that actually creates
+`assigned`/`in_progress`/`completed` review rows and checks the dashboard tells them apart, not
+just that both read 0), stat cards are now same-height and clickable to their matching page, the
+"Submissions per track" bars keep the same row height for 0-count tracks. Sidebar label
+"Communication and reports" → "Communication" (same URL, `e2e/convenorPortal.spec.ts` and
+`e2e/notifications.spec.ts` updated). `PortalHeader` now has one on-brand user menu (click
+avatar/name → Profile/Change password/Sign out, closes on Esc/click-outside, keyboard
+accessible) instead of three separate always-visible links; the bell and role chip stay visible
+outside the menu. Both sidebars (convenor + portal) now show a Mocha-Cream background with a
+white-surface/burgundy-text/3px-burgundy-left-bar active state.
+
+A final repo-wide grep (after the migration) for old hard-coded colour classes/hex outside the
+documented exceptions above found zero: no default-Tailwind colour utilities (`blue-*`/`red-*`/
+`green-*`/`amber-*`/`gray-*`/etc.), no raw hex literals, no leftover `<button className=`/
+`<input className=`/`<select className=`/`<textarea className=` outside structural
+navigation/disclosure controls (mobile menu toggles, accordion triggers, dropdown triggers,
+full-row "click to open" list items) — every one of those was reviewed and is either a non-
+action control the shared `Button` convention doesn't apply to, or already styled purely through
+tokens. Two migration side-effects needed e2e selector updates (not app bugs): the shared `Tabs`
+component renders `role="tab"` instead of a plain button's `role="button"` — `adminPortal.spec.ts`,
+`notifications.spec.ts`, `responsive.spec.ts` (super admin's tab bar) and `submissions.spec.ts`
+("New abstract" tab in the author section) were updated to query `getByRole('tab', ...)`; and one
+Card-class selector in `convenorPortal.spec.ts` was updated to match the shared `Card`'s classes.
+
+tsc (root + server), build (both), server tests (451/451, including the new dashboard-counts
+test), root tests (21/21), and the full Playwright suite (88/88) all green after these fixes —
+re-seeding the test DB before each full Playwright run per the existing documented workflow.
+Screenshots captured into `test-results/ui-final-theme/` at 1280px and 390px (gitignored, not
+committed) — see the commit message / final report for the list and any visual issues found.

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { ASSIGNABLE_MEMBER_ROLES, inviteMemberSchema, type InviteMemberInput } from '../../lib/validation'
-import { EmptyState } from '../../components/ui/EmptyState'
+import { Alert, Button, Checkbox, EmptyState, Input, Select, Spinner, StatusChip } from '../../components/ui'
+import { TableContainer } from '../../components/ui/Table'
 
 type Member = {
   id: string
@@ -161,32 +162,34 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
     <div className="mt-6 max-w-3xl space-y-8">
       <div>
         <div className="flex flex-wrap gap-2">
-          <input
+          <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by name or email"
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+            className="w-auto text-sm"
           />
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
-          >
+          <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-auto text-sm">
             <option value="">All roles</option>
             {Object.entries(ROLE_LABELS).map(([code, label]) => (
               <option key={code} value={code}>
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <div className="mt-3">
+            <Alert variant="danger">{error}</Alert>
+          </div>
+        ) : null}
 
         {loading ? (
-          <p className="mt-4 text-sm text-ink/60">Loading…</p>
+          <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
+            <Spinner size="sm" /> Loading…
+          </div>
         ) : members.length === 0 ? (
-          <div className="mt-4 rounded-lg border border-dashed border-line bg-white">
+          <div className="mt-4 rounded-lg border border-dashed border-border bg-surface">
             <EmptyState
               title="No members found."
               message={q || roleFilter ? 'No one matches this search or filter.' : 'Invite someone from the form below.'}
@@ -202,10 +205,10 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
             />
           </div>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
-            <table className="w-full min-w-[640px] text-left text-sm">
+          <div className="mt-4">
+            <TableContainer minWidth={640}>
               <thead>
-                <tr className="border-b border-line text-ink/60">
+                <tr className="border-b border-border bg-surface-muted text-text-muted">
                   <th className="px-3 py-2 font-medium">Name</th>
                   <th className="px-3 py-2 font-medium">Email</th>
                   <th className="px-3 py-2 font-medium">Role</th>
@@ -214,7 +217,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                   <th className="px-3 py-2 font-medium"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-border">
                 {members.map((m) => (
                   <tr key={m.id} className={m.status === 'removed' ? 'opacity-50' : ''}>
                     <td className="px-3 py-2">{m.full_name}</td>
@@ -223,45 +226,47 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                       {m.role_code === 'convenor' ? (
                         <span>{ROLE_LABELS.convenor}</span>
                       ) : (
-                        <select
+                        <Select
                           value={m.role_code}
                           disabled={busyId === m.id || m.status === 'removed'}
                           onChange={(e) => handleRoleChange(m, e.target.value)}
-                          className="rounded-md border border-line px-2 py-1 text-xs focus:border-button"
+                          className="w-auto text-xs"
                         >
                           {ASSIGNABLE_MEMBER_ROLES.map((r) => (
                             <option key={r} value={r}>
                               {ROLE_LABELS[r]}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       )}
                       {m.role_code === 'reviewer' ? (
                         <div className="mt-1 flex items-center gap-2">
-                          <input
+                          <Input
                             type="number"
                             min={1}
                             placeholder="Max reviews"
                             defaultValue={m.max_review_load ?? ''}
                             onBlur={(e) => handleMaxReviewLoad(m, e.target.value)}
-                            className="w-24 rounded-md border border-line px-2 py-1 text-xs focus:border-button"
+                            className="w-24 text-xs"
                           />
                           <button type="button" onClick={() => openTracks(m)} className="text-xs font-medium text-button underline">
                             Tracks
                           </button>
                         </div>
                       ) : null}
-                      {rowErrors[m.id] ? <p className="mt-1 text-xs text-red-600">{rowErrors[m.id]}</p> : null}
+                      {rowErrors[m.id] ? <p className="mt-1 text-xs text-danger">{rowErrors[m.id]}</p> : null}
                     </td>
-                    <td className="px-3 py-2">{m.status}</td>
-                    <td className="px-3 py-2 text-ink/60">{new Date(m.created_at).toLocaleDateString()}</td>
+                    <td className="px-3 py-2">
+                      <StatusChip status={m.status} labels={{ active: 'active', removed: 'removed' }} />
+                    </td>
+                    <td className="px-3 py-2 text-text-muted">{new Date(m.created_at).toLocaleDateString()}</td>
                     <td className="px-3 py-2 text-right">
                       {m.role_code !== 'convenor' && m.status === 'active' ? (
                         <button
                           type="button"
                           onClick={() => handleRemove(m)}
                           disabled={busyId === m.id}
-                          className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                          className="text-xs font-medium text-danger hover:underline disabled:opacity-50"
                         >
                           Remove
                         </button>
@@ -270,98 +275,95 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </TableContainer>
           </div>
         )}
       </div>
 
       {tracksUserId ? (
-        <div className="rounded-lg border border-line bg-white p-4">
-          <p className="font-medium text-ink">Track coverage</p>
-          <p className="mt-1 text-xs text-ink/50">Which tracks this reviewer covers — shown as a "track match" when assigning papers.</p>
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <p className="font-medium text-text">Track coverage</p>
+          <p className="mt-1 text-xs text-text-muted">Which tracks this reviewer covers — shown as a "track match" when assigning papers.</p>
           <div className="mt-3 flex flex-wrap gap-3">
             {allTracks.length === 0 ? (
-              <p className="text-sm text-ink/60">No tracks yet.</p>
+              <p className="text-sm text-text-muted">No tracks yet.</p>
             ) : (
               allTracks.map((t) => (
-                <label key={t.id} className="flex items-center gap-1.5 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={selectedTracks.has(t.id)}
-                    onChange={(e) => {
-                      const next = new Set(selectedTracks)
-                      if (e.target.checked) next.add(t.id)
-                      else next.delete(t.id)
-                      setSelectedTracks(next)
-                    }}
-                  />
-                  {t.name}
-                </label>
+                <Checkbox
+                  key={t.id}
+                  label={t.name}
+                  checked={selectedTracks.has(t.id)}
+                  onChange={(e) => {
+                    const next = new Set(selectedTracks)
+                    if (e.target.checked) next.add(t.id)
+                    else next.delete(t.id)
+                    setSelectedTracks(next)
+                  }}
+                />
               ))
             )}
           </div>
           <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={saveTracks}
-              disabled={tracksSaving}
-              className="rounded-md bg-button px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-            >
-              {tracksSaving ? 'Saving…' : 'Save'}
-            </button>
-            <button type="button" onClick={() => setTracksUserId(null)} className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background">
+            <Button type="button" size="sm" onClick={saveTracks} loading={tracksSaving}>
+              Save
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setTracksUserId(null)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
 
-      <form onSubmit={handleInvite} className="rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">Invite by email</p>
-        <p className="mt-1 text-xs text-ink/50">
+      <form onSubmit={handleInvite} className="rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">Invite by email</p>
+        <p className="mt-1 text-xs text-text-muted">
           An existing account is added directly; a new email gets an invitation with a link to set a password.
         </p>
-        {inviteError ? <p className="mt-2 text-sm text-red-600">{inviteError}</p> : null}
-        {inviteSuccess ? <p className="mt-2 text-sm text-green-700">{inviteSuccess}</p> : null}
+        {inviteError ? (
+          <div className="mt-2">
+            <Alert variant="danger">{inviteError}</Alert>
+          </div>
+        ) : null}
+        {inviteSuccess ? (
+          <div className="mt-2">
+            <Alert variant="success">{inviteSuccess}</Alert>
+          </div>
+        ) : null}
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input
+          <Input
             value={invite.full_name}
             onChange={(e) => setInvite((p) => ({ ...p, full_name: e.target.value }))}
             placeholder="Full name"
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+            className="text-sm"
           />
-          <input
+          <Input
             value={invite.email}
             onChange={(e) => setInvite((p) => ({ ...p, email: e.target.value }))}
             placeholder="Email"
             type="email"
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+            className="text-sm"
           />
-          <input
+          <Input
             value={invite.phone}
             onChange={(e) => setInvite((p) => ({ ...p, phone: e.target.value }))}
             placeholder="Phone"
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+            className="text-sm"
           />
-          <select
+          <Select
             value={invite.role_code}
             onChange={(e) => setInvite((p) => ({ ...p, role_code: e.target.value as InviteMemberInput['role_code'] }))}
-            className="rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+            className="text-sm"
           >
             {ASSIGNABLE_MEMBER_ROLES.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
-        <button
-          type="submit"
-          disabled={inviting}
-          className="mt-3 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-        >
-          {inviting ? 'Sending…' : 'Send invitation'}
-        </button>
+        <Button type="submit" className="mt-3" loading={inviting}>
+          Send invitation
+        </Button>
       </form>
     </div>
   )

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { COMMITTEE_MEMBER_ROLES, COMMITTEE_TYPES, committeeSchema, type CommitteeInput } from '../../lib/validation'
-import { Button, Input, Select } from '../../components/ui'
+import { Alert, Badge, Button, Checkbox, EmptyState, Input, Select, Spinner, Textarea } from '../../components/ui'
 
 type CommitteeMember = {
   id: string
@@ -82,8 +82,8 @@ function MemberAddForm({ conferenceId, committeeId, onAdded }: { conferenceId: s
   }
 
   return (
-    <form onSubmit={handleAdd} className="mt-3 rounded-md border border-dashed border-line bg-background/40 p-3">
-      {error ? <p className="mb-2 text-xs text-red-600">{error}</p> : null}
+    <form onSubmit={handleAdd} className="mt-3 rounded-md border border-dashed border-border-soft bg-surface-muted p-3">
+      {error ? <p className="mb-2 text-xs text-danger">{error}</p> : null}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={emailLookup}
@@ -95,9 +95,9 @@ function MemberAddForm({ conferenceId, committeeId, onAdded }: { conferenceId: s
           Look up
         </Button>
         {foundUser ? (
-          <span className="flex min-h-10 items-center gap-1 rounded-full bg-green-100 px-3 text-sm text-green-800">
-            {foundUser.full_name}
-            <button type="button" onClick={() => setFoundUser(null)} className="underline">
+          <span className="flex min-h-10 items-center gap-2 text-sm">
+            <Badge tone="success">{foundUser.full_name}</Badge>
+            <button type="button" onClick={() => setFoundUser(null)} className="text-text-muted underline">
               clear
             </button>
           </span>
@@ -237,54 +237,62 @@ export function CommitteesTab({ conferenceId }: { conferenceId: string }) {
     }
   }
 
-  if (loading) return <p className="mt-6 text-sm text-ink/60">Loading…</p>
+  if (loading) {
+    return (
+      <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+        <Spinner size="sm" /> Loading…
+      </div>
+    )
+  }
 
   return (
     <div className="mt-6 max-w-3xl space-y-6">
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {committees.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">No committees yet.</p>
+        <div className="rounded-lg border border-dashed border-border bg-surface">
+          <EmptyState title="No committees yet." />
+        </div>
       ) : (
         committees.map((c, ci) => (
-          <div key={c.id} className="rounded-lg border border-line bg-white p-4">
+          <div key={c.id} className="rounded-lg border border-border bg-surface p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="font-medium text-ink">{c.name}</p>
-                <p className="text-xs text-ink/50">{c.committee_type.replace('_', ' ')}</p>
+                <p className="font-medium text-text">{c.name}</p>
+                <p className="text-xs text-text-muted">{c.committee_type.replace('_', ' ')}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => handleMoveCommittee(ci, 'up')} disabled={ci === 0} className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background disabled:opacity-40">
+                <Button type="button" variant="secondary" size="sm" onClick={() => handleMoveCommittee(ci, 'up')} disabled={ci === 0}>
                   ↑
-                </button>
-                <button type="button" onClick={() => handleMoveCommittee(ci, 'down')} disabled={ci === committees.length - 1} className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background disabled:opacity-40">
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => handleMoveCommittee(ci, 'down')} disabled={ci === committees.length - 1}>
                   ↓
-                </button>
-                <button type="button" onClick={() => handleTogglePublic(c)} className="rounded-md border border-line px-2 py-1 text-xs hover:bg-background">
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => handleTogglePublic(c)}>
                   {c.is_public ? 'Public' : 'Hidden'}
-                </button>
-                <button type="button" onClick={() => handleDelete(c)} className="text-xs font-medium text-red-600 hover:underline">
+                </Button>
+                <Button type="button" variant="danger" size="sm" onClick={() => handleDelete(c)}>
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
-            {c.description ? <p className="mt-2 text-sm text-ink/70">{c.description}</p> : null}
+            {c.description ? <p className="mt-2 text-sm text-text-muted">{c.description}</p> : null}
 
             {c.members.length > 0 ? (
               <ul className="mt-3 space-y-1">
                 {c.members.map((m, mi) => (
-                  <li key={m.id} className="flex items-center justify-between rounded-md bg-background px-2 py-1.5 text-sm">
+                  <li key={m.id} className="flex items-center justify-between rounded-md bg-surface-muted px-2 py-1.5 text-sm">
                     <span>
-                      {m.full_name ?? m.display_name} <span className="text-xs text-ink/50">({m.member_role.replace('_', '-')})</span>
+                      {m.full_name ?? m.display_name} <span className="text-xs text-text-muted">({m.member_role.replace('_', '-')})</span>
                     </span>
                     <span className="flex items-center gap-2">
-                      <button type="button" onClick={() => handleMoveMember(c, mi, 'up')} disabled={mi === 0} className="text-xs text-ink/50 hover:text-ink disabled:opacity-30">
+                      <button type="button" onClick={() => handleMoveMember(c, mi, 'up')} disabled={mi === 0} className="text-xs text-text-muted hover:text-text disabled:opacity-30">
                         ↑
                       </button>
-                      <button type="button" onClick={() => handleMoveMember(c, mi, 'down')} disabled={mi === c.members.length - 1} className="text-xs text-ink/50 hover:text-ink disabled:opacity-30">
+                      <button type="button" onClick={() => handleMoveMember(c, mi, 'down')} disabled={mi === c.members.length - 1} className="text-xs text-text-muted hover:text-text disabled:opacity-30">
                         ↓
                       </button>
-                      <button type="button" onClick={() => handleRemoveMember(c.id, m.id)} className="text-xs text-red-600 hover:underline">
+                      <button type="button" onClick={() => handleRemoveMember(c.id, m.id)} className="text-xs text-danger hover:underline">
                         Remove
                       </button>
                     </span>
@@ -298,46 +306,47 @@ export function CommitteesTab({ conferenceId }: { conferenceId: string }) {
         ))
       )}
 
-      <form onSubmit={handleCreate} className="rounded-lg border border-dashed border-line bg-white p-4">
-        <p className="font-medium text-ink">Add a committee</p>
-        {newError ? <p className="mt-2 text-sm text-red-600">{newError}</p> : null}
+      <form onSubmit={handleCreate} className="rounded-lg border border-dashed border-border bg-surface p-4">
+        <p className="font-medium text-text">Add a committee</p>
+        {newError ? (
+          <div className="mt-2">
+            <Alert variant="danger">{newError}</Alert>
+          </div>
+        ) : null}
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input
+          <Input
             value={newCommittee.name}
             onChange={(e) => setNewCommittee((p) => ({ ...p, name: e.target.value }))}
             placeholder="Committee name"
-            className="rounded-md border border-line px-3 py-2 focus:border-button"
           />
-          <select
+          <Select
             value={newCommittee.committee_type}
             onChange={(e) => setNewCommittee((p) => ({ ...p, committee_type: e.target.value as CommitteeInput['committee_type'] }))}
-            className="rounded-md border border-line px-3 py-2 focus:border-button"
           >
             {COMMITTEE_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t.replace('_', ' ')}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
-        <textarea
+        <Textarea
           value={newCommittee.description ?? ''}
           onChange={(e) => setNewCommittee((p) => ({ ...p, description: e.target.value }))}
           placeholder="Description (optional)"
           rows={2}
-          className="mt-3 w-full rounded-md border border-line px-3 py-2 focus:border-button"
+          className="mt-3"
         />
-        <label className="mt-3 flex items-center gap-2 text-sm text-ink">
-          <input
-            type="checkbox"
+        <div className="mt-3">
+          <Checkbox
+            label="Show on the public conference page"
             checked={newCommittee.is_public}
             onChange={(e) => setNewCommittee((p) => ({ ...p, is_public: e.target.checked }))}
           />
-          Show on the public conference page
-        </label>
-        <button type="submit" disabled={creating} className="mt-3 rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
-          {creating ? 'Adding…' : 'Add committee'}
-        </button>
+        </div>
+        <Button type="submit" className="mt-3" loading={creating}>
+          Add committee
+        </Button>
       </form>
     </div>
   )

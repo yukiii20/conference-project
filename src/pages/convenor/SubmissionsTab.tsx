@@ -3,6 +3,8 @@ import { api, ApiError } from '../../lib/api'
 import { SUBMISSION_STATUS_LABELS } from '../../lib/submissionDisplay'
 import { StatusChip } from '../../components/ui/Badge'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { TableContainer } from '../../components/ui/Table'
+import { Select, Spinner, Alert, Button, PageHeader } from '../../components/ui'
 import { SubmissionDetailPanel } from './SubmissionDetailPanel'
 
 type Track = { id: string; name: string }
@@ -54,16 +56,15 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
   if (selectedId) {
     return (
       <div className="mt-6">
-        <button
-          type="button"
+        <Button
+          variant="link"
           onClick={() => {
             setSelectedId(null)
             setRefreshKey((k) => k + 1)
           }}
-          className="text-sm text-button underline"
         >
           ← Back to submissions
-        </button>
+        </Button>
         <SubmissionDetailPanel conferenceId={conferenceId} submissionId={selectedId} />
       </div>
     )
@@ -71,14 +72,15 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6">
-      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      <PageHeader title="Submissions" subtitle="Browse submitted papers, their review progress, and status." />
+      {error ? (
+        <div className="mb-4">
+          <Alert variant="danger">{error}</Alert>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-        >
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
           <option value="">All statuses</option>
           {Object.entries(SUBMISSION_STATUS_LABELS)
             .filter(([code]) => code !== 'draft')
@@ -87,25 +89,23 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
                 {label}
               </option>
             ))}
-        </select>
-        <select
-          value={trackFilter}
-          onChange={(e) => setTrackFilter(e.target.value)}
-          className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"
-        >
+        </Select>
+        <Select value={trackFilter} onChange={(e) => setTrackFilter(e.target.value)} className="w-auto">
           <option value="">All tracks</option>
           {tracks.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {loading ? (
-        <p className="mt-6 text-sm text-ink/60">Loading…</p>
+        <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+          <Spinner size="sm" /> Loading…
+        </div>
       ) : rows.length === 0 ? (
-        <div className="mt-6 rounded-lg border border-dashed border-line bg-white">
+        <div className="mt-6 rounded-lg border border-dashed border-border bg-surface">
           <EmptyState
             title="No submissions match."
             message={statusFilter || trackFilter ? 'Try a different status or track filter.' : 'No one has submitted yet.'}
@@ -121,10 +121,12 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
           />
         </div>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[720px] text-left text-sm">
+        <div className="mt-4">
+          {/* Rows navigate to the detail panel on click, which the shared Table
+              component doesn't support — kept hand-rolled with shared tokens. */}
+          <TableContainer minWidth={720}>
             <thead>
-              <tr className="border-b border-line text-ink/60">
+              <tr className="border-b border-border bg-surface-muted text-text-muted">
                 <th className="px-4 py-2 font-medium">Code</th>
                 <th className="px-4 py-2 font-medium">Title</th>
                 <th className="px-4 py-2 font-medium">Track</th>
@@ -133,9 +135,9 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
                 <th className="px-4 py-2 font-medium">Avg score</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody className="divide-y divide-border">
               {rows.map((r) => (
-                <tr key={r.id} className="cursor-pointer hover:bg-background" onClick={() => setSelectedId(r.id)}>
+                <tr key={r.id} className="cursor-pointer hover:bg-surface-muted" onClick={() => setSelectedId(r.id)}>
                   <td className="px-4 py-3 font-mono text-xs">{r.submission_code ?? '—'}</td>
                   <td className="px-4 py-3">{r.title}</td>
                   <td className="px-4 py-3">{r.track_name ?? '—'}</td>
@@ -149,7 +151,7 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TableContainer>
         </div>
       )}
     </div>

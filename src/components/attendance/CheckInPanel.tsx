@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { BrowserQRCodeReader } from '@zxing/browser'
 import type { IScannerControls } from '@zxing/browser'
 import { api, ApiError } from '../../lib/api'
+import { Alert, Button, Input } from '../ui'
+import { toneBannerClasses } from '../../lib/status'
 
 type SearchResult = {
   id: string
@@ -156,16 +158,16 @@ export function CheckInPanel({
     <div>
       {message ? (
         <div
-          className={`rounded-md px-4 py-3 text-center text-lg font-semibold ${
-            message.kind === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
-          }`}
+          className={`rounded-md border px-4 py-3 text-center text-lg font-semibold ${toneBannerClasses(
+            message.kind === 'ok' ? 'success' : 'danger',
+          )}`}
         >
           {message.text}
         </div>
       ) : null}
 
-      <div className="mt-4 rounded-lg border border-line bg-white p-4">
-        <p className="text-sm font-medium text-ink">Scan a QR code</p>
+      <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <p className="text-sm font-medium text-text">Scan a QR code</p>
         {cameraSupported ? (
           <div className="mt-2">
             {/* Always mounted (just hidden when off) so videoRef.current is a
@@ -180,47 +182,38 @@ export function CheckInPanel({
               playsInline
             />
             {cameraOn ? (
-              <button type="button" onClick={stopCamera} className="mt-2 rounded-md border border-line px-3 py-1.5 text-sm hover:bg-background">
+              <Button type="button" variant="secondary" size="sm" onClick={stopCamera} className="mt-2">
                 Stop camera
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                onClick={startCamera}
-                className="rounded-md bg-button px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-              >
+              <Button type="button" size="sm" onClick={startCamera}>
                 Start camera
-              </button>
+              </Button>
             )}
           </div>
         ) : (
-          <p className="mt-1 text-sm text-ink/60">Camera scanning is not supported in this browser — use manual search below.</p>
+          <Alert variant="info">Camera scanning is not supported in this browser — use manual search below.</Alert>
         )}
       </div>
 
-      <div className="mt-4 rounded-lg border border-line bg-white p-4">
-        <p className="text-sm font-medium text-ink">Manual search</p>
-        <input
+      <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <p className="text-sm font-medium text-text">Manual search</p>
+        <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Name, email or registration number"
-          className="mt-2 w-full rounded-md border border-line px-3 py-2 text-sm focus:border-button"
+          className="mt-2"
         />
         {results.length > 0 ? (
           <ul className="mt-2 space-y-1">
             {results.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2 text-sm">
+              <li key={r.id} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
                 <span>
-                  {r.full_name} <span className="text-ink/50">({r.registration_number}, {r.category_name})</span>
+                  {r.full_name} <span className="text-text-muted">({r.registration_number}, {r.category_name})</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => checkIn(r.id)}
-                  disabled={busy}
-                  className="rounded-md bg-button px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
-                >
+                <Button type="button" size="sm" disabled={busy} onClick={() => checkIn(r.id)}>
                   Check in
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
