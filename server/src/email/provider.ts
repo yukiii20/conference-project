@@ -58,6 +58,22 @@ const smtpProvider: MailProvider = {
 const BREVO_SEND_URL = 'https://api.brevo.com/v3/smtp/email'
 
 /**
+ * Parses MAIL_FROM into the { name, email } shape Brevo's /v3/smtp/email
+ * expects for `sender`. Accepts either "Display Name <email@x.com>" (RFC
+ * 5322 mailbox form) or a plain "email@x.com". Brevo rejects the raw
+ * "Name <email>" string as an invalid `sender.email` (400 invalid_parameter).
+ */
+export function parseMailFrom(raw: string): { name?: string; email: string } {
+  const match = raw.match(/^\s*(.*?)\s*<([^<>]+)>\s*$/)
+  if (match && match[2]) {
+    const name = match[1]
+    const email = match[2]
+    return name ? { name, email } : { email }
+  }
+  return { email: raw.trim() }
+}
+
+/**
  * Sends over Brevo's transactional email HTTP API (plain HTTPS, port 443)
  * instead of SMTP - Render's FREE web services block the outbound SMTP
  * ports (25/465/587), so this is what makes email work there without
@@ -76,11 +92,11 @@ export const brevoProvider: MailProvider = {
         'api-key': env.BREVO_API_KEY ?? '',
       },
       body: JSON.stringify({
-        sender: { email: env.MAIL_FROM },
+        sender: parseMailFrom(env.MAIL_FROM ?? ''),
         to: [{ email: input.to }],
         subject: input.subject,
-        htmlContent: input.html,
-        textContent: input.text,
+        htmlContent: input.html || undefined,
+        textContent: input.text || undefined,
       }),
     })
 
