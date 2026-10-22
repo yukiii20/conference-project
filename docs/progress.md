@@ -304,3 +304,49 @@ features, recommended VPS size (2 vCPU/4 GB/60-80 GB SSD) and MySQL settings, ta
 going live, and paid-services-vs-cheaper-options. No SQL run, no schema changes, no secrets
 committed, no real emails sent - test DB and throwaway `:4100`/`:5273` servers only throughout,
 same as every prior step.
+
+## Step 9 - Deploy prep: Vercel + Render + Aiven - DONE
+Prepared the code for Vercel (frontend) + Render (backend) + Aiven (MySQL) without changing any
+local-dev behaviour - every new setting is optional with a safe default, and local `npm run dev`
+is untouched. The Aiven database (`conference_cms`, all SQL files, the `cms_app` user) was already
+set up by the user beforehand, not by this step - no SQL was run against it.
+
+Added: `vercel.json` (rewrites `/api/*` and `/files/*` to a placeholder Render URL - documented as
+the thing to replace in `docs/deploy-guide.md` step C -  then an SPA fallback to `/index.html`;
+long-cache headers for `/assets/*`, no-cache for `index.html`), `render.yaml` (Blueprint for a Node
+web service rooted at `server/`, `npm ci && npm run build` / `npm run start`, health check
+`/api/health`, `NODE_ENV=production`, every secret `sync: false`).
+
+Backend changes: `DB_SSL`/`DB_SSL_CA`/`DB_SSL_CA_PATH` (off by default; `server/src/db/pool.ts`
+passes them to mysql2 with `rejectUnauthorized: true`; `env.ts` refuses to start with `DB_SSL=true`
+and no CA), `STORAGE_DIR` (`server/src/storage/paths.ts` - defaults to `server/storage`, same as
+always; documented for pointing at a Render persistent disk, since Render's normal filesystem is
+wiped on every deploy/restart), and a new `EMAIL_MODE=brevo` provider
+(`server/src/email/provider.ts`, Brevo's HTTPS transactional email API) alongside the existing
+`console`/`smtp` modes, because Render's FREE web services block outbound SMTP ports 25/465/587 -
+same queue/retry/redaction/logging as `smtp`, since the worker only ever talks to the
+`MailProvider` interface. `TRUST_PROXY` already existed (`app.ts`'s `parseTrustProxySetting`,
+now exported) - documented as exactly `"1"` for Render (one proxy hop, since Vercel's rewrite adds
+none of its own) and covered by a new unit test.
+
+Checked `database/01_schema.sql`/`04_admin_extensions.sql` against what Aiven's managed MySQL
+refuses: no `DEFINER` clauses, no `SET GLOBAL`, all 48 tables already have a `PRIMARY KEY`
+(satisfies Aiven's `sql_require_primary_key`) - no schema changes needed, written up in
+`docs/aiven-mysql-setup.md` (reference only - the user already ran everything) alongside the one
+real gotcha (a SUPER/binary-logging error on `03_triggers.sql`, fixed via
+`log_bin_trust_function_creators`).
+
+New tests: `server/tests/trustProxy.test.ts` (TRUST_PROXY parsing) and
+`server/tests/brevoProvider.test.ts` (Brevo provider against a mocked `fetch` - no real emails,
+per the task's own requirement).
+
+Wrote `docs/deploy-guide.md` (beginner, numbered A-F: Aiven already-done pointer, Render env vars
++ plan tradeoffs table, Vercel import + rewrite URL, final checks, auto-redeploy on push, and a
+free-plan-limits table) - left `docs/deploy-render-vercel-aiven.md` (the task prompt itself)
+unmodified rather than overwriting it with the guide, per instruction.
+
+Verified: `tsc` (root+server) clean, both builds clean, `npm test` root (21/21) and server
+(456/456, 36 files incl. the two new ones), e2e fixtures re-seeded (`tests/e2eSeed.ts`), Playwright
+88/88 (one `net::ERR_CONNECTION_REFUSED` run killed by the throwaway Vite process dying mid-suite -
+not a regression, confirmed by restarting it, re-seeding, and getting 88/88 clean twice in a row).
+No SQL run, no secrets committed, no real emails sent.

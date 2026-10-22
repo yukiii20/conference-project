@@ -1,5 +1,16 @@
+import { readFileSync } from 'node:fs'
 import mysql from 'mysql2/promise'
 import { env } from '../config/env.js'
+
+// DB_SSL_CA (the certificate text itself) wins when both are set - that's
+// the shape a platform env var UI (Render, etc.) wants, pasted straight from
+// the Aiven console. DB_SSL_CA_PATH is the alternative for a CA file that's
+// actually on disk (e.g. checked into a secrets volume).
+function loadSslCa(): string | undefined {
+  if (env.DB_SSL_CA) return env.DB_SSL_CA
+  if (env.DB_SSL_CA_PATH) return readFileSync(env.DB_SSL_CA_PATH, 'utf8')
+  return undefined
+}
 
 export const pool = mysql.createPool({
   host: env.DB_HOST,
@@ -9,6 +20,12 @@ export const pool = mysql.createPool({
   database: env.DB_NAME,
   waitForConnections: true,
   connectionLimit: env.DB_POOL_SIZE,
+  // Off by default (plain local MySQL). Aiven's free MySQL plan requires SSL
+  // - env.ts refuses to start with DB_SSL=true and no CA, so this is only
+  // ever reached with a CA available. rejectUnauthorized stays true: without
+  // it the connection would still be encrypted but wouldn't verify the
+  // server is actually Aiven, defeating the point of pinning a CA at all.
+  ssl: env.DB_SSL ? { ca: loadSslCa(), rejectUnauthorized: true } : undefined,
   // DATE columns (start_date, end_date, ...) come back as plain 'YYYY-MM-DD'
   // strings — not JS Date objects — because every caller (conference forms,
   // <input type="date">, formatDateRange) expects that exact shape, same as

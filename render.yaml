@@ -1,0 +1,62 @@
+services:
+  - type: web
+    name: conference-cms-backend
+    runtime: node
+    rootDir: server
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # --- Database (Aiven) - values from the Aiven console, see docs/aiven-mysql-setup.md ---
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_POOL_SIZE
+        value: 10
+      - key: DB_SSL
+        value: true
+      - key: DB_SSL_CA
+        sync: false
+
+      # --- Session / CORS - CLIENT_ORIGIN and APP_URL are the final Vercel URL ---
+      - key: SESSION_SECRET
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: APP_URL
+        sync: false
+
+      # Exactly one proxy hop (Render's own) sits in front of this service -
+      # Vercel's rewrite forwards the original connection rather than adding
+      # a hop of its own. See src/app.ts's parseTrustProxySetting.
+      - key: TRUST_PROXY
+        value: "1"
+
+      # --- Email - brevo works on Render's free plan (smtp needs a paid plan: free
+      # services block outbound SMTP ports 25/465/587) - see docs/deploy-guide.md ---
+      - key: EMAIL_MODE
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+      # Default (server/storage) is fine on the free plan but is wiped on every
+      # deploy/restart. On a paid plan with a persistent disk attached (Render
+      # dashboard -> this service -> Disks), point this at the mount path, e.g.
+      # /var/data/storage - see docs/deploy-guide.md.
+      - key: STORAGE_DIR
+        value: ""

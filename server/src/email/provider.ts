@@ -55,9 +55,50 @@ const smtpProvider: MailProvider = {
   },
 }
 
+const BREVO_SEND_URL = 'https://api.brevo.com/v3/smtp/email'
+
+/**
+ * Sends over Brevo's transactional email HTTP API (plain HTTPS, port 443)
+ * instead of SMTP - Render's FREE web services block the outbound SMTP
+ * ports (25/465/587), so this is what makes email work there without
+ * upgrading to a paid Render plan. Same queue/retry/redaction/logging as the
+ * SMTP provider: the worker (worker.ts) treats every MailProvider the same,
+ * it never knows which transport it's using.
+ */
+/** Exported (unlike smtpProvider) so tests can exercise the real HTTP call shape against a mocked fetch. */
+export const brevoProvider: MailProvider = {
+  async sendMail(input) {
+    const res = await fetch(BREVO_SEND_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        'api-key': env.BREVO_API_KEY ?? '',
+      },
+      body: JSON.stringify({
+        sender: { email: env.MAIL_FROM },
+        to: [{ email: input.to }],
+        subject: input.subject,
+        htmlContent: input.html,
+        textContent: input.text,
+      }),
+    })
+
+    if (!res.ok) {
+      // Brevo's error body can be large/unpredictable - cap what ends up in
+      // email_logs.error_message (worker.ts also truncates to 1000 chars).
+      const body = await res.text().catch(() => '')
+      throw new Error(`Brevo API error ${res.status}: ${body.slice(0, 500)}`)
+    }
+
+    const data = (await res.json().catch(() => ({}))) as { messageId?: string }
+    return { providerMessageId: data.messageId }
+  },
+}
+
 let providerOverride: MailProvider | null = null
 
-/** Test-only seam: swaps in a mocked transport so the worker's own logic (retries, redaction, ...) can be tested without ever touching real SMTP/Gmail. */
+/** Test-only seam: swaps in a mocked transport so the worker's own logic (retries, redaction, ...) can be tested without ever touching real SMTP/Gmail/Brevo. */
 export function setMailProviderForTesting(provider: MailProvider | null): void {
   providerOverride = provider
 }
@@ -65,5 +106,7 @@ export function setMailProviderForTesting(provider: MailProvider | null): void {
 /** Behind one interface so another provider (e.g. Resend) can be added later by changing only server/.env. */
 export function getMailProvider(): MailProvider {
   if (providerOverride) return providerOverride
-  return env.EMAIL_MODE === 'smtp' ? smtpProvider : consoleProvider
+  if (env.EMAIL_MODE === 'smtp') return smtpProvider
+  if (env.EMAIL_MODE === 'brevo') return brevoProvider
+  return consoleProvider
 }

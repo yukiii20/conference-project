@@ -79,7 +79,16 @@ function blockWritesInAdminViewAsMode(req: Request, res: Response, next: NextFun
   next()
 }
 
-function parseTrustProxySetting(value: string): boolean | number | string {
+/**
+ * Render puts its own proxy in front of every app, and Vercel's rewrite adds
+ * no hop of its own (it forwards the original connection, it doesn't proxy
+ * through a separate box) - so exactly one hop (Render's) sits between the
+ * visitor and this process. TRUST_PROXY="1" is therefore the correct Render
+ * value: req.ip becomes the right-most entry Render itself didn't add,
+ * i.e. the real visitor IP, which is what rate limiting and the audit log
+ * need. See docs/deploy-guide.md.
+ */
+export function parseTrustProxySetting(value: string): boolean | number | string {
   if (value === 'true') return true
   if (value === 'false') return false
   if (/^\d+$/.test(value)) return Number(value)

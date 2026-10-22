@@ -23,8 +23,17 @@ const envSchema = z
     // numbers for exactly how badly 10 queues under concurrent load. 20 is a
     // safer default for real traffic while staying well under MySQL's own
     // max_connections (150 by default) even with a few other clients
-    // connected at once.
+    // connected at once. Aiven's free MySQL plan caps the whole service at 76
+    // connections total (all clients combined), so keep this well under that
+    // if pointing at Aiven - see docs/aiven-mysql-setup.md.
     DB_POOL_SIZE: z.coerce.number().int().positive().default(20),
+    // Off by default (plain local MySQL). Aiven requires SSL - set DB_SSL=true
+    // and provide the CA certificate via DB_SSL_CA (its text, e.g. pasted into
+    // a Render env var) or DB_SSL_CA_PATH (a file on disk). rejectUnauthorized
+    // stays true whenever SSL is on - see server/src/db/pool.ts.
+    DB_SSL: boolFromString,
+    DB_SSL_CA: z.string().optional(),
+    DB_SSL_CA_PATH: z.string().optional(),
     SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 characters.'),
     CLIENT_ORIGIN: z.string().url(),
     PORT: z.coerce.number().int().positive().default(4000),
@@ -33,15 +42,26 @@ const envSchema = z
     // hop), "loopback", or "true". Left unset, Express trusts no proxy.
     TRUST_PROXY: z.string().optional(),
 
-    EMAIL_MODE: z.enum(['console', 'smtp']).default('console'),
+    // smtp needs an SMTP-capable host - Render's FREE web services block the
+    // outbound SMTP ports (25/465/587), so brevo (Brevo's transactional email
+    // HTTP API, plain HTTPS - not blocked) is the option that works there.
+    EMAIL_MODE: z.enum(['console', 'smtp', 'brevo']).default('console'),
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().int().positive().optional(),
     SMTP_SECURE: boolFromString,
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     MAIL_FROM: z.string().optional(),
+    BREVO_API_KEY: z.string().optional(),
     // Used to build links in emails (reset-password, invitations, ...) — never hard-code localhost elsewhere.
     APP_URL: z.string().url().default('http://localhost:5173'),
+    // Where uploaded files (logos, banners, photos, certificates) are read
+    // from and written to. Defaults to server/storage, same as always. On
+    // Render, point this at the mounted persistent disk (e.g.
+    // /var/data/storage) - Render's normal filesystem is wiped on every
+    // deploy/restart, so anything written outside the disk is lost. See
+    // server/src/storage/paths.ts.
+    STORAGE_DIR: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.EMAIL_MODE === 'smtp') {
@@ -57,6 +77,23 @@ const envSchema = z
       if (!data.MAIL_FROM) {
         ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'MAIL_FROM is required when EMAIL_MODE=smtp.' })
       }
+    }
+
+    if (data.EMAIL_MODE === 'brevo') {
+      if (!data.BREVO_API_KEY) {
+        ctx.addIssue({ code: 'custom', path: ['BREVO_API_KEY'], message: 'BREVO_API_KEY is required when EMAIL_MODE=brevo.' })
+      }
+      if (!data.MAIL_FROM) {
+        ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'MAIL_FROM is required when EMAIL_MODE=brevo (must be a Brevo-verified sender).' })
+      }
+    }
+
+    if (data.DB_SSL && !data.DB_SSL_CA && !data.DB_SSL_CA_PATH) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DB_SSL_CA'],
+        message: 'DB_SSL_CA (or DB_SSL_CA_PATH) is required when DB_SSL=true.',
+      })
     }
 
     // Production hardening: refuse to start with a weak/placeholder secret,
