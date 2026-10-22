@@ -1,0 +1,44 @@
+/* Shared theme for the animated scenes (docs/product-video.md's colour list).
+   Font: no network access during recording, so this uses a safe system
+   stack instead of fetching Inter from Google Fonts - visually close
+   enough (system UI sans-serif) and never blocks on a network request. */
+:root {
+  --burgundy: #722f37;
+  --cream: #e8dcc6;
+  --latte: #b7a89a;
+  --navy: #1e3a8a;
+  --green: #166534;
+  --ink: #2a2a2a;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 1920px;
+  height: 1080px;
+  background: var(--cream);
+  font-family:
+    'Segoe UI',
+    -apple-system,
+    BlinkMacSystemFont,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 20%, #efe6d4 0%, var(--cream) 55%);
+}

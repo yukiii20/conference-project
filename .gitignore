@@ -16,6 +16,12 @@ server/storage/
 server/storage-test/
 server/storage-test-e2e/
 
+# Product video work (demo-video/README.md explains re-running the pipeline)
+demo-video/work/
+demo-video/output/
+demo-video/.env.demo
+demo-video/assets/music.mp3
+
 # Playwright
 /test-results/
 /playwright-report/

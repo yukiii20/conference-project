@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .card {
+        width: 1100px;
+        background: #fff;
+        border-radius: 28px;
+        box-shadow: 0 30px 80px rgba(114, 47, 55, 0.25);
+        padding: 64px 80px;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(24px) scale(0.97);
+        animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .title {
+        font-size: 54px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 44px;
+      }
+      .icons {
+        display: flex;
+        justify-content: center;
+        gap: 64px;
+      }
+      .icon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        opacity: 0;
+        transform: scale(0.5);
+        animation: iconIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .icon:nth-child(1) {
+        animation-delay: 0.35s;
+      }
+      .icon:nth-child(2) {
+        animation-delay: 0.55s;
+      }
+      .icon:nth-child(3) {
+        animation-delay: 0.75s;
+      }
+      .circle {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--cream);
+      }
+      .circle svg {
+        width: 52px;
+        height: 52px;
+        stroke: var(--burgundy);
+        fill: none;
+        stroke-width: 2.5;
+      }
+      .label {
+        font-size: 22px;
+        color: var(--burgundy);
+        font-weight: 600;
+      }
+      @keyframes cardIn {
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      @keyframes iconIn {
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="card">
+        <div class="title">Submit &amp; review</div>
+        <div class="icons">
+          <div class="icon">
+            <div class="circle">
+              <svg viewBox="0 0 24 24"><path d="M12 3v12m0-12 5 5m-5-5-5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+            </div>
+            <div class="label">Submit</div>
+          </div>
+          <div class="icon">
+            <div class="circle">
+              <svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+            </div>
+            <div class="label">Review</div>
+          </div>
+          <div class="icon">
+            <div class="circle">
+              <svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5" /></svg>
+            </div>
+            <div class="label">Decide</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

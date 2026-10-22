@@ -139,6 +139,8 @@ export function HomePage() {
   const headerRef = useRef<HTMLElement | null>(null)
   const [headerHeight, setHeaderHeight] = useState(0)
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
+  const demoSectionRef = useRef<HTMLElement | null>(null)
+  const demoVideoRef = useRef<HTMLVideoElement | null>(null)
   const ignoreSpyRef = useRef(false)
   const ignoreSpyTimeoutRef = useRef<number | undefined>(undefined)
   const initialHashHandledRef = useRef(false)
@@ -301,6 +303,21 @@ export function HomePage() {
     ignoreSpyTimeoutRef.current = window.setTimeout(stopIgnoring, 700)
   }
 
+  function handleWatchDemo() {
+    const section = demoSectionRef.current
+    if (!section) return
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    section.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' })
+    const video = demoVideoRef.current
+    if (video) {
+      video.focus({ preventScroll: true })
+      video.play().catch(() => {
+        // Autoplay can still be blocked by the browser even after a click in
+        // some configurations - the visible controls are the fallback, not an error.
+      })
+    }
+  }
+
   const today = todayDateString()
 
   const filtered = conferences.filter((c) => {
@@ -359,6 +376,13 @@ export function HomePage() {
               >
                 {SITE.hero.secondaryCta}
               </Link>
+              <button
+                type="button"
+                onClick={handleWatchDemo}
+                className="rounded-md border border-white/60 px-5 py-2.5 font-medium text-white hover:bg-white/10"
+              >
+                Watch the demo
+              </button>
             </div>
 
             <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-6 text-center lg:text-left">
@@ -379,6 +403,37 @@ export function HomePage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* -------------------------------------------------------- See it in action */}
+      <section
+        id="demo"
+        ref={(el) => {
+          demoSectionRef.current = el
+        }}
+        className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6"
+      >
+        <Reveal>
+          <h2 className="text-center text-2xl font-semibold sm:text-3xl">See it in action</h2>
+          <p className="mt-2 text-center text-text-muted">
+            A two-minute tour, from submitting a paper to downloading a certificate.
+          </p>
+          <div className="mx-auto mt-8 max-w-[1100px]">
+            <div className="aspect-video overflow-hidden rounded-xl bg-surface-muted shadow-lg">
+              <video
+                ref={demoVideoRef}
+                controls
+                playsInline
+                preload="none"
+                poster="/video/poster.jpg"
+                className="h-full w-full"
+              >
+                <source src="/video/product-video-web.mp4" type="video/mp4" />
+                <track kind="captions" src="/video/demo.vtt" srcLang="en" label="English" default />
+              </video>
+            </div>
+          </div>
+        </Reveal>
       </section>
 
       {/* --------------------------------------------------------- Conferences */}

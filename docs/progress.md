@@ -350,3 +350,57 @@ Verified: `tsc` (root+server) clean, both builds clean, `npm test` root (21/21) 
 88/88 (one `net::ERR_CONNECTION_REFUSED` run killed by the throwaway Vite process dying mid-suite -
 not a regression, confirmed by restarting it, re-seeding, and getting 88/88 clean twice in a row).
 No SQL run, no secrets committed, no real emails sent.
+
+## Step 10 - Product video and home page section - DONE
+Built the full pipeline in `docs/product-video.md` end to end: a self-contained `demo-video/`
+package (own `package.json`/`node_modules` - mysql2, bcryptjs, sharp, dotenv, tsx - never imports
+from `server/src` or `src/`), `demo-seed.ts` (CS26 demo conference, 3 tracks, 2 published sessions,
+3 deliberately-separate submission fixtures so scenes 5/6/7 are each independently re-recordable
+with `--scene N`, 15 fake registrations, a generated certificate template background+signature),
+`record.ts` (real Chromium/Playwright recording of all 16 scenes against the throwaway
+`:4100`/`:5273` servers, human-feel cursor/typing/scroll, 2s callouts, screenshot-verified each
+scene before moving on), 5 ANIMATED HTML/CSS scenes, `gen-voice.ts` (edge-tts, `en-US-AriaNeural`,
+with retry logic for the host's occasional websocket reset - confirmed this needs the Bash sandbox
+disabled, since `speech.platform.bing.com` is otherwise unreachable), and `build.ts` (per-scene
+speed-up/hold/zoom, 0.5s crossfade fold-concatenation, loudnorm, burned+soft subtitles, 3 final
+exports).
+
+Real footage ran far longer than its narration once recorded (raw scenes totalled ~4.6 min against
+~1.8 min of narration, since realistic typing/waiting takes real time) - chose a capped per-scene
+speed-up (up to 3.5x, tuned to each scene's own narration length) over either padding or an
+unwatchable uniform fast-forward. Final video: **125.87s (2:05)**, under the original 2.5-3.5 min
+estimate from Part 1's planning - reported honestly rather than padded to hit that number, since
+the real footage at a natural, watchable pace didn't fill it. QA actually performed: 1920x1080/30fps
+confirmed, audio present and non-silent (mean -18.3 dB, max -0.2 dB, loudnorm'd to -16 LUFS), zero
+black frames (`blackdetect`), 6 spot-checked frames across the timeline (including the live
+scene 9->10->12->13->14 chain: attendee registers, gets checked in, convenor generates+releases+
+later revokes their certificate, verify page shows the live "Revoked" state), subtitle burn-in
+visually confirmed. Outputs: `product-video-1080p.mp4` (11.28 MB), `product-video-1080p-subtitled.mp4`
+(13.89 MB), `product-video-web.mp4` (5.83 MB, target was <=15 MB), `demo.srt`/`demo.vtt`,
+`poster.jpg` (36.9 KB, target was <200 KB).
+
+Home page: added a "See it in action" section right below the hero (shared `Reveal`/token-based
+styling, matching the Step 7B+C theme refresh) with a 16:9 `aspect-video` card, `preload="none"`
+(confirmed via network inspection that nothing eager-loads the video - LCP unaffected), a captions
+track, and a hero "Watch the demo" button that scrolls to and plays it (respecting
+`prefers-reduced-motion` the same way the existing scroll-spy nav already does). Copied the three
+web-facing files into `public/video/`. Added a Playwright check (`e2e/main.spec.ts`) for the
+section, poster, captions track, and the "Watch the demo" scroll behaviour.
+
+Caught and fixed one real bug mid-build: the coordinator accidentally launched two copies of this
+work concurrently (a stalled fork resumed independently of the fresh one meant to continue it) -
+both were actively writing into the same `demo-video/` files for a few minutes before being
+caught via `git status`/file-timestamp comparison and stopped. No corruption: the already-verified
+`demo-video/output/` and `public/video/` files were confirmed byte-for-byte unchanged (same sizes
+and mtimes) before continuing, and the conflicting `build.ts`/`work/build/` from the other run were
+discarded in favour of the already-verified version.
+
+Final verification: `tsc` (root+server) clean, build clean (main bundle +1.35 KB only - the video
+itself is a static `public/` file, not bundled), `npm test` root (21/21) and server (456/456 - one
+run showed spurious FK failures from two `npm test` invocations racing on `conference_cms_test`
+concurrently, confirmed not a real regression by re-running once cleanly), e2e fixtures re-seeded,
+Playwright 89/89 (88 existing + the new video-section check). Wrote `demo-video/README.md`
+(re-running the pipeline, re-recording one scene, swapping the voice, adding background music).
+No SQL run, no secrets committed (`demo-video/.env.demo` stays gitignored), no real emails sent,
+`demo-video/work/` and `demo-video/output/` stay gitignored - only `public/video/`'s three web
+files are part of the app.

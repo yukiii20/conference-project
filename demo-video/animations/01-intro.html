@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .ring {
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        border: 10px solid var(--burgundy);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: scale(0.6);
+        animation: pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+      }
+      .ring::after {
+        content: 'CMS';
+        font-size: 56px;
+        font-weight: 700;
+        color: var(--burgundy);
+      }
+      .title {
+        margin-top: 48px;
+        font-size: 72px;
+        font-weight: 700;
+        color: var(--ink);
+        opacity: 0;
+        transform: translateY(16px);
+        animation: rise 0.6s ease-out 0.9s forwards;
+      }
+      .tagline {
+        margin-top: 20px;
+        font-size: 30px;
+        color: var(--burgundy);
+        opacity: 0;
+        transform: translateY(12px);
+        animation: rise 0.6s ease-out 1.5s forwards;
+      }
+      .wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      @keyframes pop {
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @keyframes rise {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="wrap">
+        <div class="ring"></div>
+        <div class="title">Conference Management System</div>
+        <div class="tagline">Run your academic conference in one place.</div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+[
+  { "num": 1, "name": "01-intro", "animated": true, "text": "Conference Management System. Run your academic conference in one place." },
+  { "num": 2, "name": "02-home-conference", "animated": false, "text": "From a public home page listing every conference, to a full event page with dates, tracks, and a live programme." },
+  { "num": 3, "name": "03-submit-review", "animated": true, "text": "Authors submit. Reviewers review, blind." },
+  { "num": 4, "name": "04-author-submits", "animated": false, "text": "Authors sign in, write an abstract, attach their paper, and submit - no email back and forth, just a tracked submission with its own code." },
+  { "num": 5, "name": "05-reviewer-reviews", "animated": false, "text": "Reviewers see the paper, never the author's name, and submit a structured review in minutes." },
+  { "num": 6, "name": "06-convenor-accepts", "animated": false, "text": "The convenor's dashboard surfaces exactly what needs attention - here, a reviewed paper ready for a decision." },
+  { "num": 7, "name": "07-programme-schedule", "animated": false, "text": "Accepted papers get dropped straight into the programme grid, and the public page updates the moment it's published." },
+  { "num": 8, "name": "08-register-checkin", "animated": true, "text": "Attendees register. Staff check them in." },
+  { "num": 9, "name": "09-attendee-registers", "animated": false, "text": "Registering takes under a minute, and ends with a ticket - Q R code included." },
+  { "num": 10, "name": "10-staff-checkin", "animated": false, "text": "At the door, staff search, tap check in, and the count updates live." },
+  { "num": 11, "name": "11-certificates", "animated": true, "text": "Certificates, generated and released in one click." },
+  { "num": 12, "name": "12-generate-certs", "animated": false, "text": "With a branded template already in place, the convenor generates certificates for every checked in attendee and releases them at once." },
+  { "num": 13, "name": "13-download-cert", "animated": false, "text": "Attendees download a real P D F certificate straight from their portal." },
+  { "num": 14, "name": "14-verify-revoke", "animated": false, "text": "Every certificate carries a Q R code that verifies it instantly - and if the convenor ever needs to revoke one, that shows up immediately too." },
+  { "num": 15, "name": "15-super-admin", "animated": false, "text": "And across every conference, a platform dashboard keeps an eye on system health." },
+  { "num": 16, "name": "16-outro", "animated": true, "text": "Conference Management System. Abstracts, reviews, programme, registration, certificates." }
+]

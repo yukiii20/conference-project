@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .checklist {
+        display: flex;
+        gap: 40px;
+        margin-bottom: 48px;
+      }
+      .item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        opacity: 0;
+        transform: translateY(14px);
+        animation: itemIn 0.4s ease-out forwards;
+      }
+      .item:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .item:nth-child(2) {
+        animation-delay: 0.35s;
+      }
+      .item:nth-child(3) {
+        animation-delay: 0.6s;
+      }
+      .item:nth-child(4) {
+        animation-delay: 0.85s;
+      }
+      .item:nth-child(5) {
+        animation-delay: 1.1s;
+      }
+      .tick {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--green);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tick svg {
+        width: 28px;
+        height: 28px;
+        stroke: #fff;
+        fill: none;
+        stroke-width: 3;
+      }
+      .item span {
+        font-size: 18px;
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .title {
+        font-size: 60px;
+        font-weight: 700;
+        color: var(--ink);
+        opacity: 0;
+        animation: rise 0.5s ease-out 1.4s forwards;
+      }
+      .subtitle {
+        margin-top: 16px;
+        font-size: 26px;
+        color: var(--burgundy);
+        opacity: 0;
+        animation: rise 0.5s ease-out 1.7s forwards;
+      }
+      @keyframes itemIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes rise {
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="wrap">
+        <div class="checklist">
+          <div class="item"><div class="tick"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10" /></svg></div><span>Abstracts</span></div>
+          <div class="item"><div class="tick"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10" /></svg></div><span>Reviews</span></div>
+          <div class="item"><div class="tick"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10" /></svg></div><span>Programme</span></div>
+          <div class="item"><div class="tick"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10" /></svg></div><span>Registration</span></div>
+          <div class="item"><div class="tick"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10" /></svg></div><span>Certificates</span></div>
+        </div>
+        <div class="title">Conference Management System</div>
+        <div class="subtitle">Abstracts &middot; Reviews &middot; Programme &middot; Registration &middot; Certificates</div>
+      </div>
+    </div>
+  </body>
+</html>

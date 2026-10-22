@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="shared.css" />
+    <style>
+      .card {
+        width: 1100px;
+        background: #fff;
+        border-radius: 28px;
+        box-shadow: 0 30px 80px rgba(114, 47, 55, 0.25);
+        padding: 64px 80px;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(24px) scale(0.97);
+        animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .title {
+        font-size: 54px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 44px;
+      }
+      .icons {
+        display: flex;
+        justify-content: center;
+        gap: 64px;
+      }
+      .icon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        opacity: 0;
+        transform: scale(0.5);
+        animation: iconIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .icon:nth-child(1) {
+        animation-delay: 0.35s;
+      }
+      .icon:nth-child(2) {
+        animation-delay: 0.6s;
+      }
+      .circle {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--cream);
+      }
+      .circle svg {
+        width: 52px;
+        height: 52px;
+        stroke: var(--burgundy);
+        fill: none;
+        stroke-width: 2.5;
+      }
+      .label {
+        font-size: 22px;
+        color: var(--burgundy);
+        font-weight: 600;
+      }
+      @keyframes cardIn {
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      @keyframes iconIn {
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="card">
+        <div class="title">Register &amp; check in</div>
+        <div class="icons">
+          <div class="icon">
+            <div class="circle">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 9h2m-2 4h6m4-4h4M3 15h18" /></svg>
+            </div>
+            <div class="label">Register</div>
+          </div>
+          <div class="icon">
+            <div class="circle">
+              <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
+            </div>
+            <div class="label">Check in</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

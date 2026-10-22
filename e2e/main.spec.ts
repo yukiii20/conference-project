@@ -59,6 +59,20 @@ test.describe('public pages', () => {
     await expectNotBlank(page)
     expect(errors, `console errors on /c/${FIXTURE.conferenceSlug}:\n${errors.join('\n')}`).toEqual([])
   })
+
+  test('home page has a "See it in action" video section with a poster and captions', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'See it in action' })).toBeVisible()
+    const video = page.locator('#demo video')
+    await expect(video).toBeVisible()
+    await expect(video).toHaveAttribute('poster', '/video/poster.jpg')
+    await expect(video).toHaveAttribute('preload', 'none')
+    const track = video.locator('track[kind="captions"]')
+    await expect(track).toHaveAttribute('src', '/video/demo.vtt')
+    // "Watch the demo" scrolls the section into view without expanding the page horizontally.
+    await page.getByRole('button', { name: 'Watch the demo' }).click()
+    await expect(video).toBeInViewport()
+  })
 })
 
 test.describe('author sign-up -> convenor approval -> author login', () => {
