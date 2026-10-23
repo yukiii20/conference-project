@@ -16,6 +16,23 @@ export function isAdminViewAs(): boolean {
   return adminViewAsActive
 }
 
+// Short-lived per-session cache for GET responses, so switching between
+// tabs that re-mount the same component (e.g. convenor sidebar nav) doesn't
+// always pay a fresh round trip for data that hasn't changed. Cleared
+// wholesale on every write (POST/PATCH/PUT/DELETE/upload) so nothing stays
+// stale past the next action the visitor actually takes - the TTL below is
+// just a bound on how long a read-only navigation can see slightly old data.
+const GET_CACHE_TTL_MS = 20_000
+const getCache = new Map<string, { data: unknown; expiresAt: number }>()
+// Two callers racing to fetch the same URL at the same instant (e.g. the
+// notification bell and the notifications tab both mounting at once) await
+// the one request already in flight instead of each firing their own.
+const pendingGets = new Map<string, Promise<unknown>>()
+
+function clearGetCache(): void {
+  getCache.clear()
+}
+
 export class ApiError extends Error {
   status: number
   fields?: Record<string, string>
@@ -49,13 +66,13 @@ function buildUrl(path: string, query?: Record<string, string | undefined>): str
  * (the session lives in an httpOnly cookie, never in JS) and throws ApiError
  * with the server's { error: { message, fields? } } body on non-2xx.
  */
-async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function performFetch(url: string, method: string, options: RequestOptions): Promise<unknown> {
   const headers: Record<string, string> = {}
   if (options.body) headers['Content-Type'] = 'application/json'
   if (adminViewAsActive) headers['X-Admin-View-As'] = '1'
 
-  const res = await fetch(buildUrl(path, options.query), {
-    method: options.method ?? 'GET',
+  const res = await fetch(url, {
+    method,
     credentials: 'include',
     headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: options.body ? JSON.stringify(options.body) : undefined,
@@ -69,7 +86,39 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     throw new ApiError(res.status, message, data?.error?.fields)
   }
 
-  return data as T
+  return data
+}
+
+async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const method = options.method ?? 'GET'
+  const url = buildUrl(path, options.query)
+
+  if (method !== 'GET') {
+    const data = await performFetch(url, method, options)
+    clearGetCache()
+    return data as T
+  }
+
+  const cached = getCache.get(url)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data as T
+  }
+
+  const pending = pendingGets.get(url)
+  if (pending) {
+    return pending as Promise<T>
+  }
+
+  const request = performFetch(url, method, options)
+    .then((data) => {
+      getCache.set(url, { data, expiresAt: Date.now() + GET_CACHE_TTL_MS })
+      return data
+    })
+    .finally(() => {
+      pendingGets.delete(url)
+    })
+  pendingGets.set(url, request)
+  return request as Promise<T>
 }
 
 /** POSTs a multipart/form-data body (file uploads) — never JSON-encoded, so the browser sets its own boundary header. */
@@ -89,7 +138,14 @@ async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
     throw new ApiError(res.status, message, data?.error?.fields)
   }
 
+  clearGetCache()
   return data as T
+}
+
+/** Test-only seam: lets tests start each case with a clean cache instead of leaking state between them. */
+export function clearApiCacheForTesting(): void {
+  clearGetCache()
+  pendingGets.clear()
 }
 
 export const api = {

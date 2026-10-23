@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  Award,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Ticket,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Spinner } from '../../components/ui/Spinner'
 import { ErrorState } from '../../components/ui/EmptyState'
 import { Badge } from '../../components/ui/Badge'
+import { Icon } from '../../components/ui/Icon'
 
 type Dashboard = {
   submissions_by_status: Record<string, number>
@@ -24,11 +34,14 @@ type Dashboard = {
   }
 }
 
-function Card({ label, value, to }: { label: string; value: number | string; to?: string }) {
+function Card({ label, value, to, icon }: { label: string; value: number | string; to?: string; icon: LucideIcon }) {
   const content = (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-brand">{value}</p>
+    <div className="flex h-full flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</p>
+        <Icon icon={icon} className="text-brand/60" />
+      </div>
+      <p className="text-2xl font-semibold text-brand">{value}</p>
     </div>
   )
   if (!to) return content
@@ -106,70 +119,86 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
     <div className="mt-6 space-y-8">
       <PageHeader title="Dashboard" subtitle="An overview of this conference's submissions, reviews and registrations." />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Card label="Submissions" value={totalSubmissions} to={`${base}/papers/submissions`} />
-        <Card label="Reviews pending" value={data.reviews.assigned} to={`${base}/papers/reviews`} />
-        <Card label="Reviews done" value={data.reviews.completed} to={`${base}/papers/reviews`} />
-        <Card label="Accepted papers" value={data.accepted_papers} to={`${base}/papers/submissions`} />
-        <Card label="Members" value={totalMembers} to={`${base}/people/members`} />
-        <Card label="Registrations" value={data.registrations} to={`${base}/event/attendance`} />
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+        <Card label="Submissions" value={totalSubmissions} to={`${base}/papers/submissions`} icon={FileText} />
+        <Card label="Reviews pending" value={data.reviews.assigned} to={`${base}/papers/reviews`} icon={Clock} />
+        <Card label="Reviews done" value={data.reviews.completed} to={`${base}/papers/reviews`} icon={CheckCircle2} />
+        <Card label="Accepted papers" value={data.accepted_papers} to={`${base}/papers/submissions`} icon={Award} />
+        <Card label="Members" value={totalMembers} to={`${base}/people/members`} icon={Users} />
+        <Card label="Registrations" value={data.registrations} to={`${base}/event/attendance`} icon={Ticket} />
       </div>
 
-      {data.next_key_date ? (
-        <p className="text-sm text-text-muted">
-          Next key date: <span className="font-medium text-text">{data.next_key_date.deadline_type.replace(/_/g, ' ')}</span> —{' '}
-          {formatKathmandu(data.next_key_date.at)} (
-          {data.next_key_date.days <= 0 ? 'today or past' : `${data.next_key_date.days} day${data.next_key_date.days === 1 ? '' : 's'}`})
-        </p>
-      ) : null}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Needs your attention</h2>
+          {data.next_key_date ? (
+            <p className="mt-2 text-sm text-text-muted">
+              Next key date: <span className="font-medium text-text">{data.next_key_date.deadline_type.replace(/_/g, ' ')}</span>{' '}
+              — {formatKathmandu(data.next_key_date.at)} (
+              {data.next_key_date.days <= 0
+                ? 'today or past'
+                : `${data.next_key_date.days} day${data.next_key_date.days === 1 ? '' : 's'}`}
+              )
+            </p>
+          ) : null}
+          {!hasAttention ? (
+            <div className="mt-3 flex items-center gap-2 text-sm text-text-muted">
+              <Icon icon={CheckCircle2} className="text-success" />
+              Nothing needs your attention right now.
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <AttentionRow label="Pending role requests" count={pendingRoleRequests} to={`${base}/people/requests`} />
+              <AttentionRow label="Submitted papers with no reviewer" count={attention.submitted_no_reviewer} to={`${base}/papers/submissions`} />
+              <AttentionRow label="Overdue reviews" count={attention.overdue_reviews} to={`${base}/papers/reviews`} />
+              <AttentionRow label="Papers awaiting a decision" count={attention.awaiting_decision} to={`${base}/papers/reviews`} />
+              {attention.deadline_within_week ? (
+                <Link
+                  to={`${base}/schedule-basics/dates`}
+                  className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-muted"
+                >
+                  <span className="text-text/80">
+                    {attention.deadline_within_week.deadline_type.replace(/_/g, ' ')} closes within a week
+                  </span>
+                  <Badge tone="warning">{attention.deadline_within_week.days}d</Badge>
+                </Link>
+              ) : null}
+            </div>
+          )}
+        </div>
 
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Needs your attention</h2>
-        {!hasAttention ? (
-          <p className="mt-2 text-sm text-text-muted">Nothing needs your attention right now.</p>
-        ) : (
-          <div className="mt-2 space-y-2">
-            <AttentionRow label="Pending role requests" count={pendingRoleRequests} to={`${base}/people/requests`} />
-            <AttentionRow label="Submitted papers with no reviewer" count={attention.submitted_no_reviewer} to={`${base}/papers/submissions`} />
-            <AttentionRow label="Overdue reviews" count={attention.overdue_reviews} to={`${base}/papers/reviews`} />
-            <AttentionRow label="Papers awaiting a decision" count={attention.awaiting_decision} to={`${base}/papers/reviews`} />
-            {attention.deadline_within_week ? (
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Submissions per track</h2>
+          {data.submissions_per_track.length === 0 ? (
+            <div className="mt-2 flex flex-col items-center gap-3 py-6 text-center">
+              <Icon icon={FileText} size={28} className="text-text-muted" />
+              <p className="text-sm text-text-muted">No tracks yet.</p>
               <Link
-                to={`${base}/schedule-basics/dates`}
-                className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-muted"
+                to={`${base}/schedule-basics/tracks`}
+                className="inline-flex min-h-10 items-center rounded-md bg-button px-4 text-sm font-medium text-white hover:bg-button-hover"
               >
-                <span className="text-text/80">
-                  {attention.deadline_within_week.deadline_type.replace(/_/g, ' ')} closes within a week
-                </span>
-                <Badge tone="warning">{attention.deadline_within_week.days}d</Badge>
+                Add tracks
               </Link>
-            ) : null}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Submissions per track</h2>
-        {data.submissions_per_track.length === 0 ? (
-          <p className="mt-2 text-sm text-text-muted">No tracks yet.</p>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {data.submissions_per_track.map((t) => (
-              <div key={t.track_name} className="flex h-6 items-center gap-3">
-                <span className="w-32 shrink-0 truncate text-sm text-text-muted">{t.track_name}</span>
-                <div className="h-3 flex-1 rounded-full bg-surface-muted">
-                  {t.count > 0 ? (
-                    <div
-                      className="h-3 rounded-full bg-brand"
-                      style={{ width: `${(t.count / maxTrackCount) * 100}%` }}
-                    />
-                  ) : null}
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {data.submissions_per_track.map((t) => (
+                <div key={t.track_name} className="flex h-6 items-center gap-3">
+                  <span className="w-32 shrink-0 truncate text-sm text-text-muted">{t.track_name}</span>
+                  <div className="h-3 flex-1 rounded-full bg-surface-muted">
+                    {t.count > 0 ? (
+                      <div
+                        className="h-3 rounded-full bg-brand"
+                        style={{ width: `${(t.count / maxTrackCount) * 100}%` }}
+                      />
+                    ) : null}
+                  </div>
+                  <span className="w-8 shrink-0 text-right text-sm text-text-muted">{t.count}</span>
                 </div>
-                <span className="w-8 shrink-0 text-right text-sm text-text-muted">{t.count}</span>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

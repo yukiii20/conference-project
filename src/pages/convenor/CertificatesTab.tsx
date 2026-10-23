@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Plus, Save, Send, Sparkles, Trash2 } from 'lucide-react'
 import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { AUTO_CERTIFICATE_TYPES, CERTIFICATE_TYPES, certificateTemplateSchema } from '../../lib/validation'
@@ -16,6 +17,7 @@ import {
   StatusChip,
   TableContainer,
 } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 type Signatory = { name: string; title: string; signature_path: string | null }
 type Template = {
@@ -238,7 +240,12 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
         />
 
         <div className="flex gap-2">
-          <Button type="submit" variant="primary" disabled={saving}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={saving}
+            iconLeft={<Icon icon={editingId ? Save : Plus} size={16} />}
+          >
             {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add template'}
           </Button>
           {editingId ? (
@@ -404,7 +411,7 @@ function IssueSection({ conferenceId, onIssued }: { conferenceId: string; onIssu
               {preview.eligible} eligible · {preview.new} new · {preview.already_issued} already issued
             </span>
           ) : null}
-          <Button type="button" variant="primary" onClick={generate} disabled={busy}>
+          <Button type="button" variant="primary" onClick={generate} disabled={busy} iconLeft={<Icon icon={Sparkles} size={16} />}>
             Generate certificates
           </Button>
         </div>
@@ -497,7 +504,14 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
     <div className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-medium text-text">Issued certificates</h3>
-        <Button type="button" variant="secondary" size="sm" onClick={releaseNow} disabled={releasing}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={releaseNow}
+          disabled={releasing}
+          iconLeft={<Icon icon={Send} size={16} />}
+        >
           {releasing ? 'Releasing…' : 'Release now'}
         </Button>
       </div>
@@ -534,7 +548,13 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
                   </td>
                   <td className="px-4 py-2">
                     {c.status === 'issued' ? (
-                      <Button type="button" variant="danger" size="sm" onClick={() => revoke(c.id)}>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() => revoke(c.id)}
+                        iconLeft={<Icon icon={Trash2} size={16} />}
+                      >
                         Revoke
                       </Button>
                     ) : null}

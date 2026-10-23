@@ -10,7 +10,12 @@ export const platformSettingsPublicRouter = Router()
 
 platformSettingsPublicRouter.get('/platform-settings', async (_req, res, next) => {
   try {
-    res.json({ settings: await getPlatformSettings() })
+    const settings = await getPlatformSettings()
+    // Same short shared cache as the other public, read-only endpoints (see
+    // conferences/routes.ts) - never applied to the admin router above, which
+    // requires auth.
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+    res.json({ settings })
   } catch (err) {
     next(err)
   }

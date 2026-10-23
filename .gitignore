@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+*.tsbuildinfo
 server/storage/
 server/storage-test/
 server/storage-test-e2e/

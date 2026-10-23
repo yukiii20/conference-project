@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api'
 import { LOGIN_ROLE_CODES, getRoleDefinition } from '../../lib/roles'
 import { loginSchema } from '../../lib/validation'
-import { Alert, Button, Checkbox, FormField, Input, Select } from '../ui'
+import { prefetchPortalChunk } from '../../lib/prefetch'
+import { Alert, Button, Checkbox, FormField, Input, PasswordInput, Select } from '../ui'
 
 /**
  * The sign-in form body (no page chrome). Used standalone on /login and
@@ -52,6 +53,7 @@ export function SignInForm({ conferenceSlug }: { conferenceSlug?: string }) {
       })
       setSubmitting(false)
       const path = getRoleDefinition(parsed.data.role)?.path
+      prefetchPortalChunk(path)
       navigate(path ? portalUrl(path) : '/')
     } catch (err) {
       setSubmitting(false)
@@ -76,9 +78,9 @@ export function SignInForm({ conferenceSlug }: { conferenceSlug?: string }) {
             Forgotten your password?
           </Link>
         </div>
-        <Input
+        <PasswordInput
           id="si-password"
-          type="password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={Boolean(errors.password)}

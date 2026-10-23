@@ -1,34 +1,35 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
+import { useAuth } from '../lib/authContext'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
-import { Alert, Badge, Button, Card, FormField, Input, Spinner } from '../components/ui'
+import { Alert, Badge, Button, Card, FormField, PasswordInput, Spinner } from '../components/ui'
 
 export function ChangePasswordPage() {
   const navigate = useNavigate()
+  const { refresh } = useAuth()
   const [checking, setChecking] = useState(true)
   const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    api
-      .get('/auth/me')
-      .then(() => {
-        if (!cancelled) setChecking(false)
-      })
-      .catch(() => {
-        if (!cancelled) navigate('/login')
-      })
+    refresh().then((data) => {
+      if (cancelled) return
+      if (data) {
+        setChecking(false)
+      } else {
+        navigate('/login')
+      }
+    })
     return () => {
       cancelled = true
     }
-  }, [navigate])
+  }, [navigate, refresh])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -90,26 +91,18 @@ export function ChangePasswordPage() {
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <FormField label="Current password" htmlFor="current_password">
-            <Input
+            <PasswordInput
               id="current_password"
-              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
           </FormField>
 
-          <div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-sm font-medium text-text">
-                New password
-              </label>
-              <Button type="button" variant="link" className="text-sm" onClick={() => setShowPassword((v) => !v)}>
-                {showPassword ? 'Hide' : 'Show'}
-              </Button>
-            </div>
-            <Input
+          <FormField label="New password" htmlFor="password">
+            <PasswordInput
               id="password"
-              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -122,12 +115,12 @@ export function ChangePasswordPage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </FormField>
 
           <FormField label="Confirm new password" htmlFor="confirm_password">
-            <Input
+            <PasswordInput
               id="confirm_password"
-              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />

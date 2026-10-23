@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { KeyRound, LogOut, User } from 'lucide-react'
 import { useAuth } from '../lib/authContext'
 import { Avatar } from './Avatar'
 import { NotificationBell } from './NotificationBell'
 import { ChevronDownIcon } from './ui/icons'
+import { Icon } from './ui/Icon'
 
 /**
  * Identity (name, photo) comes only from the shared auth context, i.e.
@@ -71,24 +73,27 @@ export function PortalHeader({ roleLabel }: { roleLabel: string }) {
                 to="/profile"
                 role="menuitem"
                 onClick={() => setMenuOpen(false)}
-                className="block min-h-10 px-4 py-2.5 text-sm hover:bg-surface-muted"
+                className="flex min-h-10 items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-surface-muted"
               >
+                <Icon icon={User} />
                 Profile
               </Link>
               <Link
                 to="/change-password"
                 role="menuitem"
                 onClick={() => setMenuOpen(false)}
-                className="block min-h-10 px-4 py-2.5 text-sm hover:bg-surface-muted"
+                className="flex min-h-10 items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-surface-muted"
               >
+                <Icon icon={KeyRound} />
                 Change password
               </Link>
               <button
                 type="button"
                 role="menuitem"
                 onClick={handleSignOut}
-                className="block w-full min-h-10 px-4 py-2.5 text-left text-sm hover:bg-surface-muted"
+                className="flex w-full min-h-10 items-center gap-2.5 px-4 py-2.5 text-left text-sm hover:bg-surface-muted"
               >
+                <Icon icon={LogOut} />
                 Sign out
               </button>
             </div>

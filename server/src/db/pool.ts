@@ -20,6 +20,13 @@ export const pool = mysql.createPool({
   database: env.DB_NAME,
   waitForConnections: true,
   connectionLimit: env.DB_POOL_SIZE,
+  // Without this, an idle pooled connection to Aiven can be silently dropped
+  // by a NAT/firewall between Render and Aiven, so the next request that
+  // picks it up pays a full reconnect (and on a cross-region pair, a fresh
+  // TLS handshake) instead of reusing a live socket. TCP keep-alive probes
+  // every 10s keep the connection visibly alive instead.
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10_000,
   // Off by default (plain local MySQL). Aiven's free MySQL plan requires SSL
   // - env.ts refuses to start with DB_SSL=true and no CA, so this is only
   // ever reached with a CA available. rejectUnauthorized stays true: without

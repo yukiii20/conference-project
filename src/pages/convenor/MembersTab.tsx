@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Save, Send } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { ASSIGNABLE_MEMBER_ROLES, inviteMemberSchema, type InviteMemberInput } from '../../lib/validation'
 import { Alert, Button, Checkbox, EmptyState, Input, Select, Spinner, StatusChip } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 import { TableContainer } from '../../components/ui/Table'
 
 type Member = {
@@ -304,7 +306,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
             )}
           </div>
           <div className="mt-3 flex gap-2">
-            <Button type="button" size="sm" onClick={saveTracks} loading={tracksSaving}>
+            <Button type="button" size="sm" onClick={saveTracks} loading={tracksSaving} iconLeft={<Icon icon={Save} size={16} />}>
               Save
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={() => setTracksUserId(null)}>
@@ -361,7 +363,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
             ))}
           </Select>
         </div>
-        <Button type="submit" className="mt-3" loading={inviting}>
+        <Button type="submit" className="mt-3" loading={inviting} iconLeft={<Icon icon={Send} size={16} />}>
           Send invitation
         </Button>
       </form>

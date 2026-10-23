@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  AlertOctagon,
+  Building2,
+  Database,
+  FileStack,
+  HardDrive,
+  Mail,
+  Plus,
+  Save,
+  Send,
+  Ticket,
+  UserCheck,
+  UserX,
+  type LucideIcon,
+} from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } from '../lib/validation'
 import { useNoIndex } from '../lib/noindex'
@@ -15,6 +30,7 @@ import {
   EmptyState,
   ErrorState,
   FormField,
+  Icon,
   Input,
   Modal,
   PageHeader,
@@ -190,7 +206,7 @@ export function SuperAdminPage() {
     <div className="min-h-screen bg-page-bg text-text">
       <PortalHeader roleLabel="Administrator" />
 
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className="mx-auto max-w-[1440px] px-6 py-8 sm:px-8">
         <PageHeader title="Administrator" />
 
         <Tabs tabs={TABS} active={tab} onChange={(id) => setTab(id as AdminTab)} />
@@ -527,7 +543,7 @@ function NewConferenceForm({ onCreated }: { onCreated: (note: string) => Promise
           </FormField>
         </div>
 
-        <Button type="submit" loading={submitting}>
+        <Button type="submit" loading={submitting} iconLeft={<Icon icon={Plus} size={16} />}>
           Create conference
         </Button>
       </form>
@@ -671,7 +687,7 @@ function CreateConvenorTab({
         />
       </FormField>
 
-      <Button type="submit" loading={submitting}>
+      <Button type="submit" loading={submitting} iconLeft={<Icon icon={Send} size={16} />}>
         Send invitation
       </Button>
 
@@ -1148,21 +1164,24 @@ function DashboardTab() {
     )
   }
 
-  const tiles: Array<{ label: string; value: number }> = [
-    { label: 'Total users', value: data.total_users },
-    { label: 'Suspended users', value: data.suspended_users },
-    { label: 'Pending role requests', value: data.pending_role_requests },
-    { label: 'Total submissions', value: data.total_submissions },
-    { label: 'Active registrations', value: data.active_registrations },
-    { label: 'Archived conferences', value: data.archived_conferences },
+  const tiles: Array<{ label: string; value: number; icon: LucideIcon }> = [
+    { label: 'Total users', value: data.total_users, icon: UserCheck },
+    { label: 'Suspended users', value: data.suspended_users, icon: UserX },
+    { label: 'Pending role requests', value: data.pending_role_requests, icon: AlertOctagon },
+    { label: 'Total submissions', value: data.total_submissions, icon: FileStack },
+    { label: 'Active registrations', value: data.active_registrations, icon: Ticket },
+    { label: 'Archived conferences', value: data.archived_conferences, icon: Building2 },
   ]
 
   return (
     <div className="mt-6 space-y-8">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         {tiles.map((t) => (
           <Card key={t.label}>
-            <p className="text-xs uppercase tracking-wide text-text-muted">{t.label}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-text-muted">{t.label}</p>
+              <Icon icon={t.icon} className="text-brand/60" />
+            </div>
             <p className="mt-1 text-2xl font-semibold text-text">{t.value}</p>
           </Card>
         ))}
@@ -1170,9 +1189,12 @@ function DashboardTab() {
 
       <div>
         <h2 className="text-lg font-semibold text-text">System health</h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <Card>
-            <p className="text-xs uppercase tracking-wide text-text-muted">Database</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-text-muted">Database</p>
+              <Icon icon={Database} className="text-brand/60" />
+            </div>
             <div className="mt-1">
               <Badge tone={data.health.database.ok ? 'success' : 'danger'}>
                 {data.health.database.ok ? `${data.health.database.latency_ms} ms` : 'Down'}
@@ -1180,11 +1202,17 @@ function DashboardTab() {
             </div>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-text-muted">Email mode</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-text-muted">Email mode</p>
+              <Icon icon={Mail} className="text-brand/60" />
+            </div>
             <p className="mt-1 text-lg font-semibold uppercase text-text">{data.health.email_mode}</p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-text-muted">Failed emails (24h)</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-text-muted">Failed emails (24h)</p>
+              <Icon icon={AlertOctagon} className="text-brand/60" />
+            </div>
             <div className="mt-1">
               <Badge tone={data.health.failed_emails_24h > 0 ? 'danger' : 'neutral'}>
                 {data.health.failed_emails_24h}
@@ -1192,11 +1220,17 @@ function DashboardTab() {
             </div>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-text-muted">Queued emails</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-text-muted">Queued emails</p>
+              <Icon icon={Mail} className="text-brand/60" />
+            </div>
             <p className="mt-1 text-lg font-semibold text-text">{data.health.queued_emails}</p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-text-muted">Free disk space</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-text-muted">Free disk space</p>
+              <Icon icon={HardDrive} className="text-brand/60" />
+            </div>
             <p className="mt-1 text-lg font-semibold text-text">{formatBytes(data.health.storage_disk.free_bytes)}</p>
           </Card>
         </div>
@@ -1314,7 +1348,7 @@ function AdminsTab() {
               />
             </FormField>
           </div>
-          <Button type="submit" loading={submitting}>
+          <Button type="submit" loading={submitting} iconLeft={<Icon icon={Plus} size={16} />}>
             Add admin
           </Button>
         </form>
@@ -1525,7 +1559,7 @@ function PlatformSettingsTab() {
         </div>
       </div>
 
-      <Button type="submit" loading={saving}>
+      <Button type="submit" loading={saving} iconLeft={<Icon icon={Save} size={16} />}>
         Save settings
       </Button>
     </form>

@@ -2,9 +2,10 @@ import { forwardRef } from 'react'
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 
 // text-base (16px) everywhere so mobile Safari/Chrome never zoom in on focus.
-const FIELD_CLASSES =
+// Exported so PasswordInput (same field chrome, plus a show/hide button) doesn't duplicate it.
+export const FIELD_CLASSES =
   'w-full min-h-10 rounded-md border border-border bg-surface px-3 py-2 text-base text-text placeholder:text-text-muted/60 focus:border-button focus:outline-none disabled:bg-page-bg disabled:text-text-muted'
-const FIELD_ERROR_CLASSES = 'border-danger focus:border-danger'
+export const FIELD_ERROR_CLASSES = 'border-danger focus:border-danger'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: boolean

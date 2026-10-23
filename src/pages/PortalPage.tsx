@@ -90,10 +90,10 @@ function PortalPageInner() {
     .map((code) => getRoleDefinition(code)?.label ?? code)
 
   return (
-    <div className="min-h-screen bg-background text-ink">
+    <div className="flex min-h-screen flex-col bg-background text-ink">
       <PortalHeader roleLabel={myRoleLabels.length > 0 ? myRoleLabels.join(' · ') : (user?.full_name ?? 'Portal')} />
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 sm:px-8">
         <PageHeader
           title="My portal"
           actions={
@@ -132,10 +132,10 @@ function PortalPageInner() {
           <p className="mt-1 text-text-muted">{conference.name}</p>
         ) : null}
 
-        <div className="mt-6 flex flex-col gap-6 md:flex-row">
+        <div className="mt-6 flex flex-col gap-8 md:flex-row">
           <aside
             id="portal-sidebar"
-            className={`shrink-0 rounded-lg bg-surface-muted p-2 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
+            className={`shrink-0 self-start rounded-lg border border-border bg-surface p-2 md:sticky md:top-6 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
           >
             <PortalSidebar base={base} sections={sections} onNavigate={() => setMobileNavOpen(false)} />
           </aside>

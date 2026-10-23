@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { brandingSchema } from '../../lib/validation'
 import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } from '../../lib/color'
@@ -6,6 +7,7 @@ import { publicImageUrl } from '../../lib/storage'
 import { ImageUpload } from '../../components/ImageUpload'
 import { useToast } from '../../components/ui/Toast'
 import { Alert, Button, Input, Spinner } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 const MAX_LOGO_MB = 2
 const MAX_BANNER_MB = 3
@@ -225,7 +227,7 @@ export function LogoTab({ conferenceId }: { conferenceId: string }) {
             <p className="mt-1 text-xs text-text-muted">Used for buttons, links, and the conference page background.</p>
           </div>
 
-          <Button type="submit" loading={saving}>
+          <Button type="submit" loading={saving} iconLeft={<Icon icon={Save} size={16} />}>
             Save
           </Button>
         </form>

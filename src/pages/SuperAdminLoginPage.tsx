@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { superAdminLoginSchema } from '../lib/validation'
+import { prefetchPortalChunk } from '../lib/prefetch'
+import { Icon } from '../components/ui/Icon'
 
 const GENERIC_ERROR = 'Email or password is incorrect.'
 const RATE_LIMIT_ERROR = 'Too many attempts. Wait a minute and try again.'
@@ -181,6 +184,7 @@ export function SuperAdminLoginPage() {
       }
 
       writeLockState({ attempts: 0, lockUntil: null })
+      prefetchPortalChunk('/super-admin')
       navigate(getSafeNext(searchParams), { replace: true })
     } catch (err) {
       setSubmitting(false)
@@ -281,9 +285,11 @@ export function SuperAdminLoginPage() {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     disabled={locked || submitting}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
                     className="sa-login__toggle"
                   >
-                    {showPassword ? 'Hide' : 'Show'}
+                    <Icon icon={showPassword ? EyeOff : Eye} size={18} />
                   </button>
                 </div>
                 {fieldErrors.password ? (

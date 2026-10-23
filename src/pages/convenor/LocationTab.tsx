@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { locationSchema, type LocationInput } from '../../lib/validation'
 import { useToast } from '../../components/ui/Toast'
 import { PageHeader, FormField, Input, Button, Alert, Spinner } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 type FormState = {
   venue_name: string
@@ -155,7 +157,7 @@ export function LocationTab({ conferenceId }: { conferenceId: string }) {
           />
         </FormField>
 
-        <Button type="submit" variant="primary" disabled={saving} loading={saving}>
+        <Button type="submit" variant="primary" disabled={saving} loading={saving} iconLeft={<Icon icon={Save} size={16} />}>
           {saving ? 'Saving…' : 'Save'}
         </Button>
       </form>

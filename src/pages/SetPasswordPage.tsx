@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
-import { Alert, Badge, Button, Card, FormField, Input } from '../components/ui'
+import { Alert, Badge, Button, Card, FormField, PasswordInput } from '../components/ui'
 
 /** Landed on from the invitation email link: /set-password?token=... */
 export function SetPasswordPage() {
@@ -12,7 +12,6 @@ export function SetPasswordPage() {
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -63,18 +62,10 @@ export function SetPasswordPage() {
         ) : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-sm font-medium text-text">
-                Password
-              </label>
-              <Button type="button" variant="link" className="text-sm" onClick={() => setShowPassword((v) => !v)}>
-                {showPassword ? 'Hide' : 'Show'}
-              </Button>
-            </div>
-            <Input
+          <FormField label="Password" htmlFor="password">
+            <PasswordInput
               id="password"
-              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -87,12 +78,12 @@ export function SetPasswordPage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </FormField>
 
           <FormField label="Confirm password" htmlFor="confirm_password">
-            <Input
+            <PasswordInput
               id="confirm_password"
-              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />

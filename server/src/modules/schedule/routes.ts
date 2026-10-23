@@ -49,6 +49,10 @@ import {
 
 export const scheduleRouter = Router()
 
+// Same short shared cache as the other public, read-only endpoints (see
+// conferences/routes.ts) - never applied to anything requiring auth.
+const PUBLIC_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300'
+
 // --------------------------------------------------------------------- Rooms
 scheduleRouter.get('/:id/rooms', requireConferencePermission('schedule.manage'), async (req, res, next) => {
   try {
@@ -164,7 +168,9 @@ scheduleRouter.post(
 // ------------------------------------------------------------------ Sessions
 scheduleRouter.get('/:id/sessions/public', async (req, res, next) => {
   try {
-    res.json({ schedule: await getPublicSchedule(req.params.id!) })
+    const schedule = await getPublicSchedule(req.params.id!)
+    res.set('Cache-Control', PUBLIC_CACHE_CONTROL)
+    res.json({ schedule })
   } catch (err) {
     next(err)
   }

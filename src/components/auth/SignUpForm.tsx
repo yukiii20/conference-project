@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api'
 import { SIGNUP_ROLE_CODES, getRoleDefinition } from '../../lib/roles'
 import { nameSchema, emailSchema, phoneSchema, signupSchema, getPasswordChecklist } from '../../lib/validation'
-import { Alert, Badge, Button, Checkbox, FormField, Input } from '../ui'
+import { Alert, Badge, Button, Checkbox, FormField, Input, PasswordInput } from '../ui'
 
 type ConferenceSlugRow = { id: string; name: string | null; code: string | null; slug: string }
 
@@ -54,7 +54,6 @@ export function SignUpForm({
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -303,18 +302,10 @@ export function SignUpForm({
             />
           </FormField>
 
-          <div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="su-password" className="block text-sm font-medium text-text">
-                Password
-              </label>
-              <Button type="button" variant="link" className="text-sm" onClick={() => setShowPassword((v) => !v)}>
-                {showPassword ? 'Hide' : 'Show'}
-              </Button>
-            </div>
-            <Input
+          <FormField label="Password" htmlFor="su-password" error={errors.password}>
+            <PasswordInput
               id="su-password"
-              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               value={form.password}
               onChange={(e) => update('password', e.target.value)}
               error={Boolean(errors.password)}
@@ -328,12 +319,12 @@ export function SignUpForm({
                 </li>
               ))}
             </ul>
-          </div>
+          </FormField>
 
           <FormField label="Confirm password" htmlFor="su-confirm_password" error={errors.confirm_password}>
-            <Input
+            <PasswordInput
               id="su-confirm_password"
-              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
               value={form.confirm_password}
               onChange={(e) => update('confirm_password', e.target.value)}
               onBlur={() => blurField('confirm_password')}

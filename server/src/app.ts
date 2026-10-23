@@ -2,6 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import helmet from 'helmet'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
+import compression from 'compression'
 import { env } from './config/env.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { pingDatabase, getEmailQueueCounts } from './utils/health.js'
@@ -122,6 +123,10 @@ export function createApp() {
     }),
   )
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }))
+  // gzip every JSON response over Render's free plan's slow outbound link -
+  // the default 1kb threshold already skips tiny bodies where compressing
+  // would cost more than it saves.
+  app.use(compression())
   app.use(cookieParser())
   app.use(express.json({ limit: '100kb' }))
   app.use(requireMatchingOrigin)

@@ -404,3 +404,69 @@ Playwright 89/89 (88 existing + the new video-section check). Wrote `demo-video/
 No SQL run, no secrets committed (`demo-video/.env.demo` stays gitignored), no real emails sent,
 `demo-video/work/` and `demo-video/output/` stay gitignored - only `public/video/`'s three web
 files are part of the app.
+
+## Step 11 - Lucide icons, password toggle, layout, speed - DONE
+
+Replaced the hand-written SVG icon set with Lucide (`lucide-react`, individually imported per
+icon for tree-shaking - confirmed the bundle barely moved, see below) across `src/components/ui/`
+(a thin `Icon` wrapper standardizes size 18px/strokeWidth 2/aria-hidden-unless-labelled) and every
+page that previously hand-rolled an SVG: sidebars (convenor, portal), stat cards, buttons, status
+chips, empty states, the notification bell, top bar/user menu, admin tabs. Deliberately did not
+icon-ify every table cell, per the task's own instruction not to overdo it.
+
+Built one shared `PasswordInput` (`src/components/ui/PasswordInput.tsx` - Eye/EyeOff toggle,
+`aria-label`/`aria-pressed`, `type="button"` so it never submits the form, keeps focus/value) and
+wired it into every password field that lets a user type their own password: login
+(`SignInForm`), signup (`SignUpForm`), set-password-from-invite, reset-password, change-password.
+`SuperAdminLoginPage` keeps its own hand-built toggle (same Eye/EyeOff + aria-pressed behaviour)
+because that page uses an entirely separate, already-custom CSS design (`sa-login__*` classes, not
+the shared Tailwind form field styles `PasswordInput` is built on) - swapping it would have meant
+either breaking that page's look or forking the component for one caller, so its behaviour was
+matched instead of its markup shared. No other password-entry field exists (admin-created accounts
+set their own password later via an emailed link, never typed into an admin form). Added an e2e
+test (`e2e/main.spec.ts`, "password visibility toggle") covering type -> toggle shows the value and
+flips `type="password"`→`"text"` without navigating away (i.e. not a form submit) -> toggle again
+hides it -> value is unchanged throughout.
+
+Layout: root-caused the "big empty sidebar box" to the sidebar `<aside>` stretching to match its
+flex sibling's height with no `self-start` - fixed in `ConvenorPage.tsx`/`PortalPage.tsx`'s shell
+(`self-start`, `md:sticky md:top-6`, content `max-w-[1440px]` centered with `px-6 sm:px-8`,
+`flex flex-col` + `flex-1` so the page fills the viewport instead of leaving a dead zone below a
+short page). Stat card grids switched from fixed `grid-cols-N` to
+`grid-cols-[repeat(auto-fit,minmax(180px,1fr))]` so they fill the row at any width instead of
+clumping left. Convenor and portal dashboards restructured into the requested 2-column layout on
+wide screens (Needs your attention + next key date on the left; submissions-per-track / recent
+activity on the right), single column on mobile, with icon+action empty states (e.g. "No tracks
+yet" -> "Add tracks" button) instead of a bare sentence. Checked 1280/1440/1920/390 - screenshots
+in `test-results/layout/{before,after}/` (captured by stashing the frontend diff, screenshotting
+against the same running backend+fixtures, then restoring - see the convenor-dashboard-1440 pair
+for the clearest before/after). No horizontal scroll at any width - the existing
+`e2e/responsive.spec.ts` suite already asserts this at 320/375/390/430/768/1024/1440 and stayed
+green throughout.
+
+Speed - backend: `compression` middleware (gzip, confirmed via `curl -D-`), `Promise.all` over the
+public conference page's 6 independent queries (was sequential), short `Cache-Control: public,
+max-age=60, stale-while-revalidate=300` on every public read-only endpoint (public conference
+list/page, public deadlines/track-count, platform-settings, public schedule - never anything behind
+auth), `enableKeepAlive`/`keepAliveInitialDelay` on the Aiven pool so idle connections survive a
+NAT/firewall timeout instead of paying a fresh TLS handshake, `DB_POOL_SIZE=20` confirmed documented
+in `server/.env.example`. bcrypt cost left at 12 (already >=10, task said not to lower it). Speed -
+frontend: a 20s per-session GET cache in `src/lib/api.ts` (keyed by URL, cleared on every write,
+with a concurrent-request de-dupe map so two callers racing for the same URL share one fetch -
+covered by the new `src/lib/api.test.ts`), `src/lib/prefetch.ts` warms the portal/convenor/admin
+lazy chunk the instant login succeeds instead of waiting for the route to render, notification
+polling confirmed already at 60s, no duplicate `/me` polling found. Findings, loopback timings, and
+the two things only the user can fix (Render/Aiven region mismatch behind that ~244ms `/api/health`
+DB latency on the live site; Render free tier's 15-minute sleep) are written up in
+`docs/performance-live.md`.
+
+Verified: `tsc` (root+server) clean, both builds clean. Bundle size (main `dist/assets/index-*.js`,
+built before vs. after by stashing the frontend diff): raw 507.62 kB -> 507.77 kB (+0.15 kB), gzip
+148.32 kB -> 148.67 kB (+0.35 kB) - tree-shaken per-icon imports kept the whole Lucide swap
+essentially free. `npm test` root 25/25 (21 existing + 4 new `api.test.ts` cases), server 459/459
+(one run hit a Windows worker access-violation crash on `adminList.test.ts` - confirmed flaky, not
+a regression, by re-running clean twice). E2E fixtures re-seeded (`server/tests/e2eSeed.ts`),
+Playwright 90/90 (89 existing + the new password-toggle test) - one earlier run showed 2 failures
+from running the suite twice back-to-back without reseeding between runs (known shared-fixture
+state issue, not a regression - confirmed clean on reseed). No SQL run, no schema changes, no
+secrets committed, tests only ever touched `conference_cms_test`.

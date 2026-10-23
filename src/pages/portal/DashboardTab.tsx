@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CalendarDays, CheckCircle2, ListChecks } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { useAuth } from '../../lib/authContext'
 import { formatKathmandu } from '../../lib/datetime'
 import { getRoleDefinition } from '../../lib/roles'
 import { DEADLINE_LABELS } from '../conference/types'
 import { Card, CardHeader, SkeletonText } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 type Deadline = { deadline_type: string; opens_at: string; closes_at: string | null }
 type Submission = { id: string; title: string; status: string }
@@ -142,7 +144,7 @@ export function DashboardTab({
     .slice(0, 4)
 
   return (
-    <div className="mt-6 max-w-3xl space-y-6">
+    <div className="mt-6 space-y-6">
       <Card>
         <CardHeader
           title={`Welcome, ${user?.full_name || user?.email}`}
@@ -150,53 +152,64 @@ export function DashboardTab({
         />
       </Card>
 
-      <Card>
-        <h3 className="text-sm font-semibold text-text">To-dos</h3>
-        {loading ? (
-          <SkeletonText lines={2} className="mt-2" />
-        ) : todos.length === 0 ? (
-          <p className="mt-2 text-sm text-text-muted">Nothing needs your attention right now.</p>
-        ) : (
-          <ul className="mt-2 space-y-1.5">
-            {todos.map((t, i) =>
-              t.linkPath ? (
-                <li key={i}>
-                  <Link to={t.linkPath} className="text-sm text-brand hover:underline">
-                    {t.text}
-                  </Link>
-                </li>
-              ) : (
-                <li key={i} className="text-sm text-text/80">
-                  {t.text}
-                </li>
-              ),
-            )}
-          </ul>
-        )}
-      </Card>
-
-      {conferenceId ? (
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
-          <h3 className="text-sm font-semibold text-text">Next key dates</h3>
+          <div className="flex items-center gap-2">
+            <Icon icon={ListChecks} className="text-brand/70" />
+            <h3 className="text-sm font-semibold text-text">To-dos</h3>
+          </div>
           {loading ? (
             <SkeletonText lines={2} className="mt-2" />
-          ) : upcomingDeadlines.length === 0 ? (
-            <p className="mt-2 text-sm text-text-muted">No upcoming dates.</p>
+          ) : todos.length === 0 ? (
+            <div className="mt-3 flex items-center gap-2 text-sm text-text-muted">
+              <Icon icon={CheckCircle2} className="text-success" />
+              Nothing needs your attention right now.
+            </div>
           ) : (
-            <ul className="mt-2 space-y-1.5 text-sm">
-              {upcomingDeadlines.map((d) => (
-                <li key={d.deadline_type} className="flex items-center justify-between gap-2">
-                  <span className="text-text/80">{DEADLINE_LABELS[d.deadline_type] ?? d.deadline_type}</span>
-                  <span className="text-text-muted">
-                    {formatKathmandu(d.opens_at, { dateOnly: true })}
-                    {d.closes_at ? ` – ${formatKathmandu(d.closes_at, { dateOnly: true })}` : ''}
-                  </span>
-                </li>
-              ))}
+            <ul className="mt-2 space-y-1.5">
+              {todos.map((t, i) =>
+                t.linkPath ? (
+                  <li key={i}>
+                    <Link to={t.linkPath} className="text-sm text-brand hover:underline">
+                      {t.text}
+                    </Link>
+                  </li>
+                ) : (
+                  <li key={i} className="text-sm text-text/80">
+                    {t.text}
+                  </li>
+                ),
+              )}
             </ul>
           )}
         </Card>
-      ) : null}
+
+        {conferenceId ? (
+          <Card>
+            <div className="flex items-center gap-2">
+              <Icon icon={CalendarDays} className="text-brand/70" />
+              <h3 className="text-sm font-semibold text-text">Next key dates</h3>
+            </div>
+            {loading ? (
+              <SkeletonText lines={2} className="mt-2" />
+            ) : upcomingDeadlines.length === 0 ? (
+              <p className="mt-3 text-sm text-text-muted">No upcoming dates.</p>
+            ) : (
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {upcomingDeadlines.map((d) => (
+                  <li key={d.deadline_type} className="flex items-center justify-between gap-2">
+                    <span className="text-text/80">{DEADLINE_LABELS[d.deadline_type] ?? d.deadline_type}</span>
+                    <span className="text-text-muted">
+                      {formatKathmandu(d.opens_at, { dateOnly: true })}
+                      {d.closes_at ? ` – ${formatKathmandu(d.closes_at, { dateOnly: true })}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        ) : null}
+      </div>
     </div>
   )
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { fromKathmanduInputValue, toKathmanduInputValue } from '../../lib/datetime'
 import { useToast } from '../../components/ui/Toast'
 import { PageHeader, Card, FormField, Input, Checkbox, Button, Alert, Spinner } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 type DeadlineRow = {
   code: string
@@ -184,7 +186,14 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
         })}
       </div>
 
-      <Button variant="primary" className="mt-6" onClick={handleSave} disabled={saving} loading={saving}>
+      <Button
+        variant="primary"
+        className="mt-6"
+        onClick={handleSave}
+        disabled={saving}
+        loading={saving}
+        iconLeft={<Icon icon={Save} size={16} />}
+      >
         {saving ? 'Saving…' : 'Save key dates'}
       </Button>
     </div>

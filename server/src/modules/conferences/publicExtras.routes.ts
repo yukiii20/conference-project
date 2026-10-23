@@ -9,6 +9,10 @@ export const conferencesPublicExtrasRouter = Router()
 // Phase 1 `GET /:slug` conference-detail shape. Kept separate from Phase 1's
 // routes.ts/service.ts so that file stays untouched.
 
+// Same short shared cache as the other public, read-only endpoints (see
+// conferences/routes.ts) - never applied to anything requiring auth.
+const PUBLIC_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300'
+
 const deadlinesQuerySchema = z.object({
   deadline_type: z.string().trim().min(1).max(50),
 })
@@ -26,6 +30,7 @@ conferencesPublicExtrasRouter.get(
          WHERE d.deadline_type = ? AND c.status <> 'draft' AND c.deleted_at IS NULL`,
         [deadline_type],
       )
+      res.set('Cache-Control', PUBLIC_CACHE_CONTROL)
       res.json({ deadlines: rows })
     } catch (err) {
       next(err)
@@ -41,6 +46,7 @@ conferencesPublicExtrasRouter.get('/public-track-count', async (_req, res, next)
        JOIN conferences c ON c.id = t.conference_id
        WHERE t.is_active = TRUE AND c.status <> 'draft' AND c.deleted_at IS NULL`,
     )
+    res.set('Cache-Control', PUBLIC_CACHE_CONTROL)
     res.json({ count: Number((rows as Array<{ count: number }>)[0]?.count ?? 0) })
   } catch (err) {
     next(err)

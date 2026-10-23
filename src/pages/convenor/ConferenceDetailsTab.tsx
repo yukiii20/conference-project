@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { conferenceDetailsSchema, portalTextsSchema, type ConferenceDetailsInput } from '../../lib/validation'
 import { useToast } from '../../components/ui/Toast'
 import { Alert, Button, Input, Spinner, Textarea } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 type ConferenceDetailsData = {
   slug: string
@@ -126,7 +128,7 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
           {errors.submission_guidelines ? <p className="mt-1 text-sm text-danger">{errors.submission_guidelines}</p> : null}
         </div>
 
-        <Button type="submit" loading={saving}>
+        <Button type="submit" loading={saving} iconLeft={<Icon icon={Save} size={16} />}>
           Save
         </Button>
       </form>
@@ -383,7 +385,7 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
           {errors.website_url ? <p className="mt-1 text-sm text-danger">{errors.website_url}</p> : null}
         </div>
 
-        <Button type="submit" loading={saving}>
+        <Button type="submit" loading={saving} iconLeft={<Icon icon={Save} size={16} />}>
           Save
         </Button>
       </form>

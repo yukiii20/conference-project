@@ -1,9 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Plus, Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { registrationCategorySchema } from '../../lib/validation'
 import { AttendanceDashboard } from '../../components/attendance/AttendanceDashboard'
 import { RegistrationsList } from '../../components/attendance/RegistrationsList'
 import { PageHeader, Table, StatusChip, Button, FormField, Input, Checkbox, Alert, Spinner } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 import type { Column } from '../../components/ui/Table'
 
 // Lazy: CheckInPanel pulls in the zxing QR-scanning library (~450 KB) that
@@ -139,7 +141,13 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
           checked={form.is_active}
           onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
         />
-        <Button type="submit" variant="primary" disabled={saving} loading={saving}>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={saving}
+          loading={saving}
+          iconLeft={<Icon icon={editingId ? Save : Plus} size={16} />}
+        >
           {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add category'}
         </Button>
         {editingId ? (

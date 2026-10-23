@@ -252,6 +252,32 @@ test.describe('password reset', () => {
   })
 })
 
+test.describe('password visibility toggle', () => {
+  test('typing, toggling to show/hide, and keeping the value works on the login password field', async ({ page }) => {
+    const errors = trackConsoleErrors(page)
+    await page.goto('/login')
+
+    const passwordField = page.locator('#si-password')
+    await passwordField.fill('Str0ng!Pass1')
+    await expect(passwordField).toHaveAttribute('type', 'password')
+
+    const toggle = page.getByRole('button', { name: 'Show password' })
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await toggle.click()
+
+    await expect(passwordField).toHaveAttribute('type', 'text')
+    await expect(passwordField).toHaveValue('Str0ng!Pass1')
+    await expect(page.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page).toHaveURL(/\/login$/) // clicking the toggle must not submit the form
+
+    await page.getByRole('button', { name: 'Hide password' }).click()
+    await expect(passwordField).toHaveAttribute('type', 'password')
+    await expect(passwordField).toHaveValue('Str0ng!Pass1')
+
+    expect(errors, `console errors toggling the password field:\n${errors.join('\n')}`).toEqual([])
+  })
+})
+
 test.describe('responsive', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 

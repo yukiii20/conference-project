@@ -135,7 +135,7 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
     return (
       <div className="min-h-screen bg-background text-ink">
         <PortalHeader roleLabel={isManagerPortal ? 'Manager' : 'Convenor'} />
-        <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="mx-auto max-w-[1440px] px-6 py-8 sm:px-8">
           <PageHeader title={isManagerPortal ? 'Manager' : 'Convenor'} />
           {loading ? (
             <div className="mt-6 flex justify-center">
@@ -152,10 +152,10 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
   }
 
   return (
-    <div className="min-h-screen bg-background text-ink">
+    <div className="flex min-h-screen flex-col bg-background text-ink">
       <PortalHeader roleLabel={viewAs ? 'Administrator' : isManagerPortal ? 'Manager' : 'Convenor'} />
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 sm:px-8">
         {viewAs ? (
           <div role="status" className="mb-4">
             <Alert variant="warning">
@@ -215,10 +215,10 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
           </div>
         ) : null}
 
-        <div className="mt-6 flex flex-col gap-6 md:flex-row">
+        <div className="mt-6 flex flex-col gap-8 md:flex-row">
           <aside
             id="convenor-sidebar"
-            className={`shrink-0 rounded-lg bg-surface-muted p-2 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
+            className={`shrink-0 self-start rounded-lg border border-border bg-surface p-2 md:sticky md:top-6 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
           >
             <ConvenorSidebar
               base={base}

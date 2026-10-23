@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Save, Send, Trash2 } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { ANNOUNCEMENT_AUDIENCES, announcementSchema, type AnnouncementInput } from '../../lib/validation'
 import { PageHeader, Card, Badge, Button, Input, Textarea, Checkbox, Alert, Spinner } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 type Announcement = {
   id: string
@@ -158,11 +160,23 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
               </p>
               {(a.status === 'draft' || a.status === 'scheduled') && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="primary" size="sm" onClick={() => handlePublishNow(a)} disabled={busyId === a.id}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handlePublishNow(a)}
+                    disabled={busyId === a.id}
+                    iconLeft={<Icon icon={Send} size={16} />}
+                  >
                     Publish now
                   </Button>
                   {a.status === 'draft' ? (
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(a)} disabled={busyId === a.id}>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDelete(a)}
+                      disabled={busyId === a.id}
+                      iconLeft={<Icon icon={Trash2} size={16} />}
+                    >
                       Delete
                     </Button>
                   ) : null}
@@ -220,10 +234,23 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
           <Button type="button" variant="secondary" disabled={saving} onClick={(e) => handleSubmit(e, 'scheduled')}>
             Schedule
           </Button>
-          <Button type="button" variant="secondary" disabled={saving} onClick={(e) => handleSubmit(e, 'draft')}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={saving}
+            onClick={(e) => handleSubmit(e, 'draft')}
+            iconLeft={<Icon icon={Save} size={16} />}
+          >
             Save as draft
           </Button>
-          <Button type="button" variant="primary" disabled={saving} loading={saving} onClick={(e) => handleSubmit(e, 'published')}>
+          <Button
+            type="button"
+            variant="primary"
+            disabled={saving}
+            loading={saving}
+            onClick={(e) => handleSubmit(e, 'published')}
+            iconLeft={<Icon icon={Send} size={16} />}
+          >
             {saving ? 'Publishing…' : 'Publish now'}
           </Button>
         </div>

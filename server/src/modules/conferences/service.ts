@@ -26,27 +26,46 @@ export async function getPublicConferenceBySlug(slug: string) {
 
   const conferenceId = (conference as { id: string }).id
 
-  const [tracks] = await pool.query(
-    `SELECT id, name, description FROM conference_tracks
-     WHERE conference_id = ? AND is_active = TRUE ORDER BY display_order`,
-    [conferenceId],
-  )
-  const [deadlines] = await pool.query(
-    `SELECT deadline_type, opens_at, closes_at FROM conference_deadlines
-     WHERE conference_id = ? AND is_public = TRUE`,
-    [conferenceId],
-  )
-  const [supporters] = await pool.query(
-    `SELECT id, name, tier, logo_path, website_url FROM conference_supporters
-     WHERE conference_id = ? AND is_active = TRUE ORDER BY display_order`,
-    [conferenceId],
-  )
+  // Six independent reads (none depends on another's result) - run them
+  // concurrently instead of paying six sequential round trips on every public
+  // conference page view.
+  const [[tracks], [deadlines], [supporters], [committeeRows], [speakers], [announcements]] = await Promise.all([
+    pool.query(
+      `SELECT id, name, description FROM conference_tracks
+       WHERE conference_id = ? AND is_active = TRUE ORDER BY display_order`,
+      [conferenceId],
+    ),
+    pool.query(
+      `SELECT deadline_type, opens_at, closes_at FROM conference_deadlines
+       WHERE conference_id = ? AND is_public = TRUE`,
+      [conferenceId],
+    ),
+    pool.query(
+      `SELECT id, name, tier, logo_path, website_url FROM conference_supporters
+       WHERE conference_id = ? AND is_active = TRUE ORDER BY display_order`,
+      [conferenceId],
+    ),
+    pool.query(
+      `SELECT id, name, committee_type, description, display_order FROM committees
+       WHERE conference_id = ? AND is_public = TRUE ORDER BY display_order`,
+      [conferenceId],
+    ),
+    pool.query(
+      `SELECT id, full_name, designation, affiliation, bio, photo_path, speaker_type, display_order
+       FROM conference_speakers
+       WHERE conference_id = ? AND is_public = TRUE
+       ORDER BY FIELD(speaker_type, 'keynote', 'invited', 'panelist', 'guest'), display_order`,
+      [conferenceId],
+    ),
+    pool.query(
+      `SELECT id, title, body, publish_at, created_at FROM announcements
+       WHERE conference_id = ? AND status = 'published' AND JSON_CONTAINS(audience, '"all"')
+       ORDER BY COALESCE(publish_at, created_at) DESC LIMIT 10`,
+      [conferenceId],
+    ),
+  ])
 
-  const [committeeRows] = await pool.query(
-    `SELECT id, name, committee_type, description, display_order FROM committees
-     WHERE conference_id = ? AND is_public = TRUE ORDER BY display_order`,
-    [conferenceId],
-  )
+  // Depends on committeeRows, so it has to run after the batch above.
   const committees = committeeRows as Array<{ id: string; name: string; committee_type: string; description: string | null; display_order: number }>
   let committeeMembers: unknown[] = []
   if (committees.length > 0) {
@@ -67,21 +86,6 @@ export async function getPublicConferenceBySlug(slug: string) {
       .filter((m) => m.committee_id === c.id)
       .map(({ committee_id: _committee_id, ...rest }) => rest),
   }))
-
-  const [speakers] = await pool.query(
-    `SELECT id, full_name, designation, affiliation, bio, photo_path, speaker_type, display_order
-     FROM conference_speakers
-     WHERE conference_id = ? AND is_public = TRUE
-     ORDER BY FIELD(speaker_type, 'keynote', 'invited', 'panelist', 'guest'), display_order`,
-    [conferenceId],
-  )
-
-  const [announcements] = await pool.query(
-    `SELECT id, title, body, publish_at, created_at FROM announcements
-     WHERE conference_id = ? AND status = 'published' AND JSON_CONTAINS(audience, '"all"')
-     ORDER BY COALESCE(publish_at, created_at) DESC LIMIT 10`,
-    [conferenceId],
-  )
 
   return { conference, tracks, deadlines, supporters, committees: committeesWithMembers, speakers, announcements }
 }

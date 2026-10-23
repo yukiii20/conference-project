@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { emailTemplateSchema } from '../../lib/validation'
 import { PageHeader, Card, Badge, Button, FormField, Input, Textarea, Alert, Spinner } from '../../components/ui'
+import { Icon } from '../../components/ui/Icon'
 
 type Template = {
   template_key: string
@@ -133,7 +135,13 @@ export function EmailTemplatesTab({ conferenceId }: { conferenceId: string }) {
                   />
                 </FormField>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="primary" size="sm" onClick={() => handleSave(t)} loading={busyKey === t.template_key}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleSave(t)}
+                    loading={busyKey === t.template_key}
+                    iconLeft={<Icon icon={Save} size={16} />}
+                  >
                     Save
                   </Button>
                   <Button variant="secondary" size="sm" onClick={() => handlePreview(t)}>

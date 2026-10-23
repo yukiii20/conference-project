@@ -1,5 +1,7 @@
 export * from './Button'
 export * from './Input'
+export * from './PasswordInput'
+export * from './Icon'
 export * from './FormField'
 export * from './Card'
 export * from './PageHeader'
