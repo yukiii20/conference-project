@@ -28,6 +28,16 @@ export const registerSchema = z.object({
 })
 export type RegisterInput = z.infer<typeof registerSchema>
 
+export const checkinLookupQuerySchema = z
+  .object({
+    code: z.string().trim().min(1).max(60).optional(),
+    qr_token: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.code) !== Boolean(v.qr_token), {
+    message: 'Provide either a ticket code or a qr_token, not both.',
+  })
+export type CheckinLookupQuery = z.infer<typeof checkinLookupQuerySchema>
+
 export const checkinSchema = z.object({
   qr_token: z.string().trim().min(1, 'Scan or enter a QR token.'),
   date: z

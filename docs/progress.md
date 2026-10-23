@@ -470,3 +470,126 @@ Playwright 90/90 (89 existing + the new password-toggle test) - one earlier run 
 from running the suite twice back-to-back without reseeding between runs (known shared-fixture
 state issue, not a regression - confirmed clean on reseed). No SQL run, no schema changes, no
 secrets committed, tests only ever touched `conference_cms_test`.
+
+## Step 12 - QR upload check-in, admin table, spacing - DONE
+
+Step 9 (the previous entry - "icons, layout, speed" in the user's own numbering) was already DONE
+and pushed (commit `5fd8916`) before this step started, so went straight to this one.
+
+Check-in, rebuilt around one shared `CheckInPanel` (`src/components/attendance/CheckInPanel.tsx`)
+used by the staff check-in desk, the convenor/manager Attendance tab, and (a simpler branch of the
+same component) the session chair's "check attendees into this session" panel:
+
+- Three tabs (Lucide `Camera`/`Upload`/`Keyboard`) - Scan with camera (existing `@zxing/browser`
+  scanner, now with a clear "Camera not available - use Upload QR image or Enter ticket code"
+  message when the camera is blocked or missing), Upload QR image (new), Enter ticket code (new -
+  the old free-text "Manual search" box's name/email matching is preserved here, not removed, so
+  no feature was dropped meeting the task's "keep every feature"). The last-used tab is remembered
+  per browser (`localStorage`, wrapped in try/catch).
+- Upload QR image decodes entirely client-side: `src/lib/qrDecode.ts` is a pure, DOM-free function
+  (`@zxing/library`'s `RGBLuminanceSource`/`BinaryBitmap`/`HybridBinarizer`/`QRCodeReader` directly,
+  duplicating `@zxing/browser`'s own grayscale-conversion math so a decode here matches what the
+  camera path would have decoded) operating on a plain RGBA buffer - callable from a browser canvas
+  **or** a Node test with no jsdom/canvas dependency. `src/lib/qrImageDecode.ts` wraps it for the
+  browser: file-picker + drag-and-drop + paste (Ctrl+V), PNG/JPG/WEBP up to 5 MB, and a few
+  scale/rotation retries (a phone photo of a ticket is rarely framed 1:1) before giving up with a
+  clear message. The image itself is never uploaded - only the decoded token is sent to the
+  existing check-in endpoint.
+- New read-only backend endpoint `GET /conferences/:id/registrations/lookup` (`?code=` or
+  `?qr_token=`, `attendance.record` permission, scoped to the conference) - never records
+  attendance, used by every tab to preview the result before (or instead of) committing to a
+  check-in. Deliberately left the existing `/checkin` and `/checkin/manual` endpoints' throwing
+  behaviour for cancelled/pending/already-checked-in/wrong-conference untouched, so every existing
+  test for them kept passing unmodified - the lookup endpoint is new and additive, not a
+  replacement.
+- One shared result panel (`ResultPanel` in `CheckInPanel.tsx`) every tab renders into: name,
+  ticket code, category, status chip, and a big Lucide-icon-plus-text coloured banner - green
+  "Checked in", amber "Already checked in today at <time>" or "Payment pending" (convenor sees a
+  **Confirm registration** button there via the lookup's `can_confirm` field; staff just sees the
+  message, matching their lack of `registration.manage`), red "Not found" (also covers wrong
+  conference and cancelled, deliberately indistinguishable from "doesn't exist" so a wrong-conference
+  lookup can't be used to probe which conferences a code exists in).
+- **Verify only** toggle (default off = check in, per spec): when on, every tab only looks up and
+  shows the result, with a manual **Check in** button available if staff decide to go ahead anyway;
+  when off, Scan/Upload auto-check-in on a successful decode (unchanged fast-scan feel) while Enter
+  ticket code always requires the explicit button click (per the task's own description of that
+  tab's flow).
+- Session-scoped check-in (session chairs, who hold a narrower permission than conference-wide
+  `attendance.record`) can't reach the new lookup endpoint, so that scope branches internally to a
+  simpler direct-checkin-with-plain-banner flow using the same three tabs - unchanged behaviour,
+  new UI.
+- Backend tests (`server/tests/registration.test.ts`): lookup by code is conference-scoped (other
+  conference -> 404, same as a nonexistent code - never distinguishable), cancelled/pending show
+  their real status instead of throwing, `already_checked_in_today`/`checked_in_at` are accurate
+  without creating a duplicate attendance row, `can_confirm` is true for a convenor and false for
+  staff on a pending registration, and a plain author (no `attendance.record`) gets 403. Frontend
+  unit test (`src/lib/qrDecode.test.ts`): generates a real QR PNG with the `qrcode` package (same
+  one the server already uses), decodes the PNG bytes to raw RGBA with `pngjs` (no canvas/jsdom
+  needed), and round-trips it through `decodeQrFromImageData`/`extractCheckinToken` - plus a
+  blank-image case returning `null` instead of throwing. Playwright
+  (`e2e/checkinMethods.spec.ts`): uploads the real downloaded "Download QR (PNG)" ticket file and
+  confirms check-in, types a ticket code (lower-cased, padded with spaces) and confirms check-in,
+  and confirms Verify only shows "Ready to check in" without ever recording the attendance (checked
+  by looking the same person up again afterwards). Updated `e2e/registration.spec.ts` and
+  `e2e/portal.spec.ts`'s existing check-in steps for the new tab/button structure - same behaviour
+  asserted, new selectors (the old "Manual search" placeholder/inline button are gone), per the
+  task's own instruction to update selectors on a genuine UI change rather than weaken assertions.
+
+Super admin Conferences table: Name column now shows the conference name with its code as a
+`Badge` underneath; Status is a proper `StatusChip` (added `registration_open`/`submission_open`
+(blue)/`scheduling`/`ongoing`/`closed` to the shared status→tone map in `src/lib/status.ts`, which
+didn't have conference-specific statuses before); Convenor shows name with email underneath in
+smaller muted text; a new Activity column shows submission/registration counts per row, from a
+single `GROUP BY conference_id` query each added to `listAdminConferences`
+(`server/src/modules/admin/service.ts`) run in `Promise.all` alongside the existing list query -
+no N+1 (tested in `server/tests/adminList.test.ts`). The "Public page"/"View as admin" links that
+wrapped onto two lines with broken-looking borders are now one Actions column: on a wide screen,
+two proper outline `Button`-styled `size="sm"` links side by side with `ExternalLink`/`Eye` icons
+and `whitespace-nowrap`; on a narrow screen they collapse into a single "..." (`MoreHorizontal`)
+menu, same click-outside/Escape-to-close pattern already used for the portal header's user menu.
+Fixed a real bug while building this: `<Button>` (renders a `<button>`) was briefly nested inside
+an `<a>`/`<Link>` for that first wide-screen pass - invalid HTML, and the kind of thing that
+quietly breaks the accessible role Playwright/screen readers see. Exported `buttonClasses()` from
+`src/components/ui/Button.tsx` (the exact classes `<Button>` itself applies) and added a sibling
+`LinkButton` (a real `<a>` styled identically) so an external link can look like a button without
+ever nesting one inside the other - used here, reusable anywhere else this comes up. Added a
+search box + status filter above the table (the backend's `listAdminConferences` already supported
+`query`/`status` filters from an earlier step; just wasn't wired into this UI yet) - filtered
+client-side over the already-loaded page, since a single platform's conference count is small.
+
+Stray up/down arrow control: searched exhaustively (every `position: fixed/sticky/absolute`
+element across home/convenor/portal/super-admin/staff pages via a DOM script, every chevron-up/down
+icon usage, every scroll-button/number-spinner/leftover-component candidate the task itself
+suggested) and found nothing matching - not the existing, already-correct `BackToTopButton`
+(single up arrow, home page only, appears after scrolling, already works). Asked the user rather
+than keep guessing; told to skip it, possibly a browser/OS artifact rather than app code. Did keep
+the explicitly-requested, lower-risk half of that item: native number-input spin buttons hidden
+globally (`src/index.css`, `-webkit-appearance: none` + `-moz-appearance: textfield`) since every
+number input in this app (display order, capacity, review scores, ...) is a compact field, not a
+quantity stepper that benefits from them - typing and arrow-key increment/decrement still work.
+
+Spacing/empty space: Super admin dashboard's "System health" now sits in a two-column grid next to
+"Conferences by status" + "Recent activity" (both previously full-width, stacked under the stat
+row) on wide screens, with icon'd empty states for both when there's no data yet. Check-in desk
+(staff portal and convenor Attendance tab) puts the check-in card and today's counts
+(`AttendanceDashboard`) side by side on wide screens (`lg:grid-cols-[minmax(0,1fr)_300px]`),
+Recent check-ins full-width below, Today's programme/Registrations in a 2-column grid below that,
+single column under `lg`; removed the `max-w-5xl` cap both pages had (an artificial narrowing
+inside the already-correct `max-w-[1440px]` shell from the icons/layout step) so content actually
+uses the available width instead of leaving a dead margin. Screenshots before/after at
+390/1280/1440/1920px in `test-results/step10/{before,after}/` (captured the same stash-swap way as
+the icons/layout step) for the two views with the clearest visual change - the super admin
+conferences table and the staff check-in desk.
+
+Verified: `tsc` (root+server) clean, both builds clean. Bundle size: main `dist/assets/index-*.js`
+essentially unchanged (507.77 kB -> 507.94 kB raw, 148.67 -> 148.79 kB gzip - the shared `Button`
+module everyone imports grew slightly from `buttonClasses`/`LinkButton`). The lazy-loaded
+`CheckInPanel` chunk (only downloaded by someone who actually opens check-in) grew 481.34 kB ->
+492.25 kB raw (126.38 -> 129.95 kB gzip) for the whole new upload/code-entry feature - reasonable,
+and never part of the initial page load. `npm test` root 31/31 (25 existing + 6 new
+`qrDecode.test.ts` cases), server 470/470 (8 new lookup-endpoint tests + 1 new admin-counts test).
+E2E fixtures re-seeded, Playwright 93/93 (90 existing + the 3 new check-in-method tests) - one run
+showed the throwaway frontend dev server had silently died mid-suite (a background-process quirk
+of this environment, not a code issue - confirmed by restarting it and re-seeding, then getting
+93/93 clean). No SQL run, no schema changes, no secrets committed, tests only ever touched
+`conference_cms_test`.

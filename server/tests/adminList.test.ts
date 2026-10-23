@@ -2,7 +2,17 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db/pool.js'
-import { createConference, createUser, makePlatformAdmin, resetDatabase } from './helpers.js'
+import {
+  addConferenceMember,
+  createConference,
+  createDirectSession,
+  createSubmission,
+  createUser,
+  makePlatformAdmin,
+  resetDatabase,
+  setDeadlineWindow,
+  upsertConferenceSettings,
+} from './helpers.js'
 
 const app = createApp()
 
@@ -73,5 +83,45 @@ describe('GET /api/admin/conferences', () => {
     const match = (res.body.conferences as Array<{ id: string; name: string }>).find((c) => c.id === conferenceId)
     expect(match).toBeTruthy()
     expect(match?.name).toBe('Listed Conference')
+  })
+
+  it('includes submission and registration counts per conference, scoped correctly, with no N+1', async () => {
+    const agent = await loginAsAdmin('list-admin5@example.com')
+    const conferenceId = await createConference({ slug: 'counted-conf', name: 'Counted Conference' })
+    const otherConferenceId = await createConference({ slug: 'other-counted-conf', name: 'Other Counted Conference' })
+
+    const authorId = await createUser({ email: 'count-author@example.com', password: 'Str0ng!Pass' })
+    await addConferenceMember(conferenceId, authorId, 'author')
+    await pool.query(`INSERT INTO conference_tracks (conference_id, name, is_active) VALUES (?, 'Track', TRUE)`, [conferenceId])
+    const [trackRows] = await pool.query('SELECT id FROM conference_tracks WHERE conference_id = ?', [conferenceId])
+    const trackId = (trackRows as Array<{ id: string }>)[0]!.id
+    await createSubmission(conferenceId, trackId, authorId, { title: 'Counted paper 1' })
+    await createSubmission(conferenceId, trackId, authorId, { title: 'Counted paper 2' })
+
+    await upsertConferenceSettings(conferenceId, { registration_requires_payment: false })
+    await setDeadlineWindow(conferenceId, 'registration', -24, 24)
+    await pool.query(
+      `INSERT INTO registration_categories (conference_id, code, name) VALUES (?, 'general', 'General')`,
+      [conferenceId],
+    )
+    const regAuthorId = await createUser({ email: 'count-registrant@example.com', password: 'Str0ng!Pass' })
+    const regSession = await createDirectSession(regAuthorId)
+    const regAgent = {
+      post: (url: string) => request(app).post(url).set('Cookie', regSession),
+    }
+    const [categoryRows] = await pool.query('SELECT id FROM registration_categories WHERE conference_id = ?', [conferenceId])
+    const categoryId = (categoryRows as Array<{ id: string }>)[0]!.id
+    const registered = await regAgent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+    expect(registered.status).toBe(201)
+
+    const res = await agent.get('/api/admin/conferences')
+    expect(res.status).toBe(200)
+    const rows = res.body.conferences as Array<{ id: string; submission_count: number; registration_count: number }>
+    const match = rows.find((c) => c.id === conferenceId)
+    expect(match?.submission_count).toBe(2)
+    expect(match?.registration_count).toBe(1)
+    const other = rows.find((c) => c.id === otherConferenceId)
+    expect(other?.submission_count).toBe(0)
+    expect(other?.registration_count).toBe(0)
   })
 })

@@ -49,17 +49,38 @@ export async function listAdminConferences(filters: ListConferencesQuery = {}) {
     params.push(filters.status)
   }
 
-  const [rows] = await pool.query(
-    `SELECT c.id, c.name, c.code, c.slug, c.short_name, c.start_date, c.end_date, c.status,
-            u.id AS convenor_id, u.full_name AS convenor_name, u.email AS convenor_email
-     FROM conferences c
-     LEFT JOIN conference_members cm ON cm.conference_id = c.id AND cm.role_code = 'convenor' AND cm.status = 'active'
-     LEFT JOIN users u ON u.id = cm.user_id
-     WHERE ${conditions.join(' AND ')}
-     ORDER BY c.created_at DESC`,
-    params,
+  // Per-row submission/registration counts, fetched as two GROUP BY queries
+  // covering every conference at once (not one query per row) and merged in
+  // below — cheap enough to always include since both tables are indexed on
+  // conference_id and this only ever returns a page of conferences, never
+  // one of submissions/registrations.
+  const [[rows], [submissionCountRows], [registrationCountRows]] = await Promise.all([
+    pool.query(
+      `SELECT c.id, c.name, c.code, c.slug, c.short_name, c.start_date, c.end_date, c.status,
+              u.id AS convenor_id, u.full_name AS convenor_name, u.email AS convenor_email
+       FROM conferences c
+       LEFT JOIN conference_members cm ON cm.conference_id = c.id AND cm.role_code = 'convenor' AND cm.status = 'active'
+       LEFT JOIN users u ON u.id = cm.user_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY c.created_at DESC`,
+      params,
+    ),
+    pool.query('SELECT conference_id, COUNT(*) AS n FROM submissions GROUP BY conference_id'),
+    pool.query(`SELECT conference_id, COUNT(*) AS n FROM registrations WHERE status <> 'cancelled' GROUP BY conference_id`),
+  ])
+
+  const submissionCounts = new Map(
+    (submissionCountRows as Array<{ conference_id: string; n: number }>).map((r) => [r.conference_id, Number(r.n)]),
   )
-  return rows
+  const registrationCounts = new Map(
+    (registrationCountRows as Array<{ conference_id: string; n: number }>).map((r) => [r.conference_id, Number(r.n)]),
+  )
+
+  return (rows as Array<{ id: string }>).map((row) => ({
+    ...row,
+    submission_count: submissionCounts.get(row.id) ?? 0,
+    registration_count: registrationCounts.get(row.id) ?? 0,
+  }))
 }
 
 export async function createConference(

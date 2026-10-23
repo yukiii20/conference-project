@@ -61,6 +61,20 @@ body {
   border-radius: 2px;
 }
 
+/* Every number input in the app (display order, capacity, review scores,
+   ...) is a compact field, not a quantity stepper someone needs +/- controls
+   for — the native up/down spinner just looks like a stray floating control
+   crammed into a narrow box. Hidden everywhere; typing and arrow-key
+   increment/decrement still work. */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 @keyframes conf-panel-fade {
   from {
     opacity: 0;

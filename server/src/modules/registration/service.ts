@@ -8,6 +8,7 @@ import { notifyUser } from '../../utils/notifications.js'
 import { canManageSessionAttendance } from '../schedule/service.js'
 import { isWindowOpen, loadDeadlineWindow } from '../submissions/service.js'
 import { assertConferencePermission } from '../../middleware/auth.js'
+import { getConferencePermissions, isPlatformAdmin } from '../auth/service.js'
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import type { RegistrationCategoryInput } from './validation.js'
 
@@ -479,6 +480,93 @@ export async function searchRegistrations(conferenceId: string, search: string):
     [conferenceId, like, like, like],
   )
   return rows as SearchableRegistrationRow[]
+}
+
+export type CheckinLookupResult = {
+  id: string
+  registration_number: string
+  full_name: string
+  email: string
+  category_name: string
+  status: 'pending' | 'confirmed' | 'waitlisted' | 'cancelled'
+  already_checked_in_today: boolean
+  checked_in_at: string | null
+  can_confirm: boolean
+}
+
+type LookupRow = {
+  id: string
+  conference_id: string
+  status: 'pending' | 'confirmed' | 'waitlisted' | 'cancelled'
+  registration_number: string
+  full_name: string
+  email: string
+  category_name: string
+}
+
+/**
+ * Never checks anyone in — a pure read used by every tab of the check-in
+ * panel (scan/upload/code) to decide what to show BEFORE committing to a
+ * check-in, and by the "Verify only" toggle, which never calls the actual
+ * checkin endpoints at all. Unlike checkinByQrToken/checkinByRegistrationId
+ * below, this never throws for cancelled/pending/already-checked-in — those
+ * are all legitimate, distinguishable outcomes the result panel renders
+ * differently (amber/red), not errors. It still throws NotFoundError for a
+ * genuinely unknown code/token or one that belongs to a different
+ * conference, so "wrong conference" and "doesn't exist" both read as a
+ * plain 404 — deliberately indistinguishable, so this endpoint never
+ * confirms a ticket exists in some *other* conference.
+ */
+async function buildLookupResult(conferenceId: string, actorUserId: string, row: LookupRow): Promise<CheckinLookupResult> {
+  const [confRows] = await pool.query('SELECT timezone FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1', [conferenceId])
+  const timezone = (confRows as Array<{ timezone: string }>)[0]?.timezone ?? 'UTC'
+  const today = localDateKey(timezone)
+  const [attendanceRows] = await pool.query(
+    `SELECT checked_in_at FROM conference_attendance WHERE conference_id = ? AND registration_id = ? AND attendance_date = ? LIMIT 1`,
+    [conferenceId, row.id, today],
+  )
+  const existing = (attendanceRows as Array<{ checked_in_at: string }>)[0]
+
+  const canConfirm =
+    row.status === 'pending' &&
+    ((await isPlatformAdmin(actorUserId)) || (await getConferencePermissions(actorUserId, conferenceId)).has('registration.manage'))
+
+  return {
+    id: row.id,
+    registration_number: row.registration_number,
+    full_name: row.full_name,
+    email: row.email,
+    category_name: row.category_name,
+    status: row.status,
+    already_checked_in_today: Boolean(existing),
+    checked_in_at: existing?.checked_in_at ?? null,
+    can_confirm: canConfirm,
+  }
+}
+
+export async function lookupRegistrationByCode(actorUserId: string, conferenceId: string, code: string): Promise<CheckinLookupResult> {
+  const normalized = code.trim().toUpperCase()
+  const [rows] = await pool.query(
+    `SELECT r.id, r.conference_id, r.status, r.registration_number, u.full_name, u.email, c.name AS category_name
+     FROM registrations r JOIN users u ON u.id = r.user_id JOIN registration_categories c ON c.id = r.category_id
+     WHERE r.conference_id = ? AND UPPER(r.registration_number) = ? LIMIT 1`,
+    [conferenceId, normalized],
+  )
+  const row = (rows as LookupRow[])[0]
+  if (!row) throw new NotFoundError('No registration found with this ticket code in this conference.')
+  return buildLookupResult(conferenceId, actorUserId, row)
+}
+
+export async function lookupRegistrationByQrToken(actorUserId: string, conferenceId: string, qrToken: string): Promise<CheckinLookupResult> {
+  const [rows] = await pool.query(
+    `SELECT r.id, r.conference_id, r.status, r.registration_number, u.full_name, u.email, c.name AS category_name
+     FROM registrations r JOIN users u ON u.id = r.user_id JOIN registration_categories c ON c.id = r.category_id
+     WHERE r.qr_token = ? LIMIT 1`,
+    [qrToken],
+  )
+  const row = (rows as LookupRow[])[0]
+  if (!row || row.conference_id !== conferenceId) throw new NotFoundError('This QR code is not registered for this conference.')
+  return buildLookupResult(conferenceId, actorUserId, row)
 }
 
 export type CheckinResult = { full_name: string; registration_number: string }

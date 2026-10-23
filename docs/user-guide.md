@@ -107,15 +107,31 @@ role.
 1. **Get the role**: the convenor adds you as staff (Members and roles).
 2. **Sign in**: choose **Staff** at sign-in, and open **Check-in desk** in
    your portal's sidebar.
-3. **Check people in**: either scan an attendee's ticket QR code with
-   **Start camera** (if your browser/device supports it), or type their
-   name, email, or registration number into **Manual search** and click
-   **Check in**. A big green confirmation (or a clear red reason) shows
-   immediately. Someone can only be checked in once per day.
+3. **Check people in** — three ways, same result either way. The desk
+   remembers which one you used last:
+   - **Scan with camera**: point the camera at the ticket's QR code
+     (**Start camera** first). If the camera isn't available, the panel
+     says so and points you at the other two tabs instead.
+   - **Upload QR image**: drag and drop the attendee's QR image onto the
+     panel, click **Choose file**, or just paste one (Ctrl+V) — e.g. a
+     screenshot of their ticket or a phone photo. It's decoded right there
+     in your browser; the image itself is never sent anywhere.
+   - **Enter ticket code**: type their name, email, or ticket code (like
+     `E2ECONF-R0001` — not case-sensitive, spaces are trimmed) and pick
+     them from the list, or press Enter on an exact code.
+   Every method shows the same result panel — name, ticket code, category,
+   and a big coloured status: green once checked in, amber if they're
+   already checked in today (with the time) or still waiting on payment
+   confirmation, red if the code doesn't match anyone in this conference or
+   their registration was cancelled. Turn on **Verify only** to just look
+   someone up (e.g. checking a ticket at the door) without checking them
+   in — you still get a **Check in** button if you decide to go ahead.
+   Someone can only be checked in once per day.
 4. **Numbers**: the same screen shows how many people are confirmed to
-   attend and how many have checked in today. Below it, a read-only
-   **Registrations** list lets you search, filter, and export a CSV — you
-   can't see papers, reviews, or any admin settings.
+   attend and how many have checked in today, next to the check-in card,
+   plus a **Recent check-ins** list that updates after every check-in.
+   Below that, a read-only **Registrations** list lets you search, filter,
+   and export a CSV — you can't see papers, reviews, or any admin settings.
 
 ---
 
@@ -147,8 +163,9 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
     sessions, assign chairs, and schedule accepted papers or invited talks
     into them. Toggle List/Grid view; publish a session to make it public.
   - *Attendance* — manage registration categories, see and search every
-    registration, confirm a pending one, check someone in, and see
-    today's numbers.
+    registration, confirm a pending one, check someone in (same
+    scan/upload/code check-in card the staff desk uses), and see today's
+    numbers.
   - *Certificates* — design a template per certificate type, generate them
     in bulk (or issue a best-paper/speaker one by hand), and release them
     to recipients.
@@ -173,9 +190,11 @@ Sign in at `/super-admin/login` (a separate login from everyone else).
 
 - **Dashboard**: platform-wide numbers and a system health card (database,
   email queue, disk space).
-- **Conferences**: create a new conference, then appoint an existing user
-  as convenor or invite a brand-new person by email (they set their
-  password via the link).
+- **Conferences**: search by name/code/slug or filter by status, see each
+  one's submission and registration counts at a glance, open its public
+  page or **View as admin** from the row's actions, create a new
+  conference, then appoint an existing user as convenor or invite a
+  brand-new person by email (they set their password via the link).
 - **Users**: search any user, suspend/reactivate/unlock an account, send
   them a password-reset link, or anonymise one that's being deleted
   (removes personal details, keeps the historical record).

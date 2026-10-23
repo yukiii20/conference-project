@@ -60,19 +60,24 @@ export function StaffSection({ conferenceId }: { conferenceId: string }) {
   const [refreshKey, setRefreshKey] = useState(0)
 
   return (
-    <div className="mt-6 max-w-5xl">
+    <div className="mt-6">
       <PageHeader title="Check-in desk" />
 
-      <div className="mt-4">
-        <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
-      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div>
+          <h3 className="text-sm font-semibold text-text">Check in an attendee</h3>
+          <div className="mt-3">
+            <Suspense fallback={<SkeletonText lines={3} />}>
+              <CheckInPanel conferenceId={conferenceId} onCheckedIn={() => setRefreshKey((k) => k + 1)} />
+            </Suspense>
+          </div>
+        </div>
 
-      <div className="mt-10">
-        <h3 className="text-sm font-semibold text-text">Check in an attendee</h3>
-        <div className="mt-3">
-          <Suspense fallback={<SkeletonText lines={3} />}>
-            <CheckInPanel conferenceId={conferenceId} onCheckedIn={() => setRefreshKey((k) => k + 1)} />
-          </Suspense>
+        <div>
+          <h3 className="text-sm font-semibold text-text">Today</h3>
+          <div className="mt-3">
+            <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
+          </div>
         </div>
       </div>
 
@@ -81,14 +86,16 @@ export function StaffSection({ conferenceId }: { conferenceId: string }) {
         <RecentCheckins conferenceId={conferenceId} refreshKey={refreshKey} />
       </div>
 
-      <div className="mt-10">
-        <h3 className="text-sm font-semibold text-text">Today's programme</h3>
-        <TodaysProgramme conferenceId={conferenceId} />
-      </div>
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div>
+          <h3 className="text-sm font-semibold text-text">Today's programme</h3>
+          <TodaysProgramme conferenceId={conferenceId} />
+        </div>
 
-      <div className="mt-10">
-        <h3 className="text-sm font-semibold text-text">Registrations</h3>
-        <RegistrationsList conferenceId={conferenceId} readOnly />
+        <div>
+          <h3 className="text-sm font-semibold text-text">Registrations</h3>
+          <RegistrationsList conferenceId={conferenceId} readOnly />
+        </div>
       </div>
     </div>
   )

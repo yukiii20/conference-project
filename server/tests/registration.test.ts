@@ -290,3 +290,139 @@ describe('attendance check-in', () => {
     expect(chairRes.body.registrations.some((r: { id: string }) => r.id === registrationId)).toBe(true)
   })
 })
+
+describe('check-in lookup (preview, never records attendance)', () => {
+  it('finds a confirmed registration by ticket code, case-insensitively and with surrounding spaces trimmed', async () => {
+    const conferenceId = await createConference()
+    await openRegistration(conferenceId)
+    const categoryId = await makeCategory(conferenceId)
+    const { agent } = await loginAs(conferenceId, 'lookup-code-author@example.com', 'author')
+    const reg = await agent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+
+    const { agent: staffAgent } = await loginAs(conferenceId, 'lookup-code-staff@example.com', 'staff')
+    const res = await staffAgent.get(
+      `/api/conferences/${conferenceId}/registrations/lookup?code=${encodeURIComponent(`  ${(reg.body.registration_number as string).toLowerCase()}  `)}`,
+    )
+    expect(res.status).toBe(200)
+    expect(res.body.id).toBe(reg.body.id)
+    expect(res.body.status).toBe('confirmed')
+    expect(res.body.already_checked_in_today).toBe(false)
+    expect(res.body.checked_in_at).toBeNull()
+
+    // A pure preview — no attendance row was created.
+    const dashboard = await staffAgent.get(`/api/conferences/${conferenceId}/attendance/dashboard`)
+    expect(dashboard.body.checked_in_today).toBe(0)
+  })
+
+  it('looks up a registration by qr_token the same way', async () => {
+    const conferenceId = await createConference()
+    await openRegistration(conferenceId)
+    const categoryId = await makeCategory(conferenceId)
+    const { agent } = await loginAs(conferenceId, 'lookup-qr-author@example.com', 'author')
+    const reg = await agent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+    const [rows] = await pool.query('SELECT qr_token FROM registrations WHERE id = ?', [reg.body.id])
+    const qrToken = (rows as Array<{ qr_token: string }>)[0]!.qr_token
+
+    const { agent: staffAgent } = await loginAs(conferenceId, 'lookup-qr-staff@example.com', 'staff')
+    const res = await staffAgent.get(`/api/conferences/${conferenceId}/registrations/lookup?qr_token=${qrToken}`)
+    expect(res.status).toBe(200)
+    expect(res.body.id).toBe(reg.body.id)
+  })
+
+  it('returns not found for a ticket code that belongs to a different conference', async () => {
+    const conferenceA = await createConference()
+    const conferenceB = await createConference()
+    await openRegistration(conferenceA)
+    const categoryId = await makeCategory(conferenceA)
+    const { agent } = await loginAs(conferenceA, 'lookup-wrong-conf-author@example.com', 'author')
+    const reg = await agent.post(`/api/conferences/${conferenceA}/register`).send({ category_id: categoryId })
+
+    await openRegistration(conferenceB)
+    const { agent: staffAgentB } = await loginAs(conferenceB, 'lookup-wrong-conf-staff@example.com', 'staff')
+    const res = await staffAgentB.get(
+      `/api/conferences/${conferenceB}/registrations/lookup?code=${reg.body.registration_number}`,
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it('returns not found for a ticket code that does not exist at all', async () => {
+    const conferenceId = await createConference()
+    const { agent: staffAgent } = await loginAs(conferenceId, 'lookup-missing-staff@example.com', 'staff')
+    const res = await staffAgent.get(`/api/conferences/${conferenceId}/registrations/lookup?code=NOPE-R9999`)
+    expect(res.status).toBe(404)
+  })
+
+  it('shows a cancelled registration as cancelled, not a generic error', async () => {
+    const conferenceId = await createConference()
+    await openRegistration(conferenceId)
+    const categoryId = await makeCategory(conferenceId)
+    const { agent } = await loginAs(conferenceId, 'lookup-cancelled-author@example.com', 'author')
+    const reg = await agent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+    await agent.delete(`/api/conferences/${conferenceId}/my-registration`)
+
+    const { agent: staffAgent } = await loginAs(conferenceId, 'lookup-cancelled-staff@example.com', 'staff')
+    const res = await staffAgent.get(`/api/conferences/${conferenceId}/registrations/lookup?code=${reg.body.registration_number}`)
+    expect(res.status).toBe(200)
+    expect(res.body.status).toBe('cancelled')
+  })
+
+  it('shows a pending registration as pending, with can_confirm true for a convenor and false for staff', async () => {
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId, { registration_requires_payment: true })
+    await setDeadlineWindow(conferenceId, 'registration', -24, 24)
+    const categoryId = await makeCategory(conferenceId)
+    const { agent } = await loginAs(conferenceId, 'lookup-pending-author@example.com', 'author')
+    const reg = await agent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+    expect(reg.body.status).toBe('pending')
+
+    const { agent: convenorAgent } = await loginAs(conferenceId, 'lookup-pending-convenor@example.com', 'convenor')
+    const asConvenor = await convenorAgent.get(
+      `/api/conferences/${conferenceId}/registrations/lookup?code=${reg.body.registration_number}`,
+    )
+    expect(asConvenor.status).toBe(200)
+    expect(asConvenor.body.status).toBe('pending')
+    expect(asConvenor.body.can_confirm).toBe(true)
+
+    const { agent: staffAgent } = await loginAs(conferenceId, 'lookup-pending-staff@example.com', 'staff')
+    const asStaff = await staffAgent.get(`/api/conferences/${conferenceId}/registrations/lookup?code=${reg.body.registration_number}`)
+    expect(asStaff.status).toBe(200)
+    expect(asStaff.body.can_confirm).toBe(false)
+  })
+
+  it('reports already_checked_in_today with a checked_in_at time after a real check-in, without creating a duplicate', async () => {
+    const conferenceId = await createConference()
+    await openRegistration(conferenceId)
+    const categoryId = await makeCategory(conferenceId)
+    const { agent } = await loginAs(conferenceId, 'lookup-dup-author@example.com', 'author')
+    const reg = await agent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+
+    const { agent: staffAgent } = await loginAs(conferenceId, 'lookup-dup-staff@example.com', 'staff')
+    await staffAgent.post(`/api/conferences/${conferenceId}/checkin/manual`).send({ registration_id: reg.body.id })
+
+    const res = await staffAgent.get(`/api/conferences/${conferenceId}/registrations/lookup?code=${reg.body.registration_number}`)
+    expect(res.status).toBe(200)
+    expect(res.body.already_checked_in_today).toBe(true)
+    expect(res.body.checked_in_at).toBeTruthy()
+
+    const dashboard = await staffAgent.get(`/api/conferences/${conferenceId}/attendance/dashboard`)
+    expect(dashboard.body.checked_in_today).toBe(1) // the lookup above did not add a second check-in
+  })
+
+  it('rejects a lookup from a user without attendance.record permission', async () => {
+    const conferenceId = await createConference()
+    await openRegistration(conferenceId)
+    const categoryId = await makeCategory(conferenceId)
+    const { agent } = await loginAs(conferenceId, 'lookup-forbidden-author@example.com', 'author')
+    const reg = await agent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+
+    const res = await agent.get(`/api/conferences/${conferenceId}/registrations/lookup?code=${reg.body.registration_number}`)
+    expect(res.status).toBe(403)
+  })
+
+  it('rejects a lookup with neither a code nor a qr_token', async () => {
+    const conferenceId = await createConference()
+    const { agent: staffAgent } = await loginAs(conferenceId, 'lookup-neither-staff@example.com', 'staff')
+    const res = await staffAgent.get(`/api/conferences/${conferenceId}/registrations/lookup`)
+    expect(res.status).toBe(400)
+  })
+})

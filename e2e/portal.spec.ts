@@ -173,15 +173,19 @@ test('author registers to attend from My ticket, staff checks them in, convenor 
   await page.getByRole('button', { name: 'Register to attend' }).click()
   await expect(page.getByAltText('Your check-in QR code')).toBeVisible()
 
-  // 2. Staff checks them in from the shared Check-in desk section.
+  // 2. Staff checks them in from the shared Check-in desk section, via the
+  // "Enter ticket code" tab's name search.
   await signIn(page, FIXTURE.staffEmail, 'staff')
   await expect(page).toHaveURL(/\/portal/)
   await page.locator('nav').getByRole('link', { name: 'Check-in desk' }).click()
-  await page.getByPlaceholder('Name, email or registration number').fill(fullName)
+  await page.getByRole('tab', { name: 'Enter ticket code' }).click()
+  await page.getByPlaceholder('Ticket code (e.g. A112-R0001), name or email').fill(fullName)
   const resultRow = page.locator('li', { hasText: fullName })
   await expect(resultRow).toBeVisible()
-  await resultRow.getByRole('button', { name: 'Check in' }).click()
-  await expect(page.getByText(new RegExp(`Checked in: ${fullName}`))).toBeVisible()
+  await resultRow.getByRole('button', { name: 'Select' }).click()
+  await expect(page.getByRole('button', { name: 'Check in' })).toBeVisible()
+  await page.getByRole('button', { name: 'Check in' }).click()
+  await expect(page.getByText('This person has been checked in.')).toBeVisible()
 
   // 3. The convenor (re-)generates participation certificates and releases them.
   await signIn(page, FIXTURE.convenorEmail, 'convenor')

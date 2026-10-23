@@ -1,17 +1,23 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertOctagon,
   Building2,
   Database,
+  ExternalLink,
+  Eye,
   FileStack,
+  FileText,
   HardDrive,
   Mail,
+  MoreHorizontal,
   Plus,
   Save,
+  Search,
   Send,
   Ticket,
   UserCheck,
+  Users,
   UserX,
   type LucideIcon,
 } from 'lucide-react'
@@ -24,6 +30,7 @@ import {
   Alert,
   Badge,
   Button,
+  buttonClasses,
   Card,
   type Column,
   ConfirmDialog,
@@ -32,6 +39,7 @@ import {
   FormField,
   Icon,
   Input,
+  LinkButton,
   Modal,
   PageHeader,
   Pagination,
@@ -63,6 +71,8 @@ type ConferenceRow = {
   start_date: string
   end_date: string
   status: string
+  submission_count: number
+  registration_count: number
 }
 
 type AdminConferenceRow = ConferenceRow & {
@@ -257,6 +267,8 @@ function ConferencesTab({
   const [publishBusyId, setPublishBusyId] = useState<string | null>(null)
   const [publishError, setPublishError] = useState<string | null>(null)
   const [createNote, setCreateNote] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   async function handlePublish(id: string) {
     setPublishBusyId(id)
@@ -271,70 +283,79 @@ function ConferencesTab({
     }
   }
 
+  const filtered = conferences.filter((c) => {
+    if (statusFilter && c.status !== statusFilter) return false
+    if (!search.trim()) return true
+    const q = search.trim().toLowerCase()
+    return c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)
+  })
+
+  const statusOptions = Array.from(new Set(conferences.map((c) => c.status))).sort()
+
   const columns: Column<ConferenceRow>[] = [
-    { key: 'name', header: 'Name', render: (c) => c.name },
-    { key: 'code', header: 'Code', render: (c) => c.code },
+    {
+      key: 'name',
+      header: 'Name',
+      render: (c) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-text">{c.name}</span>
+          <span className="mt-0.5">
+            <Badge tone="neutral">{c.code}</Badge>
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (c) => <StatusChip status={c.status} labels={{ registration_open: 'Registration open', submission_open: 'Submission open' }} />,
+    },
     {
       key: 'dates',
       header: 'Dates',
       render: (c) => (
-        <span className="whitespace-nowrap">
+        <span className="whitespace-nowrap text-sm">
           {formatDate(c.start_date)} – {formatDate(c.end_date)}
         </span>
       ),
     },
-    { key: 'status', header: 'Status', render: (c) => formatStatus(c.status) },
     {
       key: 'convenor',
       header: 'Convenor',
       render: (c) => {
         const convenor = convenorByConference[c.id]
         return convenor ? (
-          <span>
-            {convenor.full_name ?? 'Unnamed'}
-            {convenor.email ? ` (${convenor.email})` : ''}
-          </span>
+          <div className="flex flex-col">
+            <span>{convenor.full_name ?? 'Unnamed'}</span>
+            {convenor.email ? <span className="text-xs text-text-muted">{convenor.email}</span> : null}
+          </div>
         ) : (
           <span className="text-text-muted">No convenor yet</span>
         )
       },
     },
     {
-      key: 'publish',
-      header: '',
-      render: (c) =>
-        c.status === 'draft' ? (
-          <Button size="sm" onClick={() => handlePublish(c.id)} loading={publishBusyId === c.id}>
-            Publish
-          </Button>
-        ) : null,
-    },
-    {
-      key: 'public-page',
-      header: '',
-      render: (c) =>
-        c.status !== 'draft' ? (
-          <a
-            href={`/c/${c.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md border border-border px-3 py-1 text-sm hover:bg-surface-muted"
-          >
-            Public page
-          </a>
-        ) : null,
-    },
-    {
-      key: 'view-as',
-      header: '',
+      key: 'counts',
+      header: 'Activity',
       render: (c) => (
-        <Link
-          to={`/super-admin/view-as/${c.id}`}
-          state={{ name: c.name }}
-          className="rounded-md border border-border px-3 py-1 text-sm hover:bg-surface-muted"
-        >
-          View as admin
-        </Link>
+        <div className="flex items-center gap-3 text-sm text-text-muted">
+          <span className="inline-flex items-center gap-1" title="Submissions">
+            <Icon icon={FileText} size={14} />
+            {c.submission_count}
+          </span>
+          <span className="inline-flex items-center gap-1" title="Registrations">
+            <Icon icon={Users} size={14} />
+            {c.registration_count}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (c) => (
+        <ConferenceRowActions conference={c} publishBusy={publishBusyId === c.id} onPublish={() => handlePublish(c.id)} />
       ),
     },
   ]
@@ -346,7 +367,26 @@ function ConferencesTab({
         {publishError ? <Alert variant="danger">{publishError}</Alert> : null}
       </div>
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Icon icon={Search} size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, code or slug"
+              className="w-64 pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-48">
+            <option value="">All statuses</option>
+            {statusOptions.map((s) => (
+              <option key={s} value={s}>
+                {formatStatus(s)}
+              </option>
+            ))}
+          </Select>
+        </div>
         <Button variant={showForm ? 'secondary' : 'primary'} onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Cancel' : 'New conference'}
         </Button>
@@ -371,12 +411,130 @@ function ConferencesTab({
       <div className="mt-4">
         <Table<ConferenceRow>
           columns={columns}
-          rows={conferences}
+          rows={filtered}
           rowKey={(c) => c.id}
           loading={loading}
-          emptyTitle="No conferences yet."
-          minWidth={720}
+          emptyTitle={conferences.length === 0 ? 'No conferences yet.' : 'No conferences match this search.'}
+          minWidth={820}
         />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The two row-level links (public page, view-as) as proper outline Buttons
+ * side by side on a wide screen; collapses into a single "..." menu on a
+ * narrow one instead of wrapping the buttons onto a second line (the thing
+ * this replaces — see Step 10 spec).
+ */
+function ConferenceRowActions({
+  conference,
+  publishBusy,
+  onPublish,
+}: {
+  conference: ConferenceRow
+  publishBusy: boolean
+  onPublish: () => void
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen])
+
+  const canViewPublicPage = conference.status !== 'draft'
+
+  return (
+    <div className="flex items-center justify-end gap-2">
+      {conference.status === 'draft' ? (
+        <Button size="sm" onClick={onPublish} loading={publishBusy} className="whitespace-nowrap">
+          Publish
+        </Button>
+      ) : null}
+
+      {/* Wide screens: both actions as their own outline buttons. Real <a>/<Link>
+          elements styled with buttonClasses — never a <Button> nested inside
+          an <a>, which is invalid HTML and muddies the accessible role. */}
+      <div className="hidden items-center gap-2 sm:flex">
+        {canViewPublicPage ? (
+          <LinkButton
+            href={`/c/${conference.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="outline"
+            size="sm"
+            className="whitespace-nowrap"
+            iconLeft={<Icon icon={ExternalLink} size={14} />}
+          >
+            Public page
+          </LinkButton>
+        ) : null}
+        <Link
+          to={`/super-admin/view-as/${conference.id}`}
+          state={{ name: conference.name }}
+          className={buttonClasses('outline', 'sm', 'whitespace-nowrap')}
+        >
+          <Icon icon={Eye} size={14} />
+          View as admin
+        </Link>
+      </div>
+
+      {/* Narrow screens: one "..." menu instead of the buttons wrapping. */}
+      <div ref={menuRef} className="relative sm:hidden">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label="Actions"
+          className="flex h-10 w-10 items-center justify-center rounded-md border border-border hover:bg-surface-muted"
+        >
+          <Icon icon={MoreHorizontal} size={18} />
+        </button>
+        {menuOpen ? (
+          <div
+            role="menu"
+            className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-lg border border-border bg-surface text-text shadow-lg"
+          >
+            {canViewPublicPage ? (
+              <a
+                href={`/c/${conference.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+                className="flex min-h-10 items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-surface-muted"
+              >
+                <Icon icon={ExternalLink} size={16} />
+                Public page
+              </a>
+            ) : null}
+            <Link
+              to={`/super-admin/view-as/${conference.id}`}
+              state={{ name: conference.name }}
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+              className="flex min-h-10 items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-surface-muted"
+            >
+              <Icon icon={Eye} size={16} />
+              View as admin
+            </Link>
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -1187,83 +1345,97 @@ function DashboardTab() {
         ))}
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-text">System health</h2>
-        <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-          <Card>
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Database</p>
-              <Icon icon={Database} className="text-brand/60" />
-            </div>
-            <div className="mt-1">
-              <Badge tone={data.health.database.ok ? 'success' : 'danger'}>
-                {data.health.database.ok ? `${data.health.database.latency_ms} ms` : 'Down'}
-              </Badge>
-            </div>
-          </Card>
-          <Card>
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Email mode</p>
-              <Icon icon={Mail} className="text-brand/60" />
-            </div>
-            <p className="mt-1 text-lg font-semibold uppercase text-text">{data.health.email_mode}</p>
-          </Card>
-          <Card>
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Failed emails (24h)</p>
-              <Icon icon={AlertOctagon} className="text-brand/60" />
-            </div>
-            <div className="mt-1">
-              <Badge tone={data.health.failed_emails_24h > 0 ? 'danger' : 'neutral'}>
-                {data.health.failed_emails_24h}
-              </Badge>
-            </div>
-          </Card>
-          <Card>
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Queued emails</p>
-              <Icon icon={Mail} className="text-brand/60" />
-            </div>
-            <p className="mt-1 text-lg font-semibold text-text">{data.health.queued_emails}</p>
-          </Card>
-          <Card>
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Free disk space</p>
-              <Icon icon={HardDrive} className="text-brand/60" />
-            </div>
-            <p className="mt-1 text-lg font-semibold text-text">{formatBytes(data.health.storage_disk.free_bytes)}</p>
-          </Card>
-        </div>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold text-text">Conferences by status</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {data.conferences_by_status.map((s) => (
-            <Badge key={s.status} tone="neutral">
-              {formatStatus(s.status)}: {s.count}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold text-text">Recent activity</h2>
-        {data.recent_actions.length === 0 ? (
-          <div className="mt-3">
-            <EmptyState title="No activity yet." />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-lg font-semibold text-text">Conferences by status</h2>
+            {data.conferences_by_status.length === 0 ? (
+              <div className="mt-3 rounded-lg border border-border bg-surface">
+                <EmptyState
+                  title="No conferences yet."
+                  message="Create the first one from the Conferences tab."
+                  icon={<Icon icon={Building2} size={28} className="text-text-muted" />}
+                />
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {data.conferences_by_status.map((s) => (
+                  <Badge key={s.status} tone="neutral">
+                    {formatStatus(s.status)}: {s.count}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-surface">
-            {data.recent_actions.map((a) => (
-              <li key={a.id} className="px-4 py-2.5 text-sm">
-                <span className="text-text-muted">{formatDateTime(a.occurred_at)}</span>
-                {' — '}
-                <span className="font-medium">{a.actor_name ?? 'System'}</span> {a.action}
-              </li>
-            ))}
-          </ul>
-        )}
+
+          <div>
+            <h2 className="text-lg font-semibold text-text">Recent activity</h2>
+            {data.recent_actions.length === 0 ? (
+              <div className="mt-3 rounded-lg border border-border bg-surface">
+                <EmptyState title="No activity yet." message="Audited actions will show up here as they happen." />
+              </div>
+            ) : (
+              <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-surface">
+                {data.recent_actions.map((a) => (
+                  <li key={a.id} className="px-4 py-2.5 text-sm">
+                    <span className="text-text-muted">{formatDateTime(a.occurred_at)}</span>
+                    {' — '}
+                    <span className="font-medium">{a.actor_name ?? 'System'}</span> {a.action}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-text">System health</h2>
+          <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+            <Card>
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Database</p>
+                <Icon icon={Database} className="text-brand/60" />
+              </div>
+              <div className="mt-1">
+                <Badge tone={data.health.database.ok ? 'success' : 'danger'}>
+                  {data.health.database.ok ? `${data.health.database.latency_ms} ms` : 'Down'}
+                </Badge>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Email mode</p>
+                <Icon icon={Mail} className="text-brand/60" />
+              </div>
+              <p className="mt-1 text-lg font-semibold uppercase text-text">{data.health.email_mode}</p>
+            </Card>
+            <Card>
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Failed emails (24h)</p>
+                <Icon icon={AlertOctagon} className="text-brand/60" />
+              </div>
+              <div className="mt-1">
+                <Badge tone={data.health.failed_emails_24h > 0 ? 'danger' : 'neutral'}>
+                  {data.health.failed_emails_24h}
+                </Badge>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Queued emails</p>
+                <Icon icon={Mail} className="text-brand/60" />
+              </div>
+              <p className="mt-1 text-lg font-semibold text-text">{data.health.queued_emails}</p>
+            </Card>
+            <Card>
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Free disk space</p>
+                <Icon icon={HardDrive} className="text-brand/60" />
+              </div>
+              <p className="mt-1 text-lg font-semibold text-text">{formatBytes(data.health.storage_disk.free_bytes)}</p>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

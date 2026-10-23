@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import QRCode from 'qrcode'
 import { requireAuth, requireConferencePermission } from '../../middleware/auth.js'
-import { validateBody } from '../../middleware/validate.js'
+import { validateBody, validateQuery } from '../../middleware/validate.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { env } from '../../config/env.js'
 import { NotFoundError } from '../../utils/errors.js'
@@ -22,6 +22,8 @@ import {
   listCategories,
   listRecentCheckins,
   listRegistrations,
+  lookupRegistrationByCode,
+  lookupRegistrationByQrToken,
   register,
   searchRegistrations,
   sessionCheckinByQrToken,
@@ -29,6 +31,7 @@ import {
   updateCategory,
 } from './service.js'
 import {
+  checkinLookupQuerySchema,
   checkinSchema,
   manualCheckinSchema,
   manualSessionCheckinSchema,
@@ -187,6 +190,26 @@ registrationRouter.get(
         return
       }
       res.json({ registrations: await searchRegistrations(req.params.id!, q) })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Read-only preview used by every tab of the check-in panel (and the
+// "Verify only" toggle) — never records attendance, see
+// lookupRegistrationByCode/lookupRegistrationByQrToken's own doc comment.
+registrationRouter.get(
+  '/:id/registrations/lookup',
+  requireConferencePermission('attendance.record'),
+  validateQuery(checkinLookupQuerySchema),
+  async (req, res, next) => {
+    try {
+      const { code, qr_token } = req.query as unknown as { code?: string; qr_token?: string }
+      const result = code
+        ? await lookupRegistrationByCode(req.user!.id, req.params.id!, code)
+        : await lookupRegistrationByQrToken(req.user!.id, req.params.id!, qr_token!)
+      res.json(result)
     } catch (err) {
       next(err)
     }

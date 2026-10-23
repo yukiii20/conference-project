@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react'
 import { Spinner } from './Spinner'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'link'
@@ -21,6 +21,19 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   lg: 'min-h-11 px-5 py-2.5 text-base gap-2',
 }
 
+/**
+ * The exact classes <Button> itself applies — exported so a real `<a>`
+ * (e.g. an external link that needs to look like a button) can match it
+ * without nesting a `<button>` inside an `<a>`, which is invalid HTML and
+ * breaks the accessible role Playwright/screen readers see.
+ */
+export function buttonClasses(variant: ButtonVariant = 'primary', size: ButtonSize = 'md', className = ''): string {
+  const isLink = variant === 'link'
+  return `inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-button ${
+    isLink ? '' : 'rounded-md'
+  } ${VARIANT_CLASSES[variant]} ${isLink ? '' : SIZE_CLASSES[size]} ${className}`
+}
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   size?: ButtonSize
@@ -38,20 +51,32 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   { variant = 'primary', size = 'md', loading = false, disabled, iconLeft, iconRight, className = '', children, ...rest },
   ref,
 ) {
-  const isLink = variant === 'link'
   return (
-    <button
-      ref={ref}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-button ${
-        isLink ? '' : 'rounded-md'
-      } ${VARIANT_CLASSES[variant]} ${isLink ? '' : SIZE_CLASSES[size]} ${className}`}
-      {...rest}
-    >
+    <button ref={ref} disabled={disabled || loading} aria-busy={loading || undefined} className={buttonClasses(variant, size, className)} {...rest}>
       {loading ? <Spinner size={size === 'lg' ? 'md' : 'sm'} /> : iconLeft}
       {children}
       {!loading ? iconRight : null}
     </button>
+  )
+})
+
+interface LinkButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  variant?: ButtonVariant
+  size?: ButtonSize
+  iconLeft?: ReactNode
+  iconRight?: ReactNode
+}
+
+/** Same look as <Button>, but a real `<a>` — for an external/navigational link that should look like a button (e.g. "Public page"). Never nest a <Button> inside an <a>: that's invalid HTML and muddies the accessible role. */
+export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(function LinkButton(
+  { variant = 'primary', size = 'md', iconLeft, iconRight, className = '', children, ...rest },
+  ref,
+) {
+  return (
+    <a ref={ref} className={buttonClasses(variant, size, className)} {...rest}>
+      {iconLeft}
+      {children}
+      {iconRight}
+    </a>
   )
 })

@@ -163,10 +163,10 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
 export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
   const [refreshKey, setRefreshKey] = useState(0)
   return (
-    <div className="mt-6 max-w-5xl">
+    <div className="mt-6">
       <PageHeader title="Attendance" subtitle="Registration categories, registrations, and event check-in." />
       <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
-      <div className="mt-10">
+      <div className="mt-10 max-w-5xl">
         <CategoriesSection conferenceId={conferenceId} onChanged={() => setRefreshKey((k) => k + 1)} />
       </div>
       <div className="mt-10">
@@ -175,7 +175,7 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
       </div>
       <div className="mt-10">
         <h3 className="text-lg font-medium text-text">Check-in</h3>
-        <div className="mt-3">
+        <div className="mt-3 max-w-2xl">
           <Suspense
             fallback={
               <div className="flex items-center gap-2 text-sm text-text-muted">
@@ -183,7 +183,7 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
               </div>
             }
           >
-            <CheckInPanel conferenceId={conferenceId} />
+            <CheckInPanel conferenceId={conferenceId} onCheckedIn={() => setRefreshKey((k) => k + 1)} />
           </Suspense>
         </div>
       </div>

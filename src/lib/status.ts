@@ -50,6 +50,12 @@ const STATUS_TONE: Record<string, StatusTone> = {
   in_progress: 'info',
   declined: 'danger',
   published: 'success',
+  // conferences (the conferences.status column itself, not a submission/review status)
+  registration_open: 'info',
+  submission_open: 'info',
+  scheduling: 'warning',
+  ongoing: 'success',
+  closed: 'neutral',
   // registrations
   pending: 'warning',
   waitlisted: 'warning',
