@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
+import { humanizeAuditAction, humanizeIdentifier } from '../../lib/humanize'
 import { PageHeader, Select, Input, Alert, Button, Table } from '../../components/ui'
 import type { Column } from '../../components/ui/Table'
 
@@ -25,9 +26,16 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [actor, setActor] = useState('')
   const [action, setAction] = useState('')
+  const [debouncedAction, setDebouncedAction] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [page, setPage] = useState(1)
+
+  // Debounced so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedAction(action), 300)
+    return () => clearTimeout(t)
+  }, [action])
 
   useEffect(() => {
     api
@@ -47,7 +55,7 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
     try {
       const data = await api.get<{ entries: Entry[] }>(`/conferences/${conferenceId}/activity-log`, {
         actor: actor || undefined,
-        action: action || undefined,
+        action: debouncedAction || undefined,
         from: from || undefined,
         to: to || undefined,
         page: String(page),
@@ -59,7 +67,7 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
     } finally {
       setLoading(false)
     }
-  }, [conferenceId, actor, action, from, to, page])
+  }, [conferenceId, actor, debouncedAction, from, to, page])
 
   useEffect(() => {
     load()
@@ -68,13 +76,13 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
   const columns: Column<Entry>[] = [
     { key: 'when', header: 'When', render: (e) => <span className="whitespace-nowrap text-text-muted">{formatKathmandu(e.occurred_at)}</span> },
     { key: 'who', header: 'Who', render: (e) => e.actor_name ?? '—' },
-    { key: 'action', header: 'Action', render: (e) => <span className="font-mono text-xs">{e.action}</span> },
+    { key: 'action', header: 'Action', render: (e) => humanizeAuditAction(e.action) },
     {
       key: 'what',
       header: 'What',
       render: (e) => (
         <span className="text-xs text-text-muted">
-          {e.entity_type}
+          {humanizeIdentifier(e.entity_type)}
           {e.entity_id ? ` · ${e.entity_id.slice(0, 8)}` : ''}
         </span>
       ),
@@ -83,7 +91,7 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-4xl">
-      <PageHeader title="Activity Log" subtitle="A record of actions taken across this conference." />
+      <PageHeader title="Activity log" subtitle="A record of actions taken across this conference." />
       <div className="flex flex-wrap gap-2">
         <Select
           value={actor}
@@ -106,7 +114,7 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
             setPage(1)
             setAction(e.target.value)
           }}
-          placeholder="Action, e.g. track.create"
+          placeholder="Filter by action, e.g. publish"
           className="w-auto"
         />
         <Input

@@ -9,7 +9,7 @@ const PORTAL_ACCENT = '#2747a0'
 export function MyTicketTab({ conferenceId }: { conferenceId: string | null }) {
   return (
     <div className="mt-6 max-w-2xl">
-      <PageHeader title="My ticket" />
+      <PageHeader title="My ticket" subtitle="Your registration and check-in QR code for this conference." />
       {conferenceId ? (
         <div className="mt-4">
           <RegistrationPanel conferenceId={conferenceId} accent={PORTAL_ACCENT} />

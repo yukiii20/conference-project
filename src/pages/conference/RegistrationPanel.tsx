@@ -21,13 +21,22 @@ type MyCertificate = {
 }
 
 const STATUS_NOTE: Record<MyRegistration['status'], string> = {
-  pending: 'Your registration is awaiting payment confirmation from the organisers.',
+  pending: "You're registered, but payment hasn't been confirmed yet — the organisers will confirm it once they've received it.",
   confirmed: 'You are registered to attend.',
-  waitlisted: "You're on the waitlist.",
+  waitlisted: "You're on the waitlist — the organisers will confirm your spot if one opens up.",
   cancelled: 'This registration was cancelled.',
 }
 
-export function RegistrationPanel({ conferenceId, accent }: { conferenceId: string; accent: string }) {
+export function RegistrationPanel({
+  conferenceId,
+  accent,
+  contactEmail,
+}: {
+  conferenceId: string
+  accent: string
+  /** Shown as a "who to contact" line while a registration is pending — omitted (not every caller has it) just drops that line. */
+  contactEmail?: string | null
+}) {
   const { user, loading: authLoading, refresh } = useAuth()
   const [registration, setRegistration] = useState<MyRegistration | null>(null)
   const [certificates, setCertificates] = useState<MyCertificate[]>([])
@@ -156,6 +165,15 @@ export function RegistrationPanel({ conferenceId, accent }: { conferenceId: stri
           <p className="mt-2 font-mono text-lg">{registration.registration_number}</p>
           <p className="mt-1 text-sm text-ink/70">{registration.category_name}</p>
           <p className="mt-1 text-sm text-ink/60">{STATUS_NOTE[registration.status]}</p>
+          {registration.status === 'pending' && contactEmail ? (
+            <p className="mt-1 text-sm text-ink/60">
+              Already paid? Contact{' '}
+              <a href={`mailto:${contactEmail}`} className="underline hover:text-ink">
+                {contactEmail}
+              </a>{' '}
+              to confirm it.
+            </p>
+          ) : null}
 
           {registration.status !== 'cancelled' ? (
             <div className="mt-4 flex flex-wrap items-center gap-4">

@@ -177,7 +177,7 @@ export function SessionChairSection() {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <PageHeader title="My sessions" />
+      <PageHeader title="My sessions" subtitle="Sessions you chair, across every conference — mark attendees presented or absent." />
 
       {error ? <Alert variant="danger">{error}</Alert> : null}
 

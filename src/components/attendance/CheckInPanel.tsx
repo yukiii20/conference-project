@@ -660,7 +660,7 @@ function CodeTab({
       } catch {
         if (!cancelled) setResults([])
       }
-    }, 250)
+    }, 300)
     return () => {
       cancelled = true
       clearTimeout(t)

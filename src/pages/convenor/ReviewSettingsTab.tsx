@@ -99,7 +99,7 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 max-w-2xl space-y-5">
-      <PageHeader title="Review Settings" className="mb-0" />
+      <PageHeader title="Review settings" subtitle="How papers are reviewed, assigned, and decided for this conference." className="mb-0" />
       {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
       <FormField label="Review mode" help="Whether reviewers and authors can see each other's identity.">
@@ -188,7 +188,7 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
       />
 
       <div className="border-t border-border pt-5">
-        <h3 className="text-sm font-semibold text-text">Registration, attendance and certificates</h3>
+        <h2 className="text-sm font-semibold text-text">Registration, attendance and certificates</h2>
 
         <div className="mt-3">
           <Checkbox

@@ -9,7 +9,7 @@ export function ReviewerSection({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <PageHeader title="My reviews" />
+      <PageHeader title="My reviews" subtitle="Papers assigned to you for review, and your submitted scores." />
 
       {open ? (
         <>

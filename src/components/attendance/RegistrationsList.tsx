@@ -26,13 +26,23 @@ type AdminRegistration = {
  * staff "Registrations" view (read-only — no confirm/cancel, same search,
  * status and category filters, same CSV export).
  */
-export function RegistrationsList({ conferenceId, readOnly = false }: { conferenceId: string; readOnly?: boolean }) {
+export function RegistrationsList({
+  conferenceId,
+  readOnly = false,
+  initialStatus = '',
+}: {
+  conferenceId: string
+  readOnly?: boolean
+  /** Pre-selects the status filter — e.g. the convenor dashboard's "Pending registrations" attention item links here with `pending`, so the convenor lands straight on the ones that need confirming. */
+  initialStatus?: string
+}) {
   const [registrations, setRegistrations] = useState<AdminRegistration[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [status, setStatus] = useState(initialStatus)
   const [categoryId, setCategoryId] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -46,11 +56,18 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
       .catch(() => setCategories([]))
   }, [conferenceId])
 
+  // Debounced so typing doesn't fire a request per keystroke - the input
+  // itself stays instantly responsive via `search`, only the API call waits.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const query: Record<string, string | undefined> = { page: String(page) }
-      if (search) query.search = search
+      if (debouncedSearch) query.search = debouncedSearch
       if (status) query.status = status
       if (categoryId) query.category_id = categoryId
       const data = await api.get<{ registrations: AdminRegistration[]; page: number; page_size: number; total: number }>(
@@ -66,7 +83,7 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
     } finally {
       setLoading(false)
     }
-  }, [conferenceId, search, status, categoryId, page])
+  }, [conferenceId, debouncedSearch, status, categoryId, page])
 
   useEffect(() => {
     load()
@@ -76,7 +93,7 @@ export function RegistrationsList({ conferenceId, readOnly = false }: { conferen
   // than risk landing past the end of a now-smaller result set.
   useEffect(() => {
     setPage(1)
-  }, [search, status, categoryId])
+  }, [debouncedSearch, status, categoryId])
 
   async function confirmRegistration(id: string) {
     setBusyId(id)

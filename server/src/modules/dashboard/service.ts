@@ -23,13 +23,26 @@ export type DashboardData = {
     submitted_no_reviewer: number
     overdue_reviews: number
     awaiting_decision: number
+    pending_registrations: number
     deadline_within_week: { deadline_type: string; at: string; days: number } | null
+  }
+  setup_checklist: {
+    details_done: boolean
+    logo_done: boolean
+    key_dates_done: boolean
+    tracks_done: boolean
+    registration_categories_done: boolean
+    certificate_template_done: boolean
+    published: boolean
   }
 }
 
 export async function getDashboard(conferenceId: string): Promise<DashboardData> {
-  // All ten independent (no query depends on another's result) - run them
-  // concurrently over the pool instead of paying ten sequential round trips.
+  // All independent (no query depends on another's result) - run them
+  // concurrently over the pool instead of paying one sequential round trip
+  // per query. The last six feed the "Setup checklist" card and the
+  // "Pending registrations" attention item - cheap existence/count checks,
+  // not worth a separate round trip (or a separate page load) apiece.
   const [
     [statusRows],
     [reviewRows],
@@ -41,6 +54,12 @@ export async function getDashboard(conferenceId: string): Promise<DashboardData>
     [overdueRows],
     [awaitingRows],
     [registrationRows],
+    [conferenceRows],
+    [deadlineCountRows],
+    [trackCountRows],
+    [categoryCountRows],
+    [certificateCountRows],
+    [pendingRegistrationRows],
   ] = await Promise.all([
     pool.query(
       `SELECT status, COUNT(*) AS count FROM submissions
@@ -107,6 +126,16 @@ export async function getDashboard(conferenceId: string): Promise<DashboardData>
     pool.query(`SELECT COUNT(*) AS count FROM registrations WHERE conference_id = ? AND status <> 'cancelled'`, [
       conferenceId,
     ]),
+    pool.query(`SELECT description, logo_path, status FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1`, [
+      conferenceId,
+    ]),
+    pool.query(`SELECT COUNT(*) AS count FROM conference_deadlines WHERE conference_id = ?`, [conferenceId]),
+    pool.query(`SELECT COUNT(*) AS count FROM conference_tracks WHERE conference_id = ?`, [conferenceId]),
+    pool.query(`SELECT COUNT(*) AS count FROM registration_categories WHERE conference_id = ?`, [conferenceId]),
+    pool.query(`SELECT COUNT(*) AS count FROM certificate_templates WHERE conference_id = ?`, [conferenceId]),
+    pool.query(`SELECT COUNT(*) AS count FROM registrations WHERE conference_id = ? AND status = 'pending'`, [
+      conferenceId,
+    ]),
   ])
 
   const submissions_by_status: Record<string, number> = {}
@@ -144,6 +173,9 @@ export async function getDashboard(conferenceId: string): Promise<DashboardData>
   const awaiting_decision = Number((awaitingRows as Array<{ count: number }>)[0]?.count ?? 0)
   const registrations = Number((registrationRows as Array<{ count: number }>)[0]?.count ?? 0)
 
+  const conferenceRow = (conferenceRows as Array<{ description: string | null; logo_path: string | null; status: string }>)[0]
+  const pending_registrations = Number((pendingRegistrationRows as Array<{ count: number }>)[0]?.count ?? 0)
+
   return {
     submissions_by_status,
     reviews,
@@ -157,7 +189,17 @@ export async function getDashboard(conferenceId: string): Promise<DashboardData>
       submitted_no_reviewer,
       overdue_reviews,
       awaiting_decision,
+      pending_registrations,
       deadline_within_week: next_key_date && next_key_date.days <= 7 && next_key_date.days >= 0 ? next_key_date : null,
+    },
+    setup_checklist: {
+      details_done: Boolean(conferenceRow?.description && conferenceRow.description.trim() !== ''),
+      logo_done: Boolean(conferenceRow?.logo_path),
+      key_dates_done: Number((deadlineCountRows as Array<{ count: number }>)[0]?.count ?? 0) > 0,
+      tracks_done: Number((trackCountRows as Array<{ count: number }>)[0]?.count ?? 0) > 0,
+      registration_categories_done: Number((categoryCountRows as Array<{ count: number }>)[0]?.count ?? 0) > 0,
+      certificate_template_done: Number((certificateCountRows as Array<{ count: number }>)[0]?.count ?? 0) > 0,
+      published: conferenceRow?.status !== 'draft',
     },
   }
 }

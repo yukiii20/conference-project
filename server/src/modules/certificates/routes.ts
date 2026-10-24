@@ -212,8 +212,8 @@ certificatesRouter.post(
 
 certificatesRouter.post('/:id/certificates/release-now', requireConferencePermission('certificate.manage'), async (req, res, next) => {
   try {
-    await releaseNow(req.user!.id, req.params.id!, auditContextFrom(req))
-    res.json({ message: 'Certificates released.' })
+    const result = await releaseNow(req.user!.id, req.params.id!, auditContextFrom(req))
+    res.json({ message: 'Certificates released.', released: result.released })
   } catch (err) {
     next(err)
   }

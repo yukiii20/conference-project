@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { emailTemplateSchema } from '../../lib/validation'
+import { humanizeTemplateKey } from '../../lib/humanize'
 import { PageHeader, Card, Badge, Button, FormField, Input, Textarea, Alert, Spinner } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
 
@@ -103,14 +104,14 @@ export function EmailTemplatesTab({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-3xl space-y-3">
-      <PageHeader title="Email Templates" subtitle="Customise the emails sent to members, authors, and reviewers." />
+      <PageHeader title="Email templates" subtitle="Customise the emails sent to members, authors, and reviewers." />
       {templates.map((t) => {
         const edit = edits[t.template_key] ?? { subject: t.subject, body_html: t.body_html }
         const isOpen = openKey === t.template_key
         return (
           <Card key={t.template_key}>
             <button type="button" onClick={() => (isOpen ? setOpenKey(null) : openEditor(t))} className="flex w-full items-center justify-between text-left">
-              <span className="font-mono text-sm text-text">{t.template_key}</span>
+              <span className="text-sm font-medium text-text">{humanizeTemplateKey(t.template_key)}</span>
               <Badge tone={t.is_customized ? 'info' : 'neutral'}>{t.is_customized ? 'Customised' : 'Default'}</Badge>
             </button>
 
@@ -154,7 +155,7 @@ export function EmailTemplatesTab({ conferenceId }: { conferenceId: string }) {
                   ) : null}
                 </div>
                 {previewHtml ? (
-                  <iframe title={`${t.template_key} preview`} sandbox="" srcDoc={previewHtml} className="h-80 w-full rounded-md border border-border bg-surface" />
+                  <iframe title={`${humanizeTemplateKey(t.template_key)} preview`} sandbox="" srcDoc={previewHtml} className="h-80 w-full rounded-md border border-border bg-surface" />
                 ) : null}
               </div>
             ) : null}

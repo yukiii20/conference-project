@@ -229,7 +229,7 @@ function RoomsSection({ conferenceId, onRoomsChanged }: { conferenceId: string; 
 
   return (
     <div>
-      <h3 className="text-lg font-medium text-text">Rooms</h3>
+      <h2 className="text-lg font-medium text-text">Rooms</h2>
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (
@@ -476,7 +476,7 @@ function TimeSlotsSection({ conferenceId, onSlotsChanged }: { conferenceId: stri
 
   return (
     <div className="mt-10">
-      <h3 className="text-lg font-medium text-text">Time slots</h3>
+      <h2 className="text-lg font-medium text-text">Time slots</h2>
       <p className="mt-1 text-sm text-text-muted">
         Optional helpers (e.g. "Morning 1, 09:00–10:30") — pick one when creating a session to fill its start/end
         automatically.
@@ -1061,7 +1061,7 @@ function SessionsSection({
       <WarningsPanel conferenceId={conferenceId} refreshKey={warningsKey} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-medium text-text">Sessions</h3>
+        <h2 className="text-lg font-medium text-text">Sessions</h2>
         {/* Grid collapses to the list on narrow screens regardless of the toggle. */}
         <div className="hidden gap-1 rounded-md border border-border bg-surface p-0.5 sm:flex">
           <Button type="button" variant={view === 'list' ? 'primary' : 'ghost'} size="sm" onClick={() => setView('list')}>

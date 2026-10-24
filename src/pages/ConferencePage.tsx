@@ -638,7 +638,7 @@ export function ConferencePage() {
       >
         <h2 className="text-2xl font-semibold">Registration</h2>
         <div className="mt-4">
-          <RegistrationPanel conferenceId={conference.id} accent={accent} />
+          <RegistrationPanel conferenceId={conference.id} accent={accent} contactEmail={conference.contact_email} />
         </div>
       </section>
 

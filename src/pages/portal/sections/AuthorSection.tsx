@@ -51,7 +51,7 @@ export function AuthorSection({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <PageHeader title="My submissions" />
+      <PageHeader title="My submissions" subtitle="Your papers for this conference — drafts, submitted, and their review status." />
 
       <Tabs
         tabs={[

@@ -156,7 +156,7 @@ export function DashboardTab({
         <Card>
           <div className="flex items-center gap-2">
             <Icon icon={ListChecks} className="text-brand/70" />
-            <h3 className="text-sm font-semibold text-text">To-dos</h3>
+            <h2 className="text-sm font-semibold text-text">To-dos</h2>
           </div>
           {loading ? (
             <SkeletonText lines={2} className="mt-2" />
@@ -188,7 +188,7 @@ export function DashboardTab({
           <Card>
             <div className="flex items-center gap-2">
               <Icon icon={CalendarDays} className="text-brand/70" />
-              <h3 className="text-sm font-semibold text-text">Next key dates</h3>
+              <h2 className="text-sm font-semibold text-text">Next key dates</h2>
             </div>
             {loading ? (
               <SkeletonText lines={2} className="mt-2" />

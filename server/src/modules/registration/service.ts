@@ -828,26 +828,28 @@ export type AttendanceDashboard = {
 }
 
 export async function getAttendanceDashboard(conferenceId: string): Promise<AttendanceDashboard> {
-  const timezone = await (async () => {
-    const [rows] = await pool.query('SELECT timezone FROM conferences WHERE id = ? LIMIT 1', [conferenceId])
-    return (rows as Array<{ timezone: string }>)[0]?.timezone ?? 'UTC'
-  })()
+  // today's date-key needs the timezone first, but once we have it the three
+  // count queries below are independent of each other - run them together
+  // instead of paying three sequential round trips.
+  const [timezoneRows] = await pool.query('SELECT timezone FROM conferences WHERE id = ? LIMIT 1', [conferenceId])
+  const timezone = (timezoneRows as Array<{ timezone: string }>)[0]?.timezone ?? 'UTC'
   const today = localDateKey(timezone)
 
-  const [registeredRows] = await pool.query(
-    `SELECT COUNT(*) AS n FROM registrations WHERE conference_id = ? AND status = 'confirmed'`,
-    [conferenceId],
-  )
-  const [todayRows] = await pool.query(
-    `SELECT COUNT(*) AS n FROM conference_attendance WHERE conference_id = ? AND attendance_date = ?`,
-    [conferenceId, today],
-  )
-  const [perSessionRows] = await pool.query(
-    `SELECT s.id AS session_id, s.title, COUNT(sa.id) AS n
-     FROM conference_sessions s LEFT JOIN session_attendance sa ON sa.session_id = s.id
-     WHERE s.conference_id = ? GROUP BY s.id, s.title ORDER BY s.starts_at`,
-    [conferenceId],
-  )
+  const [[registeredRows], [todayRows], [perSessionRows]] = await Promise.all([
+    pool.query(`SELECT COUNT(*) AS n FROM registrations WHERE conference_id = ? AND status = 'confirmed'`, [
+      conferenceId,
+    ]),
+    pool.query(`SELECT COUNT(*) AS n FROM conference_attendance WHERE conference_id = ? AND attendance_date = ?`, [
+      conferenceId,
+      today,
+    ]),
+    pool.query(
+      `SELECT s.id AS session_id, s.title, COUNT(sa.id) AS n
+       FROM conference_sessions s LEFT JOIN session_attendance sa ON sa.session_id = s.id
+       WHERE s.conference_id = ? GROUP BY s.id, s.title ORDER BY s.starts_at`,
+      [conferenceId],
+    ),
+  ])
   return {
     registered: Number((registeredRows as Array<{ n: number }>)[0]?.n ?? 0),
     checked_in_today: Number((todayRows as Array<{ n: number }>)[0]?.n ?? 0),

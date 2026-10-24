@@ -20,7 +20,7 @@ export function CardHeader({
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h3 className="text-base font-semibold text-text">{title}</h3>
+        <h2 className="text-base font-semibold text-text">{title}</h2>
         {subtitle ? <p className="mt-0.5 text-sm text-text-muted">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-shrink-0 items-center gap-2">{actions}</div> : null}

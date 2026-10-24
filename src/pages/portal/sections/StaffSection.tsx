@@ -61,11 +61,11 @@ export function StaffSection({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6">
-      <PageHeader title="Check-in desk" />
+      <PageHeader title="Check-in desk" subtitle="Check attendees in by camera, QR image, or ticket code." />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div>
-          <h3 className="text-sm font-semibold text-text">Check in an attendee</h3>
+          <h2 className="text-sm font-semibold text-text">Check in an attendee</h2>
           <div className="mt-3">
             <Suspense fallback={<SkeletonText lines={3} />}>
               <CheckInPanel conferenceId={conferenceId} onCheckedIn={() => setRefreshKey((k) => k + 1)} />
@@ -74,7 +74,7 @@ export function StaffSection({ conferenceId }: { conferenceId: string }) {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-text">Today</h3>
+          <h2 className="text-sm font-semibold text-text">Today</h2>
           <div className="mt-3">
             <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
           </div>
@@ -82,18 +82,18 @@ export function StaffSection({ conferenceId }: { conferenceId: string }) {
       </div>
 
       <div className="mt-10">
-        <h3 className="text-sm font-semibold text-text">Recent check-ins</h3>
+        <h2 className="text-sm font-semibold text-text">Recent check-ins</h2>
         <RecentCheckins conferenceId={conferenceId} refreshKey={refreshKey} />
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
-          <h3 className="text-sm font-semibold text-text">Today's programme</h3>
+          <h2 className="text-sm font-semibold text-text">Today's programme</h2>
           <TodaysProgramme conferenceId={conferenceId} />
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-text">Registrations</h3>
+          <h2 className="text-sm font-semibold text-text">Registrations</h2>
           <RegistrationsList conferenceId={conferenceId} readOnly />
         </div>
       </div>

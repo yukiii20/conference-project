@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../lib/authContext'
+import { AppShellSkeleton } from './AppShellSkeleton'
 
 type Props =
   | { kind: 'convenor'; children: React.ReactNode }
@@ -38,11 +39,7 @@ export function ProtectedRoute(props: Props) {
   }, [roleKey, refresh])
 
   if (state === 'checking') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-ink">
-        Loading…
-      </div>
-    )
+    return <AppShellSkeleton />
   }
 
   if (state === 'denied') {

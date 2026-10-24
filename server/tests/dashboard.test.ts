@@ -128,6 +128,70 @@ describe('convenor dashboard', () => {
     expect(res.body.registrations).toBe(1)
   })
 
+  it('reports an accurate setup checklist that flips to done as each step is completed', async () => {
+    const conferenceId = await createConference({ status: 'draft' })
+    await upsertConferenceSettings(conferenceId)
+    const { agent } = await loginAs(conferenceId, 'dash-checklist-convenor@example.com', 'convenor')
+
+    const before = await agent.get(`/api/conferences/${conferenceId}/dashboard`)
+    expect(before.status).toBe(200)
+    expect(before.body.setup_checklist).toMatchObject({
+      details_done: false,
+      logo_done: false,
+      key_dates_done: false,
+      tracks_done: false,
+      registration_categories_done: false,
+      certificate_template_done: false,
+      published: false,
+    })
+
+    await pool.query('UPDATE conferences SET description = ? WHERE id = ?', ['About this event.', conferenceId])
+    await setDeadlineWindow(conferenceId, 'registration', -24, 24)
+    await createTrack(conferenceId, 'Systems')
+    await pool.query(`INSERT INTO registration_categories (conference_id, code, name) VALUES (?, 'general', 'General')`, [
+      conferenceId,
+    ])
+    await pool.query(
+      `INSERT INTO certificate_templates (conference_id, certificate_type, name) VALUES (?, 'participation', 'Participation')`,
+      [conferenceId],
+    )
+    await pool.query(`UPDATE conferences SET status = 'submission_open' WHERE id = ?`, [conferenceId])
+
+    const after = await agent.get(`/api/conferences/${conferenceId}/dashboard`)
+    expect(after.status).toBe(200)
+    expect(after.body.setup_checklist).toMatchObject({
+      details_done: true,
+      key_dates_done: true,
+      tracks_done: true,
+      registration_categories_done: true,
+      certificate_template_done: true,
+      published: true,
+    })
+  })
+
+  it('counts pending (unconfirmed, payment-required) registrations separately in needs_attention', async () => {
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId, { registration_requires_payment: true })
+    await setDeadlineWindow(conferenceId, 'registration', -24, 24)
+    await pool.query(`INSERT INTO registration_categories (conference_id, code, name) VALUES (?, 'general', 'General')`, [
+      conferenceId,
+    ])
+    const [[{ id: categoryId }]] = (await pool.query(
+      'SELECT id FROM registration_categories WHERE conference_id = ? AND code = ?',
+      [conferenceId, 'general'],
+    )) as unknown as [Array<{ id: string }>]
+
+    const { agent: convenorAgent } = await loginAs(conferenceId, 'dash-pending-convenor@example.com', 'convenor')
+    const { agent: attendeeAgent } = await loginAs(conferenceId, 'dash-pending-attendee@example.com', 'author')
+    const reg = await attendeeAgent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
+    expect(reg.status).toBe(201)
+    expect(reg.body.status).toBe('pending')
+
+    const res = await convenorAgent.get(`/api/conferences/${conferenceId}/dashboard`)
+    expect(res.status).toBe(200)
+    expect(res.body.needs_attention.pending_registrations).toBe(1)
+  })
+
   it('is forbidden for an author (no conference.view_internal permission)', async () => {
     const conferenceId = await createConference()
     const { agent } = await loginAs(conferenceId, 'dash-author@example.com', 'author')

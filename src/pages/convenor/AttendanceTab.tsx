@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { registrationCategorySchema } from '../../lib/validation'
@@ -100,7 +101,7 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
 
   return (
     <div>
-      <h3 className="text-lg font-medium text-text">Registration categories</h3>
+      <h2 className="text-lg font-medium text-text">Registration categories</h2>
       {error ? (
         <div className="mt-2">
           <Alert variant="danger">{error}</Alert>
@@ -162,6 +163,11 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
 
 export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
   const [refreshKey, setRefreshKey] = useState(0)
+  const [searchParams] = useSearchParams()
+  // The convenor dashboard's "Pending registrations" attention item links
+  // here with ?status=pending, so clicking it lands straight on the ones
+  // that need confirming instead of the unfiltered list.
+  const initialStatus = searchParams.get('status') ?? ''
   return (
     <div className="mt-6">
       <PageHeader title="Attendance" subtitle="Registration categories, registrations, and event check-in." />
@@ -170,11 +176,11 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
         <CategoriesSection conferenceId={conferenceId} onChanged={() => setRefreshKey((k) => k + 1)} />
       </div>
       <div className="mt-10">
-        <h3 className="text-lg font-medium text-text">Registrations</h3>
-        <RegistrationsList conferenceId={conferenceId} />
+        <h2 className="text-lg font-medium text-text">Registrations</h2>
+        <RegistrationsList conferenceId={conferenceId} initialStatus={initialStatus} />
       </div>
       <div className="mt-10">
-        <h3 className="text-lg font-medium text-text">Check-in</h3>
+        <h2 className="text-lg font-medium text-text">Check-in</h2>
         <div className="mt-3 max-w-2xl">
           <Suspense
             fallback={

@@ -83,7 +83,7 @@ export function RoleRequestsTab({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6">
-      <PageHeader title="Role Requests" subtitle="Review and approve or reject requests to join a conference role." />
+      <PageHeader title="Role requests" subtitle="Review and approve or reject requests to join a conference role." />
       {error ? (
         <div className="mb-2">
           <Alert variant="danger">{error}</Alert>

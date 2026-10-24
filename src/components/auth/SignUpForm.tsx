@@ -233,9 +233,15 @@ export function SignUpForm({
           ) : null}
           <div className="mt-3 space-y-2">
             {conferences.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-page-bg px-4 py-6 text-sm text-text-muted">
-                No conferences are open right now.
-              </p>
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-page-bg px-4 py-6 text-center text-sm text-text-muted">
+                <p>
+                  There's nowhere to sign up yet — no conference on this platform has been published for
+                  attendees to join. Check back once one has, or browse what's here so far.
+                </p>
+                <Link to="/" className="font-medium text-button underline underline-offset-2">
+                  Browse conferences
+                </Link>
+              </div>
             ) : (
               conferences.map((conference) => (
                 <label

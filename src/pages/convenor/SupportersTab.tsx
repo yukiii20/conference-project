@@ -210,7 +210,7 @@ export function SupportersTab({ conferenceId }: { conferenceId: string }) {
         <div className="space-y-6">
           {grouped.map((group) => (
             <div key={group.tier}>
-              <h3 className="mb-2 text-sm font-semibold text-text-muted">{TIER_LABELS[group.tier]}</h3>
+              <h2 className="mb-2 text-sm font-semibold text-text-muted">{TIER_LABELS[group.tier]}</h2>
               <div className="space-y-3">
                 {group.items.map((supporter, i) => {
                   const edit = edits[supporter.id] ?? toEditState(supporter)

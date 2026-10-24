@@ -61,6 +61,45 @@ function buildUrl(path: string, query?: Record<string, string | undefined>): str
   return qs ? `${url}?${qs}` : url
 }
 
+// Render's free tier can take up to ~50s to wake a sleeping instance - a
+// request stuck past this long is almost certainly that, not a normal slow
+// query. Anything that cares (see SlowRequestBanner) can subscribe here
+// instead of guessing from timing itself.
+const SLOW_REQUEST_MS = 5_000
+type SlowRequestListener = (isSlow: boolean) => void
+const slowRequestListeners = new Set<SlowRequestListener>()
+let slowRequestCount = 0
+
+/** Subscribes to "is at least one request currently past the slow threshold" — returns an unsubscribe function. */
+export function onSlowRequest(listener: SlowRequestListener): () => void {
+  slowRequestListeners.add(listener)
+  return () => {
+    slowRequestListeners.delete(listener)
+  }
+}
+
+function setSlowRequestCount(next: number): void {
+  const wasSlow = slowRequestCount > 0
+  slowRequestCount = next
+  const isSlow = slowRequestCount > 0
+  if (wasSlow !== isSlow) {
+    for (const listener of slowRequestListeners) listener(isSlow)
+  }
+}
+
+/** Wraps a fetch promise so SlowRequestBanner finds out if it's still pending after SLOW_REQUEST_MS — never affects the request itself (no abort, no real timeout). */
+function trackSlowRequest<T>(promise: Promise<T>): Promise<T> {
+  let firedSlow = false
+  const timer = setTimeout(() => {
+    firedSlow = true
+    setSlowRequestCount(slowRequestCount + 1)
+  }, SLOW_REQUEST_MS)
+  return promise.finally(() => {
+    clearTimeout(timer)
+    if (firedSlow) setSlowRequestCount(slowRequestCount - 1)
+  })
+}
+
 /**
  * Thin fetch wrapper for the new Node/Express backend. Always sends cookies
  * (the session lives in an httpOnly cookie, never in JS) and throws ApiError
@@ -71,12 +110,14 @@ async function performFetch(url: string, method: string, options: RequestOptions
   if (options.body) headers['Content-Type'] = 'application/json'
   if (adminViewAsActive) headers['X-Admin-View-As'] = '1'
 
-  const res = await fetch(url, {
-    method,
-    credentials: 'include',
-    headers: Object.keys(headers).length > 0 ? headers : undefined,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  })
+  const res = await trackSlowRequest(
+    fetch(url, {
+      method,
+      credentials: 'include',
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    }),
+  )
 
   const isJson = res.headers.get('content-type')?.includes('application/json')
   const data = isJson ? await res.json().catch(() => null) : null
@@ -123,12 +164,14 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
 
 /** POSTs a multipart/form-data body (file uploads) — never JSON-encoded, so the browser sets its own boundary header. */
 async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
-  const res = await fetch(buildUrl(path), {
-    method: 'POST',
-    credentials: 'include',
-    headers: adminViewAsActive ? { 'X-Admin-View-As': '1' } : undefined,
-    body: formData,
-  })
+  const res = await trackSlowRequest(
+    fetch(buildUrl(path), {
+      method: 'POST',
+      credentials: 'include',
+      headers: adminViewAsActive ? { 'X-Admin-View-As': '1' } : undefined,
+      body: formData,
+    }),
+  )
 
   const isJson = res.headers.get('content-type')?.includes('application/json')
   const data = isJson ? await res.json().catch(() => null) : null

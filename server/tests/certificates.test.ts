@@ -207,6 +207,21 @@ describe('certificate download and verification', () => {
     expect(afterRelease.headers['content-type']).toMatch(/pdf/)
   })
 
+  it('reports how many certificates were released, so the convenor gets a real confirmation instead of a blind "done"', async () => {
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId)
+    const { agent: convenorAgent } = await loginAs(conferenceId, 'release-count-convenor@example.com', 'convenor')
+    const attendee1 = await createUser({ email: 'release-count-1@example.com', password: 'Str0ng!Pass' })
+    const attendee2 = await createUser({ email: 'release-count-2@example.com', password: 'Str0ng!Pass' })
+    await registerAndCheckIn(conferenceId, attendee1)
+    await registerAndCheckIn(conferenceId, attendee2)
+    await convenorAgent.post(`/api/conferences/${conferenceId}/certificates/generate`).send({ certificate_type: 'participation' })
+
+    const res = await convenorAgent.post(`/api/conferences/${conferenceId}/certificates/release-now`)
+    expect(res.status).toBe(200)
+    expect(res.body.released).toBe(2)
+  })
+
   it('blocks a different user without certificate.manage from downloading someone else\'s certificate', async () => {
     const conferenceId = await createConference()
     await upsertConferenceSettings(conferenceId)

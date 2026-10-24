@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Award,
   CheckCircle2,
+  Circle,
   Clock,
   FileText,
   Ticket,
@@ -30,8 +31,79 @@ type Dashboard = {
     submitted_no_reviewer: number
     overdue_reviews: number
     awaiting_decision: number
+    pending_registrations: number
     deadline_within_week: { deadline_type: string; at: string; days: number } | null
   }
+  setup_checklist: {
+    details_done: boolean
+    logo_done: boolean
+    key_dates_done: boolean
+    tracks_done: boolean
+    registration_categories_done: boolean
+    certificate_template_done: boolean
+    published: boolean
+  }
+}
+
+type ChecklistStep = { id: keyof Dashboard['setup_checklist']; label: string; hint: string; to: string }
+
+const CHECKLIST_STEPS: ChecklistStep[] = [
+  { id: 'details_done', label: 'Fill in conference details', hint: 'Name, description and dates visitors see.', to: 'setup/details' },
+  { id: 'logo_done', label: 'Add a logo', hint: 'Shown on the public page and in emails.', to: 'setup/branding' },
+  { id: 'key_dates_done', label: 'Set key dates', hint: 'When registration and submission open and close.', to: 'schedule-basics/dates' },
+  { id: 'tracks_done', label: 'Add tracks', hint: 'Authors pick one when they submit a paper.', to: 'schedule-basics/tracks' },
+  {
+    id: 'registration_categories_done',
+    label: 'Add registration categories',
+    hint: 'E.g. Student, Regular — attendees choose one when they register.',
+    to: 'event/attendance',
+  },
+  {
+    id: 'certificate_template_done',
+    label: 'Design a certificate template',
+    hint: 'Needed before you can issue participation certificates.',
+    to: 'event/certificates',
+  },
+  { id: 'published', label: 'Publish the conference', hint: "Until then, it's not visible on the public home page.", to: 'setup/details' },
+]
+
+function SetupChecklistCard({ checklist, base }: { checklist: Dashboard['setup_checklist']; base: string }) {
+  const steps = CHECKLIST_STEPS
+  const doneCount = steps.filter((s) => checklist[s.id]).length
+  if (doneCount === steps.length) return null // every step done - no need to keep showing this
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Setup checklist</h2>
+        <span className="text-xs text-text-muted">
+          {doneCount} of {steps.length} done
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-text-muted">
+        {checklist.published
+          ? "A few things are still worth finishing."
+          : "Your conference isn't visible on the public home page yet — here's what's left."}
+      </p>
+      <ul className="mt-3 space-y-1.5">
+        {steps.map((step) => {
+          const done = checklist[step.id]
+          return (
+            <li key={step.id}>
+              <Link
+                to={`${base}/${step.to}`}
+                className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-muted ${done ? 'text-text-muted line-through' : 'text-text'}`}
+              >
+                <Icon icon={done ? CheckCircle2 : Circle} size={18} className={done ? 'text-success' : 'text-text-muted'} />
+                <span className="flex-1">{step.label}</span>
+                {!done ? <span className="hidden text-xs text-text-muted sm:inline">{step.hint}</span> : null}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 }
 
 function Card({ label, value, to, icon }: { label: string; value: number | string; to?: string; icon: LucideIcon }) {
@@ -113,11 +185,14 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
     attention.submitted_no_reviewer > 0 ||
     attention.overdue_reviews > 0 ||
     attention.awaiting_decision > 0 ||
+    attention.pending_registrations > 0 ||
     Boolean(attention.deadline_within_week)
 
   return (
     <div className="mt-6 space-y-8">
       <PageHeader title="Dashboard" subtitle="An overview of this conference's submissions, reviews and registrations." />
+
+      <SetupChecklistCard checklist={data.setup_checklist} base={base} />
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <Card label="Submissions" value={totalSubmissions} to={`${base}/papers/submissions`} icon={FileText} />
@@ -149,6 +224,11 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
           ) : (
             <div className="mt-3 space-y-2">
               <AttentionRow label="Pending role requests" count={pendingRoleRequests} to={`${base}/people/requests`} />
+              <AttentionRow
+                label="Pending registrations (payment to confirm)"
+                count={attention.pending_registrations}
+                to={`${base}/event/attendance?status=pending`}
+              />
               <AttentionRow label="Submitted papers with no reviewer" count={attention.submitted_no_reviewer} to={`${base}/papers/submissions`} />
               <AttentionRow label="Overdue reviews" count={attention.overdue_reviews} to={`${base}/papers/reviews`} />
               <AttentionRow label="Papers awaiting a decision" count={attention.awaiting_decision} to={`${base}/papers/reviews`} />

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
+import { humanizeTemplateKey } from '../lib/humanize'
+import { statusLabel } from '../lib/status'
 import { StatusChip } from './ui/Badge'
 import { Alert, Button, Select, Table } from './ui'
 import type { Column } from './ui/Table'
@@ -68,7 +70,7 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
 
   const columns: Column<EmailLogRow>[] = [
     { key: 'recipient', header: 'Recipient', render: (r) => r.recipient_email },
-    { key: 'template', header: 'Template', render: (r) => <span className="font-mono text-xs">{r.template_key}</span> },
+    { key: 'template', header: 'Template', render: (r) => humanizeTemplateKey(r.template_key) },
     { key: 'subject', header: 'Subject', render: (r) => r.subject },
     { key: 'status', header: 'Status', render: (r) => <StatusChip status={r.status} /> },
     { key: 'attempts', header: 'Attempts', render: (r) => r.attempts },
@@ -113,7 +115,7 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {statusLabel(s)}
             </option>
           ))}
         </Select>

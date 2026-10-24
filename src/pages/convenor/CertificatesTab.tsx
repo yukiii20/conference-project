@@ -10,14 +10,18 @@ import {
   Card,
   CardHeader,
   Checkbox,
+  ConfirmDialog,
   EmptyState,
+  FormField,
   Input,
+  PageHeader,
   Select,
   SkeletonText,
   StatusChip,
   TableContainer,
 } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
+import { useToast } from '../../components/ui/Toast'
 
 type Signatory = { name: string; title: string; signature_path: string | null }
 type Template = {
@@ -460,6 +464,10 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [releasing, setReleasing] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<Certificate | null>(null)
+  const [revokeReason, setRevokeReason] = useState('')
+  const [revoking, setRevoking] = useState(false)
+  const { showToast } = useToast()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -478,23 +486,34 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
     load()
   }, [load, refreshKey])
 
-  async function revoke(id: string) {
-    const reason = window.prompt('Reason for revoking this certificate?')
-    if (!reason) return
+  async function confirmRevoke() {
+    if (!revokeTarget || !revokeReason.trim()) return
+    setRevoking(true)
     try {
-      await api.patch(`/conferences/${conferenceId}/certificates/${id}/revoke`, { reason })
+      await api.patch(`/conferences/${conferenceId}/certificates/${revokeTarget.id}/revoke`, { reason: revokeReason.trim() })
+      showToast('Certificate revoked.', 'success')
+      setRevokeTarget(null)
+      setRevokeReason('')
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not revoke this certificate.')
+      const message = err instanceof ApiError ? err.message : 'Could not revoke this certificate.'
+      setError(message)
+      showToast(message, 'error')
+    } finally {
+      setRevoking(false)
     }
   }
 
   async function releaseNow() {
     setReleasing(true)
     try {
-      await api.post(`/conferences/${conferenceId}/certificates/release-now`)
+      const res = await api.post<{ released: number }>(`/conferences/${conferenceId}/certificates/release-now`)
+      showToast(res.released > 0 ? `Released ${res.released} certificate(s) — recipients can now download them.` : 'Nothing new to release.', 'success')
+      await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not release certificates.')
+      const message = err instanceof ApiError ? err.message : 'Could not release certificates.'
+      setError(message)
+      showToast(message, 'error')
     } finally {
       setReleasing(false)
     }
@@ -503,13 +522,20 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
   return (
     <div className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-medium text-text">Issued certificates</h3>
+        <div>
+          <h2 className="text-lg font-medium text-text">Issued certificates</h2>
+          <p className="text-sm text-text-muted">
+            Issuing a certificate doesn't send it — "Release now" makes every issued-but-unreleased certificate downloadable and
+            emails the recipient.
+          </p>
+        </div>
         <Button
           type="button"
           variant="secondary"
           size="sm"
           onClick={releaseNow}
           disabled={releasing}
+          loading={releasing}
           iconLeft={<Icon icon={Send} size={16} />}
         >
           {releasing ? 'Releasing…' : 'Release now'}
@@ -552,7 +578,10 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
                         type="button"
                         variant="danger"
                         size="sm"
-                        onClick={() => revoke(c.id)}
+                        onClick={() => {
+                          setRevokeTarget(c)
+                          setRevokeReason('')
+                        }}
                         iconLeft={<Icon icon={Trash2} size={16} />}
                       >
                         Revoke
@@ -565,6 +594,32 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
           </TableContainer>
         </div>
       )}
+
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        title="Revoke this certificate?"
+        message={
+          <div className="space-y-3">
+            <p>
+              {revokeTarget?.recipient_name} will no longer be able to download their {revokeTarget ? (TYPE_LABELS[revokeTarget.certificate_type] ?? revokeTarget.certificate_type) : ''} certificate, and anyone verifying it will see it as revoked. This can't be undone.
+            </p>
+            <FormField label="Reason (shown in the activity log)" htmlFor="revoke-reason">
+              <Input
+                id="revoke-reason"
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="e.g. Issued to the wrong person"
+                autoFocus
+              />
+            </FormField>
+          </div>
+        }
+        confirmLabel="Revoke"
+        confirmVariant="danger"
+        busy={revoking}
+        onConfirm={confirmRevoke}
+        onCancel={() => setRevokeTarget(null)}
+      />
     </div>
   )
 }
@@ -573,6 +628,7 @@ export function CertificatesTab({ conferenceId }: { conferenceId: string }) {
   const [refreshKey, setRefreshKey] = useState(0)
   return (
     <div className="mt-6 max-w-5xl">
+      <PageHeader title="Certificates" subtitle="Design certificate templates, issue them in bulk, and release them to recipients." />
       <TemplatesSection conferenceId={conferenceId} onChanged={() => setRefreshKey((k) => k + 1)} />
       <IssueSection conferenceId={conferenceId} onIssued={() => setRefreshKey((k) => k + 1)} />
       <IssuedListSection conferenceId={conferenceId} refreshKey={refreshKey} />

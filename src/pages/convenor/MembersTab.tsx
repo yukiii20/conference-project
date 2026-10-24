@@ -35,6 +35,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
@@ -49,11 +50,17 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set())
   const [tracksSaving, setTracksSaving] = useState(false)
 
+  // Debounced so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(t)
+  }, [q])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const data = await api.get<{ members: Member[] }>(`/conferences/${conferenceId}/members`, {
-        q: q || undefined,
+        q: debouncedQ || undefined,
         role: roleFilter || undefined,
       })
       setMembers(data.members)
@@ -63,7 +70,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
     } finally {
       setLoading(false)
     }
-  }, [conferenceId, q, roleFilter])
+  }, [conferenceId, debouncedQ, roleFilter])
 
   useEffect(() => {
     load()

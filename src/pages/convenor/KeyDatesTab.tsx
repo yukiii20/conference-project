@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Save } from 'lucide-react'
+import { AlertTriangle, Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
-import { fromKathmanduInputValue, toKathmanduInputValue } from '../../lib/datetime'
+import { fromKathmanduInputValue, formatKathmandu, toKathmanduInputValue } from '../../lib/datetime'
 import { useToast } from '../../components/ui/Toast'
+import { toneBannerClasses } from '../../lib/status'
 import { PageHeader, Card, FormField, Input, Checkbox, Button, Alert, Spinner } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
 
@@ -27,6 +28,7 @@ const EMPTY_ROW: RowState = { opens_at: '', closes_at: '', is_public: true }
 export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
   const [deadlineRows, setDeadlineRows] = useState<DeadlineRow[]>([])
   const [rows, setRows] = useState<Record<string, RowState>>({})
+  const [conferenceDates, setConferenceDates] = useState<{ start_date: string; end_date: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,10 +40,15 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
     async function load() {
       setLoading(true)
       try {
-        const data = await api.get<{ deadlines: DeadlineRow[] }>(`/conferences/${conferenceId}/deadlines`)
+        // Independent - run together rather than one after the other.
+        const [data, details] = await Promise.all([
+          api.get<{ deadlines: DeadlineRow[] }>(`/conferences/${conferenceId}/deadlines`),
+          api.get<{ conference: { start_date: string; end_date: string } }>(`/conferences/${conferenceId}/details`),
+        ])
         if (cancelled) return
 
         setDeadlineRows(data.deadlines)
+        setConferenceDates({ start_date: details.conference.start_date, end_date: details.conference.end_date })
         const nextRows: Record<string, RowState> = {}
         for (const d of data.deadlines) {
           nextRows[d.code] = d.opens_at
@@ -67,6 +74,27 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
       cancelled = true
     }
   }, [conferenceId])
+
+  /**
+   * Catches the two mistakes that quietly break the event: abstract
+   * submission still open once the conference has already started, or
+   * registration still open after it's already ended. Compared as plain
+   * date strings ('YYYY-MM-DD' vs the date part of the saved closes_at) -
+   * good enough for a same-day warning without pulling in timezone math.
+   */
+  function closingWarning(code: string): string | null {
+    if (!conferenceDates) return null
+    const row = rows[code]
+    if (!row?.closes_at) return null
+    const closesDate = row.closes_at.slice(0, 10)
+    if (code === 'abstract_submission' && closesDate > conferenceDates.start_date) {
+      return `Abstract submission closes after the conference starts (${formatKathmandu(conferenceDates.start_date, { dateOnly: true })}) - authors may not be able to submit in time.`
+    }
+    if (code === 'registration' && closesDate > conferenceDates.end_date) {
+      return `Registration closes after the conference ends (${formatKathmandu(conferenceDates.end_date, { dateOnly: true })}) - attendees could register for an event that's already over.`
+    }
+    return null
+  }
 
   function update(code: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [code]: { ...prev[code], ...patch } }))
@@ -132,7 +160,7 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <PageHeader title="Key Dates" subtitle="Times are shown and saved in Asia/Kathmandu time." />
+      <PageHeader title="Key dates" subtitle="Times are shown and saved in Nepal time (Asia/Kathmandu)." />
       {error ? (
         <div className="mb-4">
           <Alert variant="danger">{error}</Alert>
@@ -181,6 +209,13 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
                   </FormField>
                 </div>
               )}
+
+              {closingWarning(t.code) ? (
+                <div className={`mt-3 flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${toneBannerClasses('warning')}`}>
+                  <Icon icon={AlertTriangle} size={16} className="mt-0.5 flex-shrink-0" />
+                  <span>{closingWarning(t.code)}</span>
+                </div>
+              ) : null}
             </Card>
           )
         })}

@@ -699,8 +699,8 @@ export async function isReleased(conferenceId: string): Promise<boolean> {
   return (rows as unknown[]).length > 0
 }
 
-export async function releaseNow(actorUserId: string, conferenceId: string, ctx: AuditContext = {}): Promise<void> {
-  await withTransaction(actorUserId, async (conn) => {
+export async function releaseNow(actorUserId: string, conferenceId: string, ctx: AuditContext = {}): Promise<{ released: number }> {
+  return withTransaction(actorUserId, async (conn) => {
     await conn.query(
       `INSERT INTO conference_deadlines (conference_id, deadline_type, opens_at)
        VALUES (?, 'certificate_release', NOW(3))
@@ -748,6 +748,7 @@ export async function releaseNow(actorUserId: string, conferenceId: string, ctx:
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
     })
+    return { released: recipients.length }
   })
 }
 

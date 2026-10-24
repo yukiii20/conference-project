@@ -63,7 +63,7 @@ export function MyCertificatesTab() {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <PageHeader title="My certificates" />
+      <PageHeader title="My certificates" subtitle="Certificates released to you across every conference you've attended." />
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (

@@ -117,7 +117,7 @@ export function ProfilePage() {
   return (
     <div className="min-h-screen bg-page-bg px-4 py-10">
       <div className="mx-auto max-w-2xl">
-        <PageHeader title="My profile" />
+        <PageHeader title="My profile" subtitle="Your name, photo, and contact details." />
         <Card>
           <div className="border-b border-border pb-8">
             <p className="mb-2 text-sm font-medium text-text">Photo</p>
