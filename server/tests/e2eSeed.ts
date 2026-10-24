@@ -123,6 +123,7 @@ async function main() {
     await pool.query('DELETE FROM conference_counters WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM conference_tracks WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM notifications WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM bulk_emails WHERE conference_id = ?', [existingConferenceId]) // cascades to bulk_email_recipients
     await pool.query('DELETE FROM email_logs WHERE conference_id = ?', [existingConferenceId])
     // Convenor portal (Part A) features — same FK-safe ordering as tests/helpers.ts's resetDatabase.
     await pool.query('DELETE FROM email_templates WHERE conference_id = ?', [existingConferenceId])

@@ -10,10 +10,11 @@ On Windows, install "MySQL Community Server 8.x" with MySQL Installer (includes 
     mysql -u root -p < 03_triggers.sql
     mysql -u root -p < 04_admin_extensions.sql
     mysql -u root -p < 04_suggestions.sql
+    mysql -u root -p < 04_bulk_email.sql
 
 (MySQL Workbench: File > Open SQL Script, open each file, click the lightning icon.)
 
-Creates database `conference_cms` with 48 tables, 10 roles, 21 permissions,
+Creates database `conference_cms` with 50 tables, 10 roles, 22 permissions,
 7 deadline types, 21 email templates and 14 triggers.
 
 `04_admin_extensions.sql` adds `platform_settings` (key-value platform-wide
@@ -24,6 +25,13 @@ account is anonymised via the admin privacy action). Safe to re-run.
 public visitors can post feedback, platform admins triage it from
 `/super-admin`). No IP address column — rate limiting for the public submit
 endpoint is in-memory in the backend, never persisted. Safe to re-run.
+
+`04_bulk_email.sql` adds `bulk_emails` and `bulk_email_recipients` (the
+convenor Communication -> Bulk email tab) and the `communication.bulk_email`
+permission, granted to convenor only — manager is default off, platform-wide
+like every role's grants (no per-conference or per-manager override exists;
+see that file for the one-row change that switches it on for managers).
+Safe to re-run.
 
 ## Create the application user (never let the app connect as root)
     CREATE USER 'cms_app'@'localhost' IDENTIFIED BY '<strong password>';

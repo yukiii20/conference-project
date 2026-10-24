@@ -190,8 +190,23 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
     the recipients (you'll see a confirmation naming how many went out).
     **Revoke** one if it was issued by mistake — you'll be asked for a
     reason, kept in the activity log.
-- **Communication**: announcements, email templates, the email
-  log, exportable reports (CSV/XLSX), and the activity log (who did what).
+- **Communication**: announcements, **bulk email**, email templates, the
+  email log, exportable reports (CSV/XLSX), and the activity log (who did
+  what).
+  - *Bulk email* — send one message to a combination of recipient groups
+    (authors, authors with accepted/rejected papers, reviewers, reviewers
+    with pending reviews, registered/confirmed/checked-in attendees,
+    committee members, session chairs) — duplicates across groups are
+    removed automatically, and the page shows exactly who'll get it before
+    you send. Write the subject and an HTML body (bold/italic/links/lists),
+    with `{{first_name}}`, `{{full_name}}`, `{{conference_name}}`,
+    `{{conference_url}}` filled in per person; preview with sample data or
+    send yourself a test first. Each person gets their own email, never
+    one email with everyone in To — sending is throttled to the email
+    provider's daily limit, with the remaining amount shown before you
+    confirm. Every past send (and saved draft) is kept, including
+    per-recipient delivery status. A manager needs the
+    `communication.bulk_email` permission, off by default.
 
 ---
 

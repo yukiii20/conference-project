@@ -1,4 +1,5 @@
 import { AnnouncementsTab } from '../AnnouncementsTab'
+import { BulkEmailTab } from '../BulkEmailTab'
 import { EmailTemplatesTab } from '../EmailTemplatesTab'
 import { EmailLogTab } from '../../../components/EmailLogTab'
 import { ReportsTab } from '../ReportsTab'
@@ -24,6 +25,8 @@ export function CommunicationSection({
         element:
           t.id === 'announcements' ? (
             <AnnouncementsTab conferenceId={conferenceId} />
+          ) : t.id === 'bulk-email' ? (
+            <BulkEmailTab conferenceId={conferenceId} />
           ) : t.id === 'templates' ? (
             <EmailTemplatesTab conferenceId={conferenceId} />
           ) : t.id === 'emails' ? (

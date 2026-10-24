@@ -738,3 +738,37 @@ export const emailTemplateSchema = z.object({
   body_html: z.string().trim().min(1, 'Write the email body.').max(20_000, 'Body must be 20,000 characters or fewer.'),
 })
 export type EmailTemplateInput = z.input<typeof emailTemplateSchema>
+
+export const RECIPIENT_GROUPS = [
+  'all_authors',
+  'authors_accepted',
+  'authors_rejected',
+  'reviewers',
+  'reviewers_pending',
+  'attendees_registered',
+  'attendees_confirmed',
+  'attendees_checked_in',
+  'committee_members',
+  'session_chairs',
+] as const
+export type RecipientGroup = (typeof RECIPIENT_GROUPS)[number]
+
+export const RECIPIENT_GROUP_LABELS: Record<RecipientGroup, string> = {
+  all_authors: 'All authors',
+  authors_accepted: 'Authors with accepted papers',
+  authors_rejected: 'Authors with rejected papers',
+  reviewers: 'Reviewers',
+  reviewers_pending: 'Reviewers with pending reviews',
+  attendees_registered: 'Registered attendees',
+  attendees_confirmed: 'Confirmed attendees',
+  attendees_checked_in: 'Checked-in attendees',
+  committee_members: 'Committee members',
+  session_chairs: 'Session chairs',
+}
+
+export const bulkEmailSchema = z.object({
+  subject: z.string().trim().min(1, 'Write a subject.').max(300, 'Subject must be 300 characters or fewer.'),
+  body_html: z.string().trim().min(1, 'Write the email body.').max(20_000, 'Body must be 20,000 characters or fewer.'),
+  recipient_groups: z.array(z.enum(RECIPIENT_GROUPS)).min(1, 'Choose at least one recipient group.'),
+})
+export type BulkEmailInput = z.input<typeof bulkEmailSchema>

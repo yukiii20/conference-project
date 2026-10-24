@@ -14,6 +14,7 @@ import { scheduleRouter } from '../src/modules/schedule/routes.js'
 import { settingsRouter } from '../src/modules/settings/routes.js'
 import { meRouter } from '../src/modules/me/routes.js'
 import { announcementsRouter, announcementsConferenceRouter } from '../src/modules/announcements/routes.js'
+import { bulkEmailRouter } from '../src/modules/bulkEmail/routes.js'
 import { submissionsConferenceRouter, submissionsRouter } from '../src/modules/submissions/routes.js'
 import { reviewsConferenceRouter, reviewerRouter } from '../src/modules/reviews/routes.js'
 import { dashboardRouter } from '../src/modules/dashboard/routes.js'
@@ -85,6 +86,7 @@ const ROUTERS: NamedRouter[] = [
   { name: 'committeesRouter', router: committeesRouter },
   { name: 'speakersRouter', router: speakersRouter },
   { name: 'announcementsConferenceRouter', router: announcementsConferenceRouter },
+  { name: 'bulkEmailRouter', router: bulkEmailRouter },
   { name: 'emailTemplatesRouter', router: emailTemplatesRouter },
   { name: 'reportsRouter', router: reportsRouter },
   { name: 'activityLogRouter', router: activityLogRouter },

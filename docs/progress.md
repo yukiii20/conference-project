@@ -771,3 +771,75 @@ started on the backend. No secrets committed, no real emails sent.
 **Reminder: the live Aiven database needs `04_suggestions.sql` run before this deploys** - you
 already confirmed you ran it there, so this is just the standing reminder the task asked for, not
 an outstanding step.
+
+## Features batch 1, feature 1 - Bulk email to groups - DONE
+New module `server/src/modules/bulkEmail` (routes/service/validation) plus `bulk_emails` +
+`bulk_email_recipients` (`database/04_bulk_email.sql`, run by you against conference_cms,
+conference_cms_test and the live Aiven conference_cms) and the `communication.bulk_email`
+permission, granted to convenor only. Reused everything the spec asked to reuse rather than
+building parallel machinery: `sanitizeTemplateHtml` from the email-templates feature for the
+HTML body, the existing `{{placeholder}}` convention (`renderTemplate`/`renderHtmlTemplate`),
+and - the one actual design decision here - generalised the email worker's single
+`loadTemplateBody` lookup with one added branch (`template_key === 'bulk_email'` loads
+`body_html` from `bulk_emails` by an id carried in `template_data`, instead of from
+`email_templates`), so a bulk send goes through the exact same queue/retry/redaction path as
+every other email in the app, not a second one. `queueEmail` now returns the inserted row's id
+(previously void) so `bulk_email_recipients` can link to it for live per-recipient delivery
+status - both existing callers ignore the new return value, so this is backward compatible.
+
+Ten recipient groups (all/accepted/rejected authors, reviewers, reviewers with a pending
+review, registered/confirmed/checked-in attendees, committee members, session chairs), each
+its own small indexed query, merged and de-duplicated by email address in JS (a row with a
+linked account wins over one without, for the same address). Every group excludes
+deactivated/anonymised accounts. Compose screen: live recipient count + a short preview list
+as groups are picked, live quota display, HTML body with the same allowed-tag convention as
+email templates, "preview with sample data" (reuses the iframe-srcDoc pattern from Email
+templates), "send test to me", saved drafts, and a confirm dialog before the real send.
+History list shows every past send and draft with live sent/failed counts (computed via JOIN,
+never denormalised) and a per-recipient detail view.
+
+Corrected one thing I got wrong in my own stop-and-explain message before you ran the SQL: I'd
+said a convenor could "turn the permission on for one manager" from People -> Members and
+roles. That's not actually possible - `role_permissions` has no `conference_id` column, so
+every role's grants are platform-wide (same as every other permission), not per-conference or
+per-manager. Fixed the misleading comments in `database/04_bulk_email.sql`, its mirror in
+`test-setup.sql`, and `database/README.md` to say what's actually true: switching it on for
+managers everywhere is a one-row `INSERT INTO role_permissions` data change, not a UI action.
+
+Throttling: Brevo's 300/day free-tier cap, counted from `email_logs` rows queued/sent since
+UTC midnight today (approximate - counts a dev console-mode send the same as a real Brevo one,
+which is conservative, never permissive). The compose screen shows the remaining count before
+sending; the server refuses to queue a send that would exceed it, rather than partially sending.
+
+Also fixed a real bug this surfaced: `cms_app`'s GRANT in `database/04_bulk_email.sql` failed
+against the live Aiven database (error 1410 - there `cms_app` is `@'%'`, not `@'localhost'`,
+and already has full access). Per your instruction, this and all future `database/0X_*.sql`
+files omit GRANT/FLUSH PRIVILEGES statements entirely.
+
+Two test-harness gaps found and fixed along the way, both now covered for every future feature:
+`server/tests/helpers.ts`'s `resetDatabase()` and `server/tests/e2eSeed.ts`'s cleanup block each
+independently list every conference-scoped table to delete in FK-safe order - neither knew
+about the two new tables, so the *next* test's reset/reseed failed with a foreign-key error
+once a `bulk_emails` row existed. Added `DELETE FROM bulk_emails` (cascades to recipients) to
+both. Separately, a full-suite Playwright run produced 73 failures that all looked like "every
+sign-in redirects back to /login" - not a regression: the throwaway `:4100` backend needs
+`NODE_ENV=test` (not just `PORT`/`DB_NAME`) for the auth rate limiter's test-skip to apply; a
+107-test suite logs in far more than its 20-per-15-minutes limit otherwise. Re-ran clean once
+`NODE_ENV=test` was set.
+
+Verified: `tsc` (root+server) clean, both builds clean. Server tests: 525/525 (39 files - 38
+unchanged + the new `bulkEmail.test.ts`, 10 tests: permission incl. the platform-wide manager
+grant, recipient-group de-dupe, accepted/rejected authors, pending reviewers, placeholder
+rendering end to end through the real worker, send-test not counting as a recipient, quota
+refusal, draft delete vs. sent immutability). Root `npm test`: 31/31 unchanged (no new frontend
+unit tests needed - same as Announcements/Email templates, covered by e2e instead). Full
+Playwright suite re-seeded and re-run: 106/107, the one failure being the pre-existing
+`notifications.spec.ts` / `role_request_approved` issue flagged in the suggestion-box step
+above (confirmed unrelated: reproduces identically on `main`) - includes a new
+`e2e/bulkEmail.spec.ts` (compose -> preview -> send test -> send, console mode, verified the
+worker rendered real names into both the test and the real send's console output) and an
+updated `convenorPortal.spec.ts` sidebar list. docs/user-guide.md updated with a Bulk email
+subsection under Convenor -> Communication. No secrets committed, no real emails sent.
+
+**No further SQL needed before this deploys** - `04_bulk_email.sql` is already applied to all
+three databases (you ran it, including Aiven, before I continued).

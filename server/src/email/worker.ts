@@ -69,9 +69,25 @@ async function loadTemplateBody(templateKey: string, conferenceId: string | null
   return (rows as Array<{ body_html: string }>)[0]?.body_html ?? null
 }
 
+/**
+ * A bulk email (server/src/modules/bulkEmail) has no email_templates row —
+ * its body is one-off, composed by the convenor and stored on the
+ * bulk_emails row itself, referenced by id in template_data (never the
+ * rendered HTML itself — same "store placeholder values, not bodies"
+ * convention as every other queued email).
+ */
+async function loadBulkEmailBody(bulkEmailId: unknown): Promise<string | null> {
+  if (typeof bulkEmailId !== 'string') return null
+  const [rows] = await pool.query('SELECT body_html FROM bulk_emails WHERE id = ? LIMIT 1', [bulkEmailId])
+  return (rows as Array<{ body_html: string }>)[0]?.body_html ?? null
+}
+
 async function processRow(row: QueuedEmailRow): Promise<void> {
   try {
-    const bodyTemplate = await loadTemplateBody(row.template_key, row.conference_id)
+    const bodyTemplate =
+      row.template_key === 'bulk_email'
+        ? await loadBulkEmailBody(row.template_data.bulk_email_id)
+        : await loadTemplateBody(row.template_key, row.conference_id)
     const content = bodyTemplate ? renderHtmlTemplate(bodyTemplate, row.template_data) : `<p>${row.subject}</p>`
     const html = wrapEmailHtml(content)
     const text = htmlToText(html)

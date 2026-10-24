@@ -42,7 +42,7 @@ const PAGES: Array<{ label: string; tabs: string[] }> = [
   { label: 'People', tabs: ['Role requests', 'Members and roles', 'Committees', 'Speakers'] },
   { label: 'Papers', tabs: ['Submissions', 'Reviews and decisions', 'Review settings'] },
   { label: 'Event', tabs: ['Programme', 'Attendance', 'Certificates'] },
-  { label: 'Communication', tabs: ['Announcements', 'Email templates', 'Email log', 'Reports', 'Activity log'] },
+  { label: 'Communication', tabs: ['Announcements', 'Bulk email', 'Email templates', 'Email log', 'Reports', 'Activity log'] },
 ]
 
 test('convenor opens every sidebar page and tab without console errors (desktop)', async ({ page }) => {

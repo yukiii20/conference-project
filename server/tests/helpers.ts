@@ -42,6 +42,7 @@ export async function resetDatabase(): Promise<void> {
   // Conference-specific template overrides only — never the platform defaults (conference_id IS NULL) from 02_reference_data.sql.
   await pool.query('DELETE FROM email_templates WHERE conference_id IS NOT NULL')
   await pool.query('DELETE FROM announcements')
+  await pool.query('DELETE FROM bulk_emails') // cascades to bulk_email_recipients
   await pool.query('DELETE FROM committee_members')
   await pool.query('DELETE FROM committees')
   await pool.query('DELETE FROM presentations')

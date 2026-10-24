@@ -21,6 +21,7 @@ import { scheduleRouter } from './modules/schedule/routes.js'
 import { settingsRouter } from './modules/settings/routes.js'
 import { meRouter } from './modules/me/routes.js'
 import { announcementsRouter, announcementsConferenceRouter } from './modules/announcements/routes.js'
+import { bulkEmailRouter } from './modules/bulkEmail/routes.js'
 import { submissionsConferenceRouter, submissionsRouter } from './modules/submissions/routes.js'
 import { reviewsConferenceRouter, reviewerRouter } from './modules/reviews/routes.js'
 import { dashboardRouter } from './modules/dashboard/routes.js'
@@ -174,6 +175,7 @@ export function createApp() {
   app.use('/api/conferences', committeesRouter)
   app.use('/api/conferences', speakersRouter)
   app.use('/api/conferences', announcementsConferenceRouter)
+  app.use('/api/conferences', bulkEmailRouter)
   app.use('/api/conferences', emailTemplatesRouter)
   app.use('/api/conferences', reportsRouter)
   app.use('/api/conferences', activityLogRouter)

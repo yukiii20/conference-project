@@ -8,7 +8,7 @@
 -- that is never the development database.
 -- Regenerate this file (sed 's/conference_cms/conference_cms_test/g') if
 -- 01_schema.sql / 02_reference_data.sql / 03_triggers.sql / 04_admin_extensions.sql /
--- 04_suggestions.sql ever change.
+-- 04_suggestions.sql / 04_bulk_email.sql ever change.
 -- =====================================================================
 
 -- =====================================================================
@@ -1543,6 +1543,63 @@ CREATE TABLE IF NOT EXISTS suggestions (
   CONSTRAINT suggestions_message_chk CHECK (CHAR_LENGTH(TRIM(message)) BETWEEN 1 AND 2000)
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci
   COMMENT='Public suggestion box (home page) triaged from /super-admin. No IP address stored.';
+
+-- =====================================================================
+-- Conference Management System - bulk email to groups (MySQL)
+-- File: database/04_bulk_email.sql  (run after 01/02/03; independent of
+-- 04_admin_extensions.sql and 04_suggestions.sql)
+-- Adds bulk_emails + bulk_email_recipients (the convenor Communication ->
+-- Bulk email tab) and the communication.bulk_email permission, granted to
+-- convenor only (manager default off, platform-wide like every role's
+-- grants - see database/04_bulk_email.sql for how to switch it on).
+-- =====================================================================
+USE conference_cms_test;
+
+CREATE TABLE IF NOT EXISTS bulk_emails (
+  id                CHAR(36)     NOT NULL DEFAULT (UUID()),
+  conference_id     CHAR(36)     NOT NULL,
+  created_by        CHAR(36)     NOT NULL,
+  subject           VARCHAR(300) NOT NULL,
+  body_html         TEXT         NOT NULL,
+  recipient_groups  JSON         NOT NULL DEFAULT (JSON_ARRAY()),
+  status            ENUM('draft','sent') NOT NULL DEFAULT 'draft',
+  recipient_count   INT          NOT NULL DEFAULT 0,
+  sent_at           DATETIME(3)  NULL,
+  created_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  KEY bulk_emails_conf_created_idx (conference_id, created_at),
+  CONSTRAINT bulk_emails_conf_fk    FOREIGN KEY (conference_id) REFERENCES conferences (id),
+  CONSTRAINT bulk_emails_creator_fk FOREIGN KEY (created_by)    REFERENCES users (id),
+  CONSTRAINT bulk_emails_subject_chk CHECK (CHAR_LENGTH(TRIM(subject)) BETWEEN 1 AND 300),
+  CONSTRAINT bulk_emails_body_chk    CHECK (CHAR_LENGTH(TRIM(body_html)) BETWEEN 1 AND 20000),
+  CONSTRAINT bulk_emails_groups_chk  CHECK (JSON_TYPE(recipient_groups) = 'ARRAY')
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci
+  COMMENT='Bulk emails composed/sent from the convenor Communication -> Bulk email tab.';
+
+CREATE TABLE IF NOT EXISTS bulk_email_recipients (
+  id               BIGINT       NOT NULL AUTO_INCREMENT,
+  bulk_email_id    CHAR(36)     NOT NULL,
+  email_log_id     BIGINT       NULL,
+  user_id          CHAR(36)     NULL,
+  recipient_email  VARCHAR(254) NOT NULL,
+  recipient_name   VARCHAR(200) NULL,
+  created_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  UNIQUE KEY bulk_email_recipients_uq (bulk_email_id, recipient_email),
+  KEY bulk_email_recipients_user_idx (user_id),
+  KEY bulk_email_recipients_log_idx (email_log_id),
+  CONSTRAINT bulk_email_recipients_bulk_fk FOREIGN KEY (bulk_email_id) REFERENCES bulk_emails (id) ON DELETE CASCADE,
+  CONSTRAINT bulk_email_recipients_log_fk  FOREIGN KEY (email_log_id)  REFERENCES email_logs (id)  ON DELETE SET NULL,
+  CONSTRAINT bulk_email_recipients_user_fk FOREIGN KEY (user_id)       REFERENCES users (id)       ON DELETE SET NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci
+  COMMENT='One row per person a bulk email was sent to; email_log_id is the live delivery status.';
+
+INSERT IGNORE INTO permissions (code, module, description) VALUES
+  ('communication.bulk_email', 'communication', 'Compose and send bulk email to recipient groups');
+
+INSERT IGNORE INTO role_permissions (role_code, permission_code) VALUES
+  ('convenor', 'communication.bulk_email');
 
 -- =====================================================================
 -- Give the existing app user the same rights on the test database.
