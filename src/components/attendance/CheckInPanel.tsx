@@ -14,7 +14,7 @@ import {
   XCircle,
   type LucideIcon,
 } from 'lucide-react'
-import { api, ApiError } from '../../lib/api'
+import { API_BASE, api, ApiError } from '../../lib/api'
 import { extractCheckinToken } from '../../lib/qrDecode'
 import { decodeQrImageFile, imageFileFromClipboard, QrImageError, ACCEPTED_QR_IMAGE_TYPES } from '../../lib/qrImageDecode'
 import { formatKathmanduTime } from '../../lib/datetime'
@@ -97,12 +97,26 @@ function sessionErrorBanner(err: unknown): { tone: StatusTone; icon: LucideIcon;
   return { tone: 'danger', icon: XCircle, title: 'Not checked in', message }
 }
 
+/** "Print badge" link shown under the result for any confirmed registration — not just a just-checked-in one, since the desk may want to (re)print without re-checking someone in. Session-scoped check-in has no conference-level registration badge, so the caller never passes this for that scope. */
+function PrintBadgeLink({ conferenceId, registrationId }: { conferenceId: string; registrationId: string }) {
+  return (
+    <a
+      href={`${API_BASE}/conferences/${conferenceId}/registrations/${registrationId}/badge.pdf`}
+      className="inline-flex min-h-8 items-center text-sm font-medium text-button underline-offset-2 hover:underline"
+    >
+      Print badge
+    </a>
+  )
+}
+
 /** The one colour+icon+message block every tab's result renders into — see Step 10 spec: "all three show the same result panel". */
 function ResultPanel({
   result,
   justCheckedIn,
   notFound,
   busy,
+  conferenceId,
+  showPrintBadge,
   onCheckIn,
   onConfirm,
 }: {
@@ -110,6 +124,8 @@ function ResultPanel({
   justCheckedIn: boolean
   notFound: string | null
   busy: boolean
+  conferenceId: string
+  showPrintBadge: boolean
   onCheckIn: () => void
   onConfirm: () => void
 }) {
@@ -166,6 +182,7 @@ function ResultPanel({
       <div className="space-y-3">
         {header}
         <StatusBanner tone="success" icon={CheckCircle2} title="Checked in" message="This person has been checked in." />
+        {showPrintBadge ? <PrintBadgeLink conferenceId={conferenceId} registrationId={result.id} /> : null}
       </div>
     )
   }
@@ -180,6 +197,7 @@ function ResultPanel({
           title="Already checked in today"
           message={result.checked_in_at ? `Checked in today at ${formatKathmanduTime(result.checked_in_at)}.` : 'Already checked in today.'}
         />
+        {showPrintBadge ? <PrintBadgeLink conferenceId={conferenceId} registrationId={result.id} /> : null}
       </div>
     )
   }
@@ -188,9 +206,12 @@ function ResultPanel({
     <div className="space-y-3">
       {header}
       <StatusBanner tone="info" icon={UserCheck} title="Ready to check in" message="Confirmed, not yet checked in today." />
-      <Button type="button" size="sm" onClick={onCheckIn} loading={busy}>
-        Check in
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" size="sm" onClick={onCheckIn} loading={busy}>
+          Check in
+        </Button>
+        {showPrintBadge ? <PrintBadgeLink conferenceId={conferenceId} registrationId={result.id} /> : null}
+      </div>
     </div>
   )
 }
@@ -448,6 +469,8 @@ export function CheckInPanel({
               justCheckedIn={justCheckedIn}
               notFound={notFound}
               busy={busy}
+              conferenceId={conferenceId}
+              showPrintBadge={!isSessionScope}
               onCheckIn={handleCheckInNow}
               onConfirm={handleConfirmRegistration}
             />

@@ -11,6 +11,7 @@ On Windows, install "MySQL Community Server 8.x" with MySQL Installer (includes 
     mysql -u root -p < 04_admin_extensions.sql
     mysql -u root -p < 04_suggestions.sql
     mysql -u root -p < 04_bulk_email.sql
+    mysql -u root -p < 04_badges.sql
 
 (MySQL Workbench: File > Open SQL Script, open each file, click the lightning icon.)
 
@@ -32,6 +33,10 @@ permission, granted to convenor only — manager is default off, platform-wide
 like every role's grants (no per-conference or per-manager override exists;
 see that file for the one-row change that switches it on for managers).
 Safe to re-run.
+
+`04_badges.sql` adds `registrations.printed_at` (set when a name badge has
+been generated for that registration — the Print badges screen). No new
+table, no new permission (reuses `attendance.record`). Safe to re-run.
 
 ## Create the application user (never let the app connect as root)
     CREATE USER 'cms_app'@'localhost' IDENTIFIED BY '<strong password>';

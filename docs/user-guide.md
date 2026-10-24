@@ -135,7 +135,9 @@ role.
    their registration was cancelled. Turn on **Verify only** to just look
    someone up (e.g. checking a ticket at the door) without checking them
    in — you still get a **Check in** button if you decide to go ahead.
-   Someone can only be checked in once per day.
+   Someone can only be checked in once per day. A **Print badge** link
+   sits right in the result panel too, for a one-off badge without going
+   to the convenor's bulk Print badges screen.
 4. **Numbers**: the same screen shows how many people are confirmed to
    attend and how many have checked in today, next to the check-in card,
    plus a **Recent check-ins** list that updates after every check-in.
@@ -182,8 +184,13 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
     into them. Toggle List/Grid view; publish a session to make it public.
   - *Attendance* — manage registration categories, see and search every
     registration, confirm a pending one, check someone in (same
-    scan/upload/code check-in card the staff desk uses), and see today's
-    numbers.
+    scan/upload/code check-in card the staff desk uses), see today's
+    numbers, and **print badges**: filter by category, role, checked-in-today
+    or not-printed-yet (or tick individual rows), then print an A4 sheet of
+    up to 8 at once (with cut marks) or one at a time — each badge carries
+    the person's name, affiliation, a role band, and their check-in QR. A
+    "Print badge" link also appears right on the check-in result after
+    checking someone in, for staff and convenor alike.
   - *Certificates* — design a template per certificate type, generate them
     in bulk (or issue a best-paper/speaker one by hand), then **Release
     now** to make every issued-but-unreleased one downloadable and email

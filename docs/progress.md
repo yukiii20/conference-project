@@ -843,3 +843,66 @@ subsection under Convenor -> Communication. No secrets committed, no real emails
 
 **No further SQL needed before this deploys** - `04_bulk_email.sql` is already applied to all
 three databases (you ran it, including Aiven, before I continued).
+
+## Features batch 1, feature 2 - Name badge printing - DONE
+New module `server/src/modules/badges` (routes/service/export - PDF generation split into its
+own file, same shape as `certificates/export.ts`). Database change was one column:
+`registrations.printed_at` (`database/04_badges.sql`, run by you on all three databases) - no
+new table, no new permission, reusing `attendance.record` (staff + convenor already have it).
+Badges are generated on request, never stored (same idea as a certificate template preview) -
+there's nothing to clean up and no storage to grow unbounded.
+
+A4 sheet, 2x4 badges (~90x60mm) with dashed cut marks, or a single badge centred on its own
+page. Each badge: conference logo + short name in the conference colour, the person's name
+(font size steps down as the name gets longer - pdfkit has no CSS-style auto-shrink, so this
+estimates by character count instead of a real text-measurement pass), affiliation
+(`users.institution`), a coloured role band (Speaker/Author/Reviewer/Staff/Attendee, the first
+one a person actually holds in that priority order, 'Attendee' by default), and their real
+check-in QR (`${APP_URL}/checkin/<their qr_token>` - literally the same value already used for
+`/my-registration/qr.png`, read straight off `registrations.qr_token`, not a new token).
+
+Entry points, both reusing existing screens rather than adding a new one: (1) convenor Event ->
+Attendance gained a **Print badges** section - filter by category/role/checked-in-today/
+not-printed-yet, or tick individual rows ("selected rows" deliberately bypasses every other
+filter, so a ticked row is never silently dropped by a stale role/checked-in filter); a `<a
+href>` download link either way, same pattern as the existing CSV/certificate-PDF downloads
+elsewhere in this app - no new blob-fetch mechanism. (2) The shared `CheckInPanel` (staff desk,
+convenor Attendance, and - correctly excluded - the session chair's session-scoped check-in,
+which has no conference-level registration to badge) gained a **Print badge** link right in the
+result panel for a one-off reprint without leaving the check-in flow.
+
+One real bug caught by the "selected rows bypasses other filters" test: my first cut only made
+`ids` bypass the WHERE-clause filters (category/status/not-printed), not the HAVING-clause ones
+(role/checked-in-today) - a role filter left over from the screen's filter bar was silently
+dropping an explicitly-ticked row. Fixed before this was ever deployed; the test that caught it
+stays in the suite.
+
+"Staff cannot print for another conference" (explicit in the spec) falls out of the same WHERE
+clause everything else does - `r.conference_id = ?` - no separate check needed; a registration
+id from a different conference just isn't found (404), covered by its own test.
+
+Verified: `tsc` (root+server) clean, both builds clean. Server tests: 523/523 (39 files - the
+file count only grew by one from feature 1 despite two new test files, because
+`routeGuards.test.ts` generates its own per-route test case for every route on every router, so
+it alone picked up 12 more cases between the two features; mentioning this because my feature-1
+summary's "525/525" was arithmetic from memory, not a fresh run - don't trust that number, trust
+this one and whatever the next fresh run says). New `badges.test.ts`, 5 tests: permission
+(reviewer forbidden, staff and convenor OK), cross-conference isolation, role-label priority +
+checked-in-today, A4 page count for 9 people (-> 2 pages, verified by reading pdfkit's own
+`/Count` dict straight out of the PDF bytes, no parsing dependency needed), and the
+selected-rows-bypass-filters fix above. Root `npm test`: 31/31 unchanged. Full Playwright suite
+re-seeded and re-run (one retry needed - the throwaway `:5273` dev server died on its own
+mid-run, unrelated to this feature; restarted, re-seeded, clean second run): 105/108, the 3
+failures being the same 2 pre-existing documented issues from the suggestion-box step
+(`notifications.spec.ts` / `role_request_approved`, and `usabilityAudit.spec.ts`'s super-admin
+sweep flagging leaked `conference_code` - both order-dependent, this run's test order happened
+to trigger both at once) plus one confirmed flake (`registration.spec.ts` timed out waiting on
+the public page once, passed cleanly in isolation straight after - resource contention from
+running the full suite twice back to back, not a regression). Includes a new
+`e2e/badges.spec.ts` (staff prints a badge from the check-in result; convenor filters by role
+and prints a sheet) and a new `data-testid="print-badges"` on the Attendance tab's badges
+section, needed because the page already has other tables/selects with overlapping text.
+docs/user-guide.md updated under both Staff and Convenor -> Event -> Attendance.
+
+**No further SQL needed before this deploys** - `04_badges.sql` is already applied to all three
+databases (you ran it, including Aiven, before I continued).

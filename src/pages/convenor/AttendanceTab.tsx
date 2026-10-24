@@ -5,6 +5,7 @@ import { api, ApiError } from '../../lib/api'
 import { registrationCategorySchema } from '../../lib/validation'
 import { AttendanceDashboard } from '../../components/attendance/AttendanceDashboard'
 import { RegistrationsList } from '../../components/attendance/RegistrationsList'
+import { PrintBadgesPanel } from '../../components/attendance/PrintBadgesPanel'
 import { PageHeader, Table, StatusChip, Button, FormField, Input, Checkbox, Alert, Spinner } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
 import type { Column } from '../../components/ui/Table'
@@ -178,6 +179,10 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
       <div className="mt-10">
         <h2 className="text-lg font-medium text-text">Registrations</h2>
         <RegistrationsList conferenceId={conferenceId} initialStatus={initialStatus} />
+      </div>
+      <div className="mt-10" data-testid="print-badges">
+        <h2 className="text-lg font-medium text-text">Print badges</h2>
+        <PrintBadgesPanel conferenceId={conferenceId} />
       </div>
       <div className="mt-10">
         <h2 className="text-lg font-medium text-text">Check-in</h2>

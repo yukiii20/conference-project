@@ -1602,6 +1602,31 @@ INSERT IGNORE INTO role_permissions (role_code, permission_code) VALUES
   ('convenor', 'communication.bulk_email');
 
 -- =====================================================================
+-- Conference Management System - name badge printing (MySQL)
+-- File: database/04_badges.sql  (run after 01/02/03; independent of the
+-- other 04_*.sql files)
+-- Adds registrations.printed_at - set when a badge has been generated for
+-- that registration. No new table, no new permission (reuses
+-- attendance.record).
+-- =====================================================================
+USE conference_cms_test;
+
+DELIMITER $$
+DROP PROCEDURE IF EXISTS _add_registrations_printed_at$$
+CREATE PROCEDURE _add_registrations_printed_at()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'registrations' AND COLUMN_NAME = 'printed_at'
+  ) THEN
+    ALTER TABLE registrations ADD COLUMN printed_at DATETIME(3) NULL AFTER qr_token;
+  END IF;
+END$$
+CALL _add_registrations_printed_at()$$
+DROP PROCEDURE _add_registrations_printed_at$$
+DELIMITER ;
+
+-- =====================================================================
 -- Give the existing app user the same rights on the test database.
 -- =====================================================================
 GRANT SELECT, INSERT, UPDATE, DELETE ON conference_cms_test.* TO 'cms_app'@'localhost';
