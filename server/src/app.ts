@@ -32,6 +32,7 @@ import { reportsRouter } from './modules/reports/routes.js'
 import { activityLogRouter } from './modules/activityLog/routes.js'
 import { registrationRouter } from './modules/registration/routes.js'
 import { certificatesRouter, certificatesPublicRouter } from './modules/certificates/routes.js'
+import { suggestionsAdminRouter, suggestionsPublicRouter } from './modules/suggestions/routes.js'
 import { PUBLIC_DIR } from './storage/paths.js'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -183,9 +184,11 @@ export function createApp() {
   app.use('/api/reviewer', reviewerRouter)
   app.use('/api/role-requests', roleRequestsRouter)
   app.use('/api', platformSettingsPublicRouter)
+  app.use('/api', suggestionsPublicRouter)
   app.use('/api/admin', adminRouter)
   app.use('/api/admin', adminEmailsRouter)
   app.use('/api/admin', platformSettingsAdminRouter)
+  app.use('/api/admin', suggestionsAdminRouter)
   app.use('/api/me', meRouter)
   app.use('/api/announcements', announcementsRouter)
 

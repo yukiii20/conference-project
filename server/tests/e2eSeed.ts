@@ -45,6 +45,16 @@ async function main() {
 
   // Idempotent: clean up only this fixture's own rows (by slug/email), never
   // a blanket wipe, so repeated runs don't touch anything else in the DB.
+  // suggestions is the one exception: it's a platform-wide leaf table (no
+  // other fixture here references it, and real visitors never see this test
+  // database), and it accepts anonymous submissions with no fixture email to
+  // scope a targeted delete by — e2e/suggestions.spec.ts needs an exact
+  // "new" count, so a full wipe here is the only thing that keeps it
+  // deterministic across repeated runs (e.g. after a Vitest file run left
+  // its own last-test suggestion behind — resetDatabase in tests/helpers.ts
+  // only clears it in each test's beforeEach, not after the final test).
+  await pool.query('DELETE FROM suggestions')
+
   const [confRows] = await pool.query('SELECT id FROM conferences WHERE slug = ? LIMIT 1', [E2E.conferenceSlug])
   const existingConferenceId = (confRows as Array<{ id: string }>)[0]?.id
   if (existingConferenceId) {

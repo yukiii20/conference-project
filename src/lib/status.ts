@@ -84,6 +84,11 @@ const STATUS_TONE: Record<string, StatusTone> = {
   bounced: 'danger',
   queued: 'info',
   sending: 'info',
+  // suggestions (home page suggestion box, triaged from /super-admin)
+  new: 'warning',
+  read: 'neutral',
+  resolved: 'success',
+  archived: 'neutral',
 }
 
 export function statusTone(status: string): StatusTone {

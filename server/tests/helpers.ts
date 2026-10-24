@@ -36,6 +36,7 @@ export function oversizedBuffer(bytes: number): Buffer {
  */
 export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM platform_settings')
+  await pool.query('DELETE FROM suggestions')
   await pool.query('DELETE FROM notifications')
   await pool.query('DELETE FROM email_logs')
   // Conference-specific template overrides only — never the platform defaults (conference_id IS NULL) from 02_reference_data.sql.

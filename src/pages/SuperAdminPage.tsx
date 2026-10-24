@@ -10,6 +10,7 @@ import {
   FileText,
   HardDrive,
   Mail,
+  MessageSquare,
   MoreHorizontal,
   Plus,
   Save,
@@ -22,9 +23,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
+import { humanizeAuditAction } from '../lib/humanize'
 import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } from '../lib/validation'
 import { useNoIndex } from '../lib/noindex'
 import { EmailLogTab } from '../components/EmailLogTab'
+import { SuggestionsAdminTab } from '../components/SuggestionsAdminTab'
 import { PortalHeader } from '../components/PortalHeader'
 import {
   Alert,
@@ -32,6 +35,7 @@ import {
   Button,
   buttonClasses,
   Card,
+  Checkbox,
   type Column,
   ConfirmDialog,
   EmptyState,
@@ -59,6 +63,7 @@ type AdminTab =
   | 'appoint-convenor'
   | 'users'
   | 'admins'
+  | 'suggestions'
   | 'settings'
   | 'email-log'
 
@@ -133,6 +138,7 @@ type PlatformSettings = {
   hero_headline: string | null
   hero_subheadline: string | null
   faq_items: FaqItem[]
+  notify_admins_of_suggestions: boolean
 }
 
 function formatDate(dateStr: string) {
@@ -175,6 +181,7 @@ const TABS: { id: AdminTab; label: string }[] = [
   { id: 'appoint-convenor', label: 'Appoint existing account' },
   { id: 'users', label: 'Users' },
   { id: 'admins', label: 'Admins' },
+  { id: 'suggestions', label: 'Suggestions' },
   { id: 'settings', label: 'Platform settings' },
   { id: 'email-log', label: 'Email log' },
 ]
@@ -186,6 +193,22 @@ export function SuperAdminPage() {
   const [convenorByConference, setConvenorByConference] = useState<Record<string, ConvenorInfo>>({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [newSuggestionsCount, setNewSuggestionsCount] = useState(0)
+
+  const loadNewSuggestionsCount = useCallback(async () => {
+    try {
+      const data = await api.get<{ counts_by_status: Array<{ status: string; count: number }> }>('/admin/suggestions', {
+        page: '1',
+      })
+      setNewSuggestionsCount(data.counts_by_status.find((c) => c.status === 'new')?.count ?? 0)
+    } catch {
+      // Non-critical badge/dashboard count — stay quiet on failure.
+    }
+  }, [])
+
+  useEffect(() => {
+    loadNewSuggestionsCount()
+  }, [loadNewSuggestionsCount])
 
   const loadConferences = useCallback(async () => {
     setLoading(true)
@@ -217,11 +240,17 @@ export function SuperAdminPage() {
       <PortalHeader roleLabel="Administrator" />
 
       <main className="mx-auto max-w-[1440px] px-6 py-8 sm:px-8">
-        <PageHeader title="Administrator" />
+        <PageHeader title="Administrator" subtitle="Manage conferences, convenors, user accounts, and platform-wide settings." />
 
-        <Tabs tabs={TABS} active={tab} onChange={(id) => setTab(id as AdminTab)} />
+        <Tabs
+          tabs={TABS.map((t) => (t.id === 'suggestions' ? { ...t, count: newSuggestionsCount } : t))}
+          active={tab}
+          onChange={(id) => setTab(id as AdminTab)}
+        />
 
-        {tab === 'dashboard' ? <DashboardTab /> : null}
+        {tab === 'dashboard' ? (
+          <DashboardTab newSuggestionsCount={newSuggestionsCount} onViewSuggestions={() => setTab('suggestions')} />
+        ) : null}
 
         {tab === 'conferences' ? (
           <ConferencesTab
@@ -243,6 +272,7 @@ export function SuperAdminPage() {
 
         {tab === 'users' ? <UsersTab /> : null}
         {tab === 'admins' ? <AdminsTab /> : null}
+        {tab === 'suggestions' ? <SuggestionsAdminTab onCountsChange={setNewSuggestionsCount} /> : null}
         {tab === 'settings' ? <PlatformSettingsTab /> : null}
         {tab === 'email-log' ? <EmailLogTab scope="admin" /> : null}
       </main>
@@ -801,7 +831,12 @@ function CreateConvenorTab({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 max-w-lg space-y-4">
+    <div className="mt-6">
+      <PageHeader
+        title="Create convenor"
+        subtitle="Invites a brand-new person by email to run a conference — they set their own password from the link."
+      />
+      <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
       {formError ? <Alert variant="danger">{formError}</Alert> : null}
       {success ? <Alert variant="success">{success}</Alert> : null}
 
@@ -863,7 +898,8 @@ function CreateConvenorTab({
         onConfirm={() => pendingReplace && performInvite(pendingReplace.data)}
         onCancel={() => setPendingReplace(null)}
       />
-    </form>
+      </form>
+    </div>
   )
 }
 
@@ -953,7 +989,12 @@ function AppointConvenorTab({
   }
 
   return (
-    <div className="mt-6 max-w-2xl space-y-4">
+    <div className="mt-6">
+      <PageHeader
+        title="Appoint existing account"
+        subtitle="Makes someone who already has an account the convenor of a conference — no invitation email, no new password."
+      />
+      <div className="max-w-2xl space-y-4">
       {actionError ? <Alert variant="danger">{actionError}</Alert> : null}
       {success ? <Alert variant="success">{success}</Alert> : null}
 
@@ -1014,6 +1055,7 @@ function AppointConvenorTab({
         onConfirm={() => pendingAppoint && performAppoint(pendingAppoint.profile)}
         onCancel={() => setPendingAppoint(null)}
       />
+      </div>
     </div>
   )
 }
@@ -1284,7 +1326,13 @@ function AnonymizeConfirmDialog({
   )
 }
 
-function DashboardTab() {
+function DashboardTab({
+  newSuggestionsCount,
+  onViewSuggestions,
+}: {
+  newSuggestionsCount: number
+  onViewSuggestions: () => void
+}) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -1345,6 +1393,18 @@ function DashboardTab() {
         ))}
       </div>
 
+      <button type="button" onClick={onViewSuggestions} className="block w-full text-left sm:w-auto">
+        <Card className="transition hover:shadow-md">
+          <div className="flex items-center justify-between gap-6">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-text-muted">New suggestions</p>
+              <p className="mt-1 text-2xl font-semibold text-text">{newSuggestionsCount}</p>
+            </div>
+            <Icon icon={MessageSquare} className="text-brand/60" />
+          </div>
+        </Card>
+      </button>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-8">
           <div>
@@ -1380,7 +1440,7 @@ function DashboardTab() {
                   <li key={a.id} className="px-4 py-2.5 text-sm">
                     <span className="text-text-muted">{formatDateTime(a.occurred_at)}</span>
                     {' — '}
-                    <span className="font-medium">{a.actor_name ?? 'System'}</span> {a.action}
+                    <span className="font-medium">{a.actor_name ?? 'System'}</span> {humanizeAuditAction(a.action)}
                   </li>
                 ))}
               </ul>
@@ -1663,6 +1723,13 @@ function PlatformSettingsTab() {
           onChange={(e) => update('support_email', e.target.value || null)}
         />
       </FormField>
+
+      <Checkbox
+        id="ps-notify-suggestions"
+        label="Notify admins of new suggestions by email"
+        checked={settings.notify_admins_of_suggestions}
+        onChange={(e) => update('notify_admins_of_suggestions', e.target.checked)}
+      />
 
       <FormField label="Footer text" htmlFor="ps-footer">
         <Textarea

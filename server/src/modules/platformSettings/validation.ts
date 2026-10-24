@@ -23,5 +23,9 @@ export const platformSettingsSchema = z.object({
   hero_headline: optionalText(300),
   hero_subheadline: optionalText(500),
   faq_items: z.array(faqItemSchema).max(30),
+  // Optional + defaulted (not required) so a caller that doesn't know about
+  // this toggle yet (the admin form, until it's updated) still validates —
+  // only an explicit PATCH that includes it can turn it off.
+  notify_admins_of_suggestions: z.boolean().optional().default(true),
 })
 export type PlatformSettingsInput = z.infer<typeof platformSettingsSchema>

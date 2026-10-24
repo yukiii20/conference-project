@@ -53,3 +53,31 @@ export const uploadRateLimit = rateLimit({
   skip: skipInTest,
   message: { error: { message: 'Too many uploads. Please wait a few minutes and try again.' } },
 })
+
+const SUGGESTION_TOO_MANY_MESSAGE = {
+  error: { message: 'Too many suggestions from this address. Please try again later.' },
+}
+
+// Exported as plain data (not just baked into the middleware below) so a
+// test can assert on the actual policy without needing NODE_ENV!=='test' —
+// rateLimit()'s returned middleware exposes none of its options back out.
+export const SUGGESTION_IP_RATE_LIMIT_CONFIG = { windowMs: 10 * 60 * 1000, limit: 3 }
+export const SUGGESTION_DAILY_RATE_LIMIT_CONFIG = { windowMs: 24 * 60 * 60 * 1000, limit: 20 }
+
+/** Public home-page suggestion box, per IP: 3 per 10 minutes — stops a single burst/script. */
+export const suggestionIpRateLimit = rateLimit({
+  ...SUGGESTION_IP_RATE_LIMIT_CONFIG,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: SUGGESTION_TOO_MANY_MESSAGE,
+})
+
+/** Same endpoint, per IP: 20 per day — stops a slow drip from the same source across many 10-minute windows. */
+export const suggestionDailyRateLimit = rateLimit({
+  ...SUGGESTION_DAILY_RATE_LIMIT_CONFIG,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: SUGGESTION_TOO_MANY_MESSAGE,
+})

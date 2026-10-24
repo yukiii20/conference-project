@@ -10,6 +10,7 @@ import { LandingFooter } from '../components/landing/LandingFooter'
 import { FaqAccordion } from '../components/landing/FaqAccordion'
 import { Reveal } from '../components/landing/Reveal'
 import { BackToTopButton } from '../components/landing/BackToTopButton'
+import { SuggestionBox } from '../components/landing/SuggestionBox'
 import { SITE } from '../content/site'
 import { usePlatformSettings } from '../lib/platformSettings'
 
@@ -276,11 +277,17 @@ export function HomePage() {
     if (initialHashHandledRef.current || headerHeight === 0) return
     initialHashHandledRef.current = true
     const hash = window.location.hash.replace('#', '')
-    if (!hash || !SECTION_IDS.includes(hash as SectionId)) return
-    const el = sectionRefs.current[hash]
-    if (!el) return
-    el.scrollIntoView({ behavior: 'auto', block: 'start' })
-    setActiveSection(hash as SectionId)
+    if (!hash) return
+    if (SECTION_IDS.includes(hash as SectionId)) {
+      const el = sectionRefs.current[hash]
+      if (!el) return
+      el.scrollIntoView({ behavior: 'auto', block: 'start' })
+      setActiveSection(hash as SectionId)
+      return
+    }
+    // Not a nav-tracked section (e.g. #suggestions, reached from the footer's
+    // Feedback link on any page) — just scroll to it if it exists.
+    document.getElementById(hash)?.scrollIntoView({ behavior: 'auto', block: 'start' })
   }, [headerHeight])
 
   function handleNavigate(id: string) {
@@ -686,6 +693,9 @@ export function HomePage() {
           </a>
         </Reveal>
       </section>
+
+      {/* ----------------------------------------------------- Suggestion box */}
+      <SuggestionBox />
       </main>
 
       <LandingFooter />

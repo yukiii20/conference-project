@@ -27,7 +27,9 @@ role.
 - **My ticket**: register to attend a conference you're involved with,
   see your registration status, and your QR-code ticket — download it as
   a PNG or show the page itself to staff at check-in. Cancel any time
-  before the event.
+  before the event. If a conference charges for registration, your
+  ticket shows **pending** until the organisers confirm your payment —
+  the page tells you who to email about it.
 - **My certificates**: every certificate issued to you, across every
   conference, once the organisers release it (a revoked one still shows,
   marked **Revoked**). **Download PDF** or **Copy verify link** to hand
@@ -37,15 +39,22 @@ role.
   shows the full list.
 - **Your profile**: click your name/avatar → Profile to update your name,
   phone, or photo; Change password to set a new one.
+- **Suggestion box**: near the bottom of the home page ("Help us improve"),
+  or the **Feedback** link in the footer from any page. Anyone can send a
+  feature idea, bug report, or question — no sign-in required. Signed-in
+  visitors get their name/email prefilled; everyone else can leave them
+  blank. Platform administrators read and triage every one.
 
 ---
 
 ## Author
 
 1. **Sign up**: go to the conference's page, click **Submit an abstract** or
-   **Sign up**, choose **Author**, and fill in your details. You can't sign
-   in until the convenor approves your request — you'll get an email/
-   notification when that happens.
+   **Sign up**, choose **Author**, and fill in your details. (Signing up
+   from the general `/signup` page asks you to choose a conference first —
+   if none are published yet, it says so and offers **Browse conferences**
+   instead of a dead end.) You can't sign in until the convenor approves
+   your request — you'll get an email/notification when that happens.
 2. **Write a submission**: sign in, and in your portal's sidebar open **My
    submissions**. Click **New abstract**, choose a track, and fill in the
    title, abstract, and keywords. Add co-authors by email — mark one
@@ -140,12 +149,21 @@ role.
 You run one conference from end to end. Sign in choosing **Convenor** —
 everything lives under `/convenor`, in a left sidebar grouped by area.
 
-- **Dashboard**: at-a-glance counts and a "needs your attention" list
-  (unreviewed papers, overdue reviews, deadlines coming up).
+- **Dashboard**: a **Setup checklist** card (new conference only — it
+  disappears once everything's done) ticks off details, logo, key dates,
+  tracks, registration categories, a certificate template, and publishing,
+  with a link straight to whichever step is still unfinished — this is also
+  why a brand-new conference isn't visible on the public home page yet.
+  Below that, at-a-glance counts and a "needs your attention" list
+  (unreviewed papers, overdue reviews, pending registrations waiting on
+  payment confirmation, deadlines coming up).
 - **Conference setup**: name, dates, description, colour/logo/banner,
   venue/location, supporters.
 - **Dates and tracks**: every key date (registration, submission, review,
-  certificate release, ...) and the paper tracks for this conference.
+  certificate release, ...) and the paper tracks for this conference. A
+  warning appears if abstract submission would close after the conference
+  starts, or registration after it ends — both are easy to miss and quietly
+  break the event for whoever hits them.
 - **People**:
   - *Role requests* — approve or reject sign-ups.
   - *Members and roles* — see everyone with a role, invite someone
@@ -167,8 +185,11 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
     scan/upload/code check-in card the staff desk uses), and see today's
     numbers.
   - *Certificates* — design a template per certificate type, generate them
-    in bulk (or issue a best-paper/speaker one by hand), and release them
-    to recipients.
+    in bulk (or issue a best-paper/speaker one by hand), then **Release
+    now** to make every issued-but-unreleased one downloadable and email
+    the recipients (you'll see a confirmation naming how many went out).
+    **Revoke** one if it was issued by mistake — you'll be asked for a
+    reason, kept in the activity log.
 - **Communication**: announcements, email templates, the email
   log, exportable reports (CSV/XLSX), and the activity log (who did what).
 
@@ -193,8 +214,11 @@ Sign in at `/super-admin/login` (a separate login from everyone else).
 - **Conferences**: search by name/code/slug or filter by status, see each
   one's submission and registration counts at a glance, open its public
   page or **View as admin** from the row's actions, create a new
-  conference, then appoint an existing user as convenor or invite a
-  brand-new person by email (they set their password via the link).
+  conference, then hand it to a convenor via one of two tabs: **Create
+  convenor** invites a brand-new person by email, who sets their own
+  password from the link; **Appoint existing account** makes someone who
+  already has an account the convenor instead — no invitation email, no new
+  password.
 - **Users**: search any user, suspend/reactivate/unlock an account, send
   them a password-reset link, or anonymise one that's being deleted
   (removes personal details, keeps the historical record).
@@ -204,4 +228,11 @@ Sign in at `/super-admin/login` (a separate login from everyone else).
   mode to see exactly what the convenor sees, without being able to change
   anything.
 - **Platform settings**: the site name, support email, and home-page copy
-  shown to every visitor.
+  shown to every visitor, plus a toggle for whether new suggestions email
+  admins (on by default).
+- **Suggestions**: everything sent through the home page's suggestion box.
+  The tab's badge shows how many are still **New**. Filter by status or
+  category, search by message/name/email, open one to read the full text
+  (marks it read automatically), add an internal note, change its status
+  (New/Read/In progress/Resolved/Archived), reply by email if one was left,
+  delete it, or export the current filter to CSV. Every change is audited.

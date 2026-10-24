@@ -190,6 +190,7 @@ export const SITE = {
           { label: 'Conferences', href: '#conferences' },
           { label: 'How it works', href: '#how-it-works' },
           { label: 'FAQ', href: '#faq' },
+          { label: 'Feedback', href: '#suggestions' },
         ],
       },
       account: {

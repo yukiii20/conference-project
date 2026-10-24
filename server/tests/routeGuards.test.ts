@@ -25,6 +25,7 @@ import { reportsRouter } from '../src/modules/reports/routes.js'
 import { activityLogRouter } from '../src/modules/activityLog/routes.js'
 import { registrationRouter } from '../src/modules/registration/routes.js'
 import { certificatesRouter, certificatesPublicRouter } from '../src/modules/certificates/routes.js'
+import { suggestionsAdminRouter, suggestionsPublicRouter } from '../src/modules/suggestions/routes.js'
 
 const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
 
@@ -51,6 +52,7 @@ const PUBLIC_ROUTES = new Set([
   'scheduleRouter GET /:id/sessions/public/programme.pdf',
   'platformSettingsPublicRouter GET /platform-settings',
   'certificatesPublicRouter GET /verify/:token',
+  'suggestionsPublicRouter POST /suggestions',
 ])
 
 type NamedRouter = { name: string; router: import('express').Router }
@@ -89,6 +91,8 @@ const ROUTERS: NamedRouter[] = [
   { name: 'registrationRouter', router: registrationRouter },
   { name: 'certificatesRouter', router: certificatesRouter },
   { name: 'certificatesPublicRouter', router: certificatesPublicRouter },
+  { name: 'suggestionsPublicRouter', router: suggestionsPublicRouter },
+  { name: 'suggestionsAdminRouter', router: suggestionsAdminRouter },
 ]
 
 type RouteEntry = { key: string; middlewareNames: string[] }

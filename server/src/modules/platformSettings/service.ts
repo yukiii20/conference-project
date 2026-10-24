@@ -13,6 +13,7 @@ export type PlatformSettings = {
   hero_headline: string | null
   hero_subheadline: string | null
   faq_items: Array<{ q: string; a: string }>
+  notify_admins_of_suggestions: boolean
 }
 
 // The site's current hardcoded copy (src/content/site.ts) — what every
@@ -55,6 +56,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
       a: "Conferences are set up by our team. Contact us with your conference's details and we'll create it and set you up as the convenor so you can take it from there.",
     },
   ],
+  notify_admins_of_suggestions: true,
 }
 
 export async function getPlatformSettings(): Promise<PlatformSettings> {
@@ -84,6 +86,7 @@ export async function updatePlatformSettings(
     hero_headline: input.hero_headline ? stripHtml(input.hero_headline) : null,
     hero_subheadline: input.hero_subheadline ? stripHtml(input.hero_subheadline) : null,
     faq_items: input.faq_items.map((item) => ({ q: stripHtml(item.q), a: stripHtml(item.a) })),
+    notify_admins_of_suggestions: input.notify_admins_of_suggestions,
   }
 
   const before = await getPlatformSettings()

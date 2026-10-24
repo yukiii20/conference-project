@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { SITE } from '../../content/site'
 import { usePlatformSettings } from '../../lib/platformSettings'
 import { LogoMark } from './LandingHeader'
@@ -14,6 +14,26 @@ export function LandingFooter() {
   const platformName = platformSettings?.platform_name ?? SITE.name
   const footerText = platformSettings?.footer_text ?? SITE.footer.description
   const contactEmail = platformSettings?.support_email ?? SITE.contactEmail
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  /**
+   * These links point at home-page section ids (#conferences, #suggestions,
+   * ...) but the footer also renders on pages that aren't the home page
+   * (Privacy, Terms) — a plain `<a href="#foo">` there would just add the
+   * hash to the current URL instead of taking the visitor to that section.
+   * Already on "/": scroll straight there. Anywhere else: navigate home
+   * with the hash — HomePage's own mount effect does the scroll once it loads.
+   */
+  function handleSectionLink(e: React.MouseEvent<HTMLAnchorElement>, hash: string) {
+    e.preventDefault()
+    if (location.pathname === '/') {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      window.history.replaceState(null, '', hash)
+    } else {
+      navigate(`/${hash}`)
+    }
+  }
 
   return (
     <footer className="bg-brand text-on-brand">
@@ -48,7 +68,11 @@ export function LandingFooter() {
                     </li>
                   ) : (
                     <li key={link.label}>
-                      <a href={link.href} className="text-on-brand/80 hover:text-on-brand">
+                      <a
+                        href={`/${link.href}`}
+                        onClick={(e) => handleSectionLink(e, link.href)}
+                        className="text-on-brand/80 hover:text-on-brand"
+                      >
                         {link.label}
                       </a>
                     </li>
