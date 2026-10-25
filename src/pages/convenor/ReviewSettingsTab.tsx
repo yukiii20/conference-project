@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
+import { fromKathmanduInputValue, toKathmanduInputValue } from '../../lib/datetime'
 import { reviewSettingsSchema, type ReviewSettingsInput } from '../../lib/validation'
 import { useToast } from '../../components/ui/Toast'
 import { PageHeader, FormField, Select, Input, Checkbox, Button, Alert, Spinner } from '../../components/ui'
@@ -12,10 +13,16 @@ type Settings = {
   max_file_size_mb: number
   allowed_file_types: string[]
   authors_see_review_comments: boolean
+  bidding_enabled: boolean
+  bidding_start_at: string | null
+  bidding_end_at: string | null
   registration_requires_payment: boolean
   session_attendance_enabled: boolean
   certificate_min_sessions: number | null
   default_currency: string
+  review_reminders_enabled: boolean
+  review_reminder_days_before: number[]
+  review_overdue_reminder_enabled: boolean
 }
 
 const REVIEW_MODE_LABELS: Record<Settings['review_mode'], string> = {
@@ -27,6 +34,9 @@ const REVIEW_MODE_LABELS: Record<Settings['review_mode'], string> = {
 export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
   const [form, setForm] = useState<Settings | null>(null)
   const [fileTypesText, setFileTypesText] = useState('')
+  const [biddingStartLocal, setBiddingStartLocal] = useState('')
+  const [biddingEndLocal, setBiddingEndLocal] = useState('')
+  const [reminderDaysText, setReminderDaysText] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -40,6 +50,9 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
       const data = await api.get<{ settings: Settings }>(`/conferences/${conferenceId}/settings`)
       setForm(data.settings)
       setFileTypesText(data.settings.allowed_file_types.join(', '))
+      setBiddingStartLocal(data.settings.bidding_start_at ? toKathmanduInputValue(data.settings.bidding_start_at) : '')
+      setBiddingEndLocal(data.settings.bidding_end_at ? toKathmanduInputValue(data.settings.bidding_end_at) : '')
+      setReminderDaysText(data.settings.review_reminder_days_before.join(', '))
       setLoadError(null)
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Could not load review settings.')
@@ -63,6 +76,12 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean),
+      bidding_start_at: biddingStartLocal ? fromKathmanduInputValue(biddingStartLocal) : null,
+      bidding_end_at: biddingEndLocal ? fromKathmanduInputValue(biddingEndLocal) : null,
+      review_reminder_days_before: reminderDaysText
+        .split(',')
+        .map((t) => Number(t.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0),
     }
     const parsed = reviewSettingsSchema.safeParse(candidate)
     if (!parsed.success) {
@@ -186,6 +205,84 @@ export function ReviewSettingsTab({ conferenceId }: { conferenceId: string }) {
         checked={form.authors_see_review_comments}
         onChange={(e) => setForm({ ...form, authors_see_review_comments: e.target.checked })}
       />
+
+      <div className="border-t border-border pt-5">
+        <h2 className="text-sm font-semibold text-text">Reviewer bidding</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          While a bidding period is open, reviewers can say which papers they want, can, or don't want to review from
+          the "Bid on papers" screen in their portal.
+        </p>
+
+        <div className="mt-3">
+          <Checkbox
+            label="Enable a bidding period"
+            checked={form.bidding_enabled}
+            onChange={(e) => setForm({ ...form, bidding_enabled: e.target.checked })}
+          />
+        </div>
+
+        {form.bidding_enabled ? (
+          <div className="mt-3 flex flex-wrap gap-3">
+            <FormField label="Bidding opens" error={errors.bidding_start_at}>
+              <Input
+                type="datetime-local"
+                value={biddingStartLocal}
+                onChange={(e) => setBiddingStartLocal(e.target.value)}
+                error={Boolean(errors.bidding_start_at)}
+              />
+            </FormField>
+            <FormField label="Bidding closes" error={errors.bidding_end_at}>
+              <Input
+                type="datetime-local"
+                value={biddingEndLocal}
+                onChange={(e) => setBiddingEndLocal(e.target.value)}
+                error={Boolean(errors.bidding_end_at)}
+              />
+            </FormField>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <h2 className="text-sm font-semibold text-text">Review reminders</h2>
+        <p className="mt-1 text-sm text-text-muted">
+          An automatic hourly check nudges reviewers who haven't submitted yet. "Send reminder now" and "Remind all" on
+          the Reviewers tab always send regardless of this switch.
+        </p>
+
+        <div className="mt-3">
+          <Checkbox
+            label="Send automatic reminders before a review is due"
+            checked={form.review_reminders_enabled}
+            onChange={(e) => setForm({ ...form, review_reminders_enabled: e.target.checked })}
+          />
+        </div>
+
+        {form.review_reminders_enabled ? (
+          <div className="mt-3">
+            <FormField
+              label="Days before due date"
+              help={errors.review_reminder_days_before ? undefined : 'Comma-separated, e.g. 3, 1.'}
+              error={errors.review_reminder_days_before}
+            >
+              <Input
+                value={reminderDaysText}
+                onChange={(e) => setReminderDaysText(e.target.value)}
+                className="w-40"
+                error={Boolean(errors.review_reminder_days_before)}
+              />
+            </FormField>
+          </div>
+        ) : null}
+
+        <div className="mt-3">
+          <Checkbox
+            label="Also send one reminder after a review becomes overdue"
+            checked={form.review_overdue_reminder_enabled}
+            onChange={(e) => setForm({ ...form, review_overdue_reminder_enabled: e.target.checked })}
+          />
+        </div>
+      </div>
 
       <div className="border-t border-border pt-5">
         <h2 className="text-sm font-semibold text-text">Registration, attendance and certificates</h2>

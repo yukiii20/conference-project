@@ -906,3 +906,136 @@ docs/user-guide.md updated under both Staff and Convenor -> Event -> Attendance.
 
 **No further SQL needed before this deploys** - `04_badges.sql` is already applied to all three
 databases (you ran it, including Aiven, before I continued).
+
+## Features batch 2, feature 4 - Reviewer bidding - DONE
+
+New `database/04_review_bids.sql` (table `review_bids`, one row per submission/reviewer
+preference, plus `conference_settings.bidding_enabled`/`bidding_start_at`/`bidding_end_at` - the
+Review settings "Bidding period" toggle) - run by you on `conference_cms`, `conference_cms_test`
+and the live Aiven `conference_cms` before I continued. No new permission: reviewers bid on their
+own behalf (checked by conference membership, same as submitting a review), and the convenor
+reads bids through the existing `review.assign` permission.
+
+Reviewer portal gained a **Bid on papers** tab (next to My assignments, a plain state toggle, not
+a routed tab) listing every eligible paper - title, track, keywords, abstract only, same blind-
+review rule as everywhere else a reviewer sees a paper - with Want/Can/Not interested/Conflict
+buttons that save instantly, a "You have bid on N of M" progress line, and track/search filters.
+Marking **Conflict of interest** while bidding inserts a `conflicts_of_interest` row too (source
+`reviewer_declared`), so it's blocked from assignment through the exact same mechanism a formally
+declared conflict already is - no separate check needed anywhere else. The convenor's existing
+Assign-a-reviewer screen now shows each candidate's bid next to their name (extended
+`listReviewerCandidates`, no new endpoint).
+
+Found and fixed one real pre-existing bug while building this: `getSettings()` returned MySQL's
+raw `TINYINT` values (`0`/`1`) for every boolean column instead of real `true`/`false` - harmless
+for a field the convenor's own edit always overwrites with a real boolean from a checkbox, but
+fatal for any boolean the user never touches, since the frontend's `reviewSettingsSchema` requires
+`z.boolean()`. Nobody had ever caught this because no test - server or e2e - had exercised
+`PATCH .../settings` before (confirmed via `audit_logs`: zero `settings.update` rows, ever, in the
+test database). Fixed by casting the six boolean columns in `getSettings()`.
+
+Also found, while writing the reviewer-facing bidding screen, that reviewers have no permission to
+call the convenor-only `GET /conferences/:id/tracks` (needs `conference.manage`) - the track
+filter dropdown instead builds its options additively from whatever tracks show up in the bids
+response itself, so it never calls that endpoint at all.
+
+New `server/tests/reviewBidding.test.ts` (5 tests): blind fields never returned, a reviewer can't
+bid outside a conference they're a reviewer of, bidding closed outside the configured window,
+saves instantly with correct progress counts, and a declared conflict blocks assignment while an
+unrelated paper still assigns fine. `server/tests/helpers.ts` gained `createReviewAssignment` and
+`addReviewBid`, and `review_bids`/`review_reminders` to `resetDatabase()`'s delete list (same for
+`server/tests/e2eSeed.ts`'s cleanup block, ahead of feature 6 too).
+
+## Features batch 2, feature 5 - Auto-assign reviewers - DONE
+
+No new table - reuses `review_bids`, `reviewer_tracks`, `review_assignments`, and
+`conflicts_of_interest`. New pure function `server/src/modules/reviews/autoAssign.ts`
+(`planAutoAssignment`) - deterministic greedy assignment with load balancing, no I/O, so it's
+cheap to unit-test on small fixtures: for each paper (stable id order), ranks eligible reviewers by
+bid (want > can > no bid > not_interested, the last only reached when nothing better is left),
+then by track match (only applied at all when at least one reviewer in the conference has set a
+track preference - never penalises anyone when the feature's unused), then by current simulated
+load ascending for even spreading, then by id as a stable tie-break; a declared conflict (from
+either source - a bid marked Conflict, or a formal `conflicts_of_interest` row) and the paper's own
+author/co-authors are always excluded. 11 unit tests in `server/tests/autoAssign.test.ts` covering
+every rule above plus edge cases (no reviewers at all, determinism, respecting a per-reviewer cap).
+
+Wired into `assignReviewer`'s existing single-assignment code path rather than a parallel one:
+extracted its insert+validate+email+notify+audit body into `insertReviewAssignment(conn, ...)`,
+callable with an already-open connection - `assignReviewer` wraps one call in its own transaction,
+`confirmAutoAssign` loops it inside one transaction for the whole batch, getting identical
+reviewer-eligibility re-checks (active reviewer, not the author, no conflict, no duplicate) for
+free and true one-transaction atomicity (a bad reviewer anywhere in the batch rolls back the
+entire confirm, tested explicitly). `previewAutoAssign` only reads; nothing is written before
+`confirmAutoAssign` is actually called, per the spec's "nothing saved before Confirm."
+
+New convenor **Auto-assign** tab (`src/pages/convenor/AutoAssignTab.tsx`): reviewers-per-paper,
+max-papers-per-reviewer, only-unassigned-or-all, a due date, **Preview**, then a proposed-
+assignments table (with each row's reason and a per-row **Remove** before confirming - the
+"convenor can tweak" ask), a reviewer-load table, and warnings for any paper that couldn't be
+fully filled. **Confirm N assignments** sends the normal `review_assigned` email per assignment,
+same as a manual assign. New `server/tests/autoAssignRoutes.test.ts` (3 tests, HTTP-level):
+permission, preview writes nothing then confirm creates the real rows and emails, and the
+one-transaction rollback case above.
+
+## Features batch 2, feature 6 - Review reminders - DONE
+
+New `database/04_review_reminders.sql` (table `review_reminders` - which automatic reminder, by
+kind, has already gone out for a given assignment, so the hourly job sends each one exactly once
+even with two servers running; plus `conference_settings.review_reminders_enabled`/
+`review_reminder_days_before`/`review_overdue_reminder_enabled` and two new email templates,
+`review_reminder`/`review_overdue`) - run by you on all three databases before I continued. No new
+permission: reminder actions reuse the existing `review.assign` permission.
+
+`server/src/modules/reviews/reminders.ts`: `sendDueReminders()` (the automatic job) scans every
+active, not-yet-submitted assignment across every conference and, per conference's own
+`review_reminders_enabled`/`review_reminder_days_before`/`review_overdue_reminder_enabled`, tries
+an `INSERT IGNORE` into `review_reminders` for each threshold crossed (`before_<N>` or `overdue`)
+and only queues the email if that insert actually happened - no read-then-write race, correct even
+if two servers run the check at once. `server/src/jobs/reviewReminders.ts` runs it once immediately
+on start (catches up right away after a Render free-plan sleep, not just on the next hourly tick)
+and then every hour, same pattern as the existing announcement-publish job. `sendManualReminder`
+(one reviewer) and `sendAllPendingReminders` (every reviewer with a pending review) always send,
+bypassing the once-only dedupe entirely (recorded afterwards under a separate `manual` kind, kept
+up to date via upsert, purely so the convenor's **Reviewers** tab can show "last reminded" - it
+doesn't suppress the automatic schedule). `sendAllPendingReminders` respects the same Brevo
+300/day cap as bulk email (exported `getEmailQuota` from `bulkEmail/service.ts` instead of
+duplicating it) and refuses rather than partially sending.
+
+New convenor **Reviewers** tab (`src/pages/convenor/ReviewersTab.tsx`, under Papers) lists every
+reviewer with a pending review, their pending/overdue counts, last-reminded time, a per-row **Send
+reminder now**, and a **Remind all with pending reviews** button behind a confirm dialog (a mass
+email action). 10 tests in `server/tests/reviewReminders.test.ts`: `before_3` sent once and never
+twice, `before_1` sent once a threshold is crossed without re-sending `before_3`, `overdue` sent
+once independent of the before-N reminders, never reminds after submission, respects both the
+reminders-off switch and the overdue-only switch, manual send always goes through regardless of
+the automatic dedupe, a non-convenor/manager can't send one, and "remind all" both reaches every
+pending reviewer and refuses when it would exceed the daily quota.
+
+## Features batch 2 - finishing up
+
+Added two new Papers-section tabs (`src/pages/convenor/sidebarConfig.ts`: `auto-assign`,
+`reviewers`, between Reviews-and-decisions and Review settings) and extended the Review settings
+screen (`src/pages/convenor/ReviewSettingsTab.tsx`, `src/lib/validation.ts`'s
+`reviewSettingsSchema`, and the matching backend `updateSettingsSchema`) with the bidding-period
+and review-reminder controls described above.
+
+New `e2e/reviewBidding.spec.ts`: sign up author + reviewer, convenor opens a bidding period and a
+track/key-date, author submits a paper, reviewer bids "Want to review" on it (asserts no author
+details are shown), convenor runs the auto-assign wizard (the "want" bid wins, shown in the
+preview's reason column) and confirms it, then sends a manual reminder from the Reviewers tab.
+
+Verified: `tsc` (root+server) clean, both builds clean. Server tests: 572/572 (44 files - 5 new:
+`reviewBidding.test.ts`, `autoAssign.test.ts`, `autoAssignRoutes.test.ts`, `reviewReminders.test.ts`,
+plus the existing suite unaffected). Root `npm test`: 31/31 unchanged. E2E fixtures re-seeded, full
+Playwright suite 109-111/111 depending on the run (two **pre-existing failures confirmed unrelated**:
+`notifications.spec.ts`'s `role_request_approved` issue documented back in the suggestion-box step,
+and one `registration.spec.ts` timeout that reproduced as a clean pass in isolation immediately
+after - resource contention from a 6-7 minute full-suite run, not a regression) - includes the new
+`reviewBidding.spec.ts`. This session's dev sandbox also hit the already-documented "throwaway
+:5273 frontend dies mid-run" flake twice before a `Start-Process`-detached instance finally survived
+a full run end to end - not a code issue, see the Step 3/Step 10 notes above for the same symptom.
+
+**No further SQL needed before this deploys** - `04_review_bids.sql` and `04_review_reminders.sql`
+are already applied to all three databases (you ran all three, including Aiven, before I
+continued).

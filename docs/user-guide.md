@@ -94,6 +94,16 @@ role.
    comments to the author (and, optionally, confidential comments only the
    convenor sees), and pick a recommendation. Save as draft any time;
    **Submit** locks it in.
+5. **Bid on papers** (only while the convenor has a bidding period open):
+   the **Bid on papers** tab (next to My assignments) lists every eligible
+   paper — title, track, keywords, and abstract only, never author names,
+   affiliations, or files. For each one, pick **Want to review**, **Can
+   review**, **Not interested**, or **Conflict of interest** — it saves the
+   moment you click, no separate save button, and a progress line tracks
+   "You have bid on N of M papers." Marking a conflict here does the same
+   thing as declining an assignment for a conflict: you'll never be
+   assigned that paper, by hand or by the auto-assign wizard. Filter by
+   track or search by title to find a specific paper faster.
 
 ---
 
@@ -173,11 +183,36 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
   - *Committees*, *Speakers* — for the public "About" page.
 - **Papers**:
   - *Submissions* — see every paper, its status, and its reviews.
-  - *Reviews and decisions* — assign reviewers to a paper, then record the
-    final accept/reject/revision decision.
+  - *Reviews and decisions* — assign reviewers to a paper (their bid, if
+    they made one, shows right next to their name — a declared conflict is
+    never selectable), then record the final accept/reject/revision
+    decision.
+  - *Auto-assign* — propose reviewers for every eligible paper at once
+    instead of one at a time: set reviewers-per-paper (default 3), a cap on
+    papers per reviewer, whether to only fill papers with no reviewer yet
+    or top up every paper, and a due date, then **Preview**. The preview
+    table shows who it would assign and why (bid, track match, or neither),
+    a warning on any paper it couldn't fully fill, and each reviewer's load
+    after the run — remove a row you don't want before confirming. Nothing
+    is saved until you click **Confirm** — that's one all-or-nothing step,
+    and it sends the same assignment email as assigning someone by hand.
+    Picks Want-to-review bids first, then Can-review, then no bid, and only
+    reaches for someone who said Not interested if there's truly no one
+    else left; a declared Conflict is never picked.
+  - *Reviewers* — every reviewer with at least one review they haven't
+    submitted yet, how many are pending/overdue, and when they were last
+    reminded. **Send reminder now** nudges one reviewer immediately;
+    **Remind all with pending reviews** does the same for everyone on the
+    list in one click (asks for confirmation first, since it's a mass
+    email). Both always send, regardless of the automatic schedule below.
   - *Review settings* — review mode (blind or open), how many reviews are
-    required, file size/type limits, and the registration/attendance/
-    certificate settings described below.
+    required, file size/type limits, a **bidding period** (reviewers can
+    only bid on papers between the start and end date you set here), review
+    due-date reminders (on/off, how many days before due, default 3 and 1,
+    plus a separate on/off for one overdue reminder — an hourly background
+    check sends these automatically, catching up right away if the server
+    was asleep rather than waiting for the next hour), and the registration/
+    attendance/certificate settings described below.
 - **Event**:
   - *Programme* — add rooms and (optionally) reusable time slots, create
     sessions, assign chairs, and schedule accepted papers or invited talks

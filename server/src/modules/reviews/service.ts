@@ -5,9 +5,21 @@ import { assertConferencePermission } from '../../middleware/auth.js'
 import { getConferencePermissions, isPlatformAdmin } from '../../modules/auth/service.js'
 import { insertAuditLog } from '../../utils/audit.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
-import { BadRequestError, ConflictError, NotFoundError, mapDatabaseError } from '../../utils/errors.js'
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, mapDatabaseError } from '../../utils/errors.js'
 import { notifyUser } from '../../utils/notifications.js'
-import type { AddConflictInput, AssignReviewerInput, DecisionInput, SaveReviewDraftInput, SubmitReviewInput } from './validation.js'
+import { getSettings } from '../settings/service.js'
+import { planAutoAssignment, type AutoAssignBid, type AutoAssignPaper, type AutoAssignReviewer } from './autoAssign.js'
+import type {
+  AddConflictInput,
+  AssignReviewerInput,
+  AutoAssignConfirmInput,
+  AutoAssignPreviewInput,
+  DecisionInput,
+  ListBiddableQuery,
+  SaveReviewDraftInput,
+  SubmitReviewInput,
+  UpsertBidInput,
+} from './validation.js'
 
 async function hasPermission(userId: string, conferenceId: string, permission: string): Promise<boolean> {
   if (await isPlatformAdmin(userId)) return true
@@ -162,6 +174,7 @@ export type ReviewerCandidateRow = {
   is_author_of_submission: boolean
   track_match: boolean
   open_assignment_count: number
+  bid: 'want' | 'can' | 'not_interested' | 'conflict' | null
 }
 
 export async function listReviewerCandidates(
@@ -215,6 +228,12 @@ export async function listReviewerCandidates(
   )
   const loadByReviewer = new Map((loadRows as Array<{ reviewer_id: string; n: number }>).map((r) => [r.reviewer_id, r.n]))
 
+  const [bidRows] = await pool.query(
+    `SELECT reviewer_id, preference FROM review_bids WHERE submission_id = ?`,
+    [submissionId],
+  )
+  const bidByReviewer = new Map((bidRows as Array<{ reviewer_id: string; preference: ReviewerCandidateRow['bid'] }>).map((r) => [r.reviewer_id, r.preference]))
+
   return reviewers.map((r) => ({
     user_id: r.user_id,
     full_name: r.full_name,
@@ -224,7 +243,16 @@ export async function listReviewerCandidates(
     is_author_of_submission: authorUserIds.has(r.user_id) || authorEmails.has(r.email.toLowerCase()) || r.user_id === sub.created_by,
     track_match: trackMatchIds.has(r.user_id),
     open_assignment_count: loadByReviewer.get(r.user_id) ?? 0,
+    bid: bidByReviewer.get(r.user_id) ?? null,
   }))
+}
+
+function parseDueAt(raw: string): Date {
+  const dueAt = new Date(raw)
+  if (Number.isNaN(dueAt.getTime()) || dueAt.getTime() <= Date.now()) {
+    throw new BadRequestError('Choose a due date in the future.', { due_at: 'Choose a date in the future.' })
+  }
+  return dueAt
 }
 
 export async function assignReviewer(
@@ -234,119 +262,131 @@ export async function assignReviewer(
   input: AssignReviewerInput,
 ): Promise<{ id: string }> {
   await assertConferencePermission(actorUserId, conferenceId, 'review.assign')
+  const dueAt = parseDueAt(input.due_at)
+  return withTransaction(actorUserId, (conn) =>
+    insertReviewAssignment(conn, actorUserId, conferenceId, submissionId, input.reviewer_id, dueAt),
+  )
+}
 
-  const dueAt = new Date(input.due_at)
-  if (Number.isNaN(dueAt.getTime()) || dueAt.getTime() <= Date.now()) {
-    throw new BadRequestError('Choose a due date in the future.', { due_at: 'Choose a date in the future.' })
+/**
+ * The actual insert + validation + email/notify/audit for one reviewer
+ * assignment, given an open connection. Shared by assignReviewer (one
+ * assignment, its own transaction) and confirmAutoAssign (many assignments,
+ * one transaction) so both get identical reviewer-eligibility checks.
+ */
+async function insertReviewAssignment(
+  conn: PoolConnection,
+  actorUserId: string,
+  conferenceId: string,
+  submissionId: string,
+  reviewerId: string,
+  dueAt: Date,
+): Promise<{ id: string }> {
+  const [subRows] = await conn.query(
+    `SELECT id, status, current_round, created_by FROM submissions
+     WHERE id = ? AND conference_id = ? AND deleted_at IS NULL LIMIT 1 FOR UPDATE`,
+    [submissionId, conferenceId],
+  )
+  const sub = (subRows as Array<{ id: string; status: string; current_round: number; created_by: string }>)[0]
+  if (!sub) throw new NotFoundError('This submission does not exist.')
+
+  const [reviewerRows] = await conn.query(
+    `SELECT u.full_name, u.email FROM conference_members cm JOIN users u ON u.id = cm.user_id
+     WHERE cm.conference_id = ? AND cm.user_id = ? AND cm.role_code = 'reviewer' AND cm.status = 'active' LIMIT 1`,
+    [conferenceId, reviewerId],
+  )
+  const reviewer = (reviewerRows as Array<{ full_name: string; email: string }>)[0]
+  if (!reviewer) throw new BadRequestError('This person is not an active reviewer of this conference.')
+
+  const [authorRows] = await conn.query(
+    `SELECT user_id, email FROM submission_authors WHERE submission_id = ?`,
+    [submissionId],
+  )
+  const authors = authorRows as Array<{ user_id: string | null; email: string }>
+  const isAuthor =
+    sub.created_by === reviewerId ||
+    authors.some((a) => a.user_id === reviewerId || a.email.toLowerCase() === reviewer.email.toLowerCase())
+  if (isAuthor) {
+    throw new BadRequestError('This person is an author of this submission and cannot review it.')
   }
 
-  return withTransaction(actorUserId, async (conn) => {
-    const [subRows] = await conn.query(
-      `SELECT id, status, current_round, created_by FROM submissions
-       WHERE id = ? AND conference_id = ? AND deleted_at IS NULL LIMIT 1 FOR UPDATE`,
-      [submissionId, conferenceId],
-    )
-    const sub = (subRows as Array<{ id: string; status: string; current_round: number; created_by: string }>)[0]
-    if (!sub) throw new NotFoundError('This submission does not exist.')
+  const [conflictRows] = await conn.query(
+    `SELECT 1 FROM conflicts_of_interest WHERE submission_id = ? AND user_id = ? LIMIT 1`,
+    [submissionId, reviewerId],
+  )
+  if ((conflictRows as unknown[]).length > 0) {
+    throw new BadRequestError('This reviewer has a declared conflict of interest with this submission.')
+  }
 
-    const [reviewerRows] = await conn.query(
-      `SELECT u.full_name, u.email FROM conference_members cm JOIN users u ON u.id = cm.user_id
-       WHERE cm.conference_id = ? AND cm.user_id = ? AND cm.role_code = 'reviewer' AND cm.status = 'active' LIMIT 1`,
-      [conferenceId, input.reviewer_id],
+  try {
+    await conn.query(
+      `INSERT INTO review_assignments (conference_id, submission_id, reviewer_id, round, assigned_by, due_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [conferenceId, submissionId, reviewerId, sub.current_round, actorUserId, dueAt],
     )
-    const reviewer = (reviewerRows as Array<{ full_name: string; email: string }>)[0]
-    if (!reviewer) throw new BadRequestError('This person is not an active reviewer of this conference.')
-
-    const [authorRows] = await conn.query(
-      `SELECT user_id, email FROM submission_authors WHERE submission_id = ?`,
-      [submissionId],
-    )
-    const authors = authorRows as Array<{ user_id: string | null; email: string }>
-    const isAuthor =
-      sub.created_by === input.reviewer_id ||
-      authors.some((a) => a.user_id === input.reviewer_id || a.email.toLowerCase() === reviewer.email.toLowerCase())
-    if (isAuthor) {
-      throw new BadRequestError('This person is an author of this submission and cannot review it.')
+  } catch (err) {
+    if (err && typeof err === 'object' && (err as { errno?: number }).errno === 1062) {
+      throw new ConflictError('This reviewer is already assigned to this submission for this round.')
     }
+    throw err
+  }
+  const [idRows] = await conn.query(
+    `SELECT id FROM review_assignments WHERE submission_id = ? AND reviewer_id = ? AND round = ? LIMIT 1`,
+    [submissionId, reviewerId, sub.current_round],
+  )
+  const id = (idRows as Array<{ id: string }>)[0]!.id
 
-    const [conflictRows] = await conn.query(
-      `SELECT 1 FROM conflicts_of_interest WHERE submission_id = ? AND user_id = ? LIMIT 1`,
-      [submissionId, input.reviewer_id],
-    )
-    if ((conflictRows as unknown[]).length > 0) {
-      throw new BadRequestError('This reviewer has a declared conflict of interest with this submission.')
-    }
-
+  if (sub.status === 'submitted') {
     try {
-      await conn.query(
-        `INSERT INTO review_assignments (conference_id, submission_id, reviewer_id, round, assigned_by, due_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [conferenceId, submissionId, input.reviewer_id, sub.current_round, actorUserId, dueAt],
-      )
+      await conn.query(`UPDATE submissions SET status = 'under_review' WHERE id = ?`, [submissionId])
     } catch (err) {
-      if (err && typeof err === 'object' && (err as { errno?: number }).errno === 1062) {
-        throw new ConflictError('This reviewer is already assigned to this submission for this round.')
-      }
-      throw err
+      mapDatabaseError(err)
     }
-    const [idRows] = await conn.query(
-      `SELECT id FROM review_assignments WHERE submission_id = ? AND reviewer_id = ? AND round = ? LIMIT 1`,
-      [submissionId, input.reviewer_id, sub.current_round],
-    )
-    const id = (idRows as Array<{ id: string }>)[0]!.id
+  }
 
-    if (sub.status === 'submitted') {
-      try {
-        await conn.query(`UPDATE submissions SET status = 'under_review' WHERE id = ?`, [submissionId])
-      } catch (err) {
-        mapDatabaseError(err)
-      }
-    }
-
-    const [templateRows] = await conn.query(
-      `SELECT subject, body_html FROM email_templates WHERE conference_id IS NULL AND template_key = 'review_assigned' LIMIT 1`,
-    )
-    const template = (templateRows as Array<{ subject: string }>)[0]
-    const [titleRows] = await conn.query(`SELECT title, submission_code FROM submissions WHERE id = ? LIMIT 1`, [submissionId])
-    const titleRow = (titleRows as Array<{ title: string; submission_code: string | null }>)[0]!
-    const data = {
-      full_name: reviewer.full_name,
-      due_at: dueAt.toISOString(),
-      submission_code: titleRow.submission_code ?? '',
-      title: titleRow.title,
-    }
-    const subject = template ? renderTemplate(template.subject, data) : 'New review assignment'
-    await queueEmail(conn, {
-      userId: input.reviewer_id,
-      conferenceId,
-      recipientEmail: reviewer.email,
-      templateKey: 'review_assigned',
-      subject,
-      templateData: data,
-      entityType: 'review_assignments',
-      entityId: id,
-    })
-    await notifyUser(conn, {
-      userId: input.reviewer_id,
-      conferenceId,
-      type: 'review',
-      title: 'New review assignment',
-      body: `You've been asked to review "${titleRow.title}" (${titleRow.submission_code ?? ''}), due ${dueAt.toLocaleDateString()}.`,
-      linkPath: '/portal/reviewer',
-      entityType: 'review_assignments',
-      entityId: id,
-    })
-
-    await insertAuditLog(conn, {
-      actorUserId,
-      conferenceId,
-      action: 'review.assign',
-      entityType: 'review_assignments',
-      entityId: id,
-      newValues: { submission_id: submissionId, reviewer_id: input.reviewer_id, due_at: dueAt.toISOString() },
-    })
-    return { id }
+  const [templateRows] = await conn.query(
+    `SELECT subject, body_html FROM email_templates WHERE conference_id IS NULL AND template_key = 'review_assigned' LIMIT 1`,
+  )
+  const template = (templateRows as Array<{ subject: string }>)[0]
+  const [titleRows] = await conn.query(`SELECT title, submission_code FROM submissions WHERE id = ? LIMIT 1`, [submissionId])
+  const titleRow = (titleRows as Array<{ title: string; submission_code: string | null }>)[0]!
+  const data = {
+    full_name: reviewer.full_name,
+    due_at: dueAt.toISOString(),
+    submission_code: titleRow.submission_code ?? '',
+    title: titleRow.title,
+  }
+  const subject = template ? renderTemplate(template.subject, data) : 'New review assignment'
+  await queueEmail(conn, {
+    userId: reviewerId,
+    conferenceId,
+    recipientEmail: reviewer.email,
+    templateKey: 'review_assigned',
+    subject,
+    templateData: data,
+    entityType: 'review_assignments',
+    entityId: id,
   })
+  await notifyUser(conn, {
+    userId: reviewerId,
+    conferenceId,
+    type: 'review',
+    title: 'New review assignment',
+    body: `You've been asked to review "${titleRow.title}" (${titleRow.submission_code ?? ''}), due ${dueAt.toLocaleDateString()}.`,
+    linkPath: '/portal/reviewer',
+    entityType: 'review_assignments',
+    entityId: id,
+  })
+
+  await insertAuditLog(conn, {
+    actorUserId,
+    conferenceId,
+    action: 'review.assign',
+    entityType: 'review_assignments',
+    entityId: id,
+    newValues: { submission_id: submissionId, reviewer_id: reviewerId, due_at: dueAt.toISOString() },
+  })
+  return { id }
 }
 
 export async function cancelAssignment(
@@ -408,6 +448,302 @@ export async function addConflict(actorUserId: string, conferenceId: string, inp
       newValues: input,
     })
     return { id }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Reviewer bidding
+// ---------------------------------------------------------------------------
+
+function isBiddingOpen(settings: { bidding_enabled: unknown; bidding_start_at: unknown; bidding_end_at: unknown }): boolean {
+  if (!settings.bidding_enabled || !settings.bidding_start_at || !settings.bidding_end_at) return false
+  const now = Date.now()
+  return (
+    new Date(settings.bidding_start_at as string).getTime() <= now &&
+    now <= new Date(settings.bidding_end_at as string).getTime()
+  )
+}
+
+async function assertActiveReviewer(userId: string, conferenceId: string): Promise<void> {
+  const [rows] = await pool.query(
+    `SELECT 1 FROM conference_members WHERE conference_id = ? AND user_id = ? AND role_code = 'reviewer' AND status = 'active' LIMIT 1`,
+    [conferenceId, userId],
+  )
+  if ((rows as unknown[]).length === 0) {
+    throw new ForbiddenError('You are not an active reviewer of this conference.')
+  }
+}
+
+export async function listBiddableSubmissions(userId: string, conferenceId: string, filters: Omit<ListBiddableQuery, 'conference_id'>) {
+  await assertActiveReviewer(userId, conferenceId)
+  const [userRows] = await pool.query(`SELECT email FROM users WHERE id = ? LIMIT 1`, [userId])
+  const email = ((userRows as Array<{ email: string }>)[0]?.email ?? '').toLowerCase()
+  const settings = await getSettings(conferenceId)
+
+  const baseConditions = [
+    's.conference_id = ?',
+    's.deleted_at IS NULL',
+    "s.status IN ('submitted', 'under_review')",
+    's.created_by <> ?',
+    `NOT EXISTS (SELECT 1 FROM submission_authors sa WHERE sa.submission_id = s.id AND (sa.user_id = ? OR LOWER(sa.email) = ?))`,
+  ]
+  const baseParams: unknown[] = [conferenceId, userId, userId, email]
+
+  const [totalRows] = await pool.query(`SELECT COUNT(*) AS n FROM submissions s WHERE ${baseConditions.join(' AND ')}`, baseParams)
+  const totalCount = Number((totalRows as Array<{ n: number }>)[0]?.n ?? 0)
+
+  const [bidCountRows] = await pool.query(
+    `SELECT COUNT(*) AS n FROM submissions s
+     JOIN review_bids rb ON rb.submission_id = s.id AND rb.reviewer_id = ?
+     WHERE ${baseConditions.join(' AND ')}`,
+    [userId, ...baseParams],
+  )
+  const bidCount = Number((bidCountRows as Array<{ n: number }>)[0]?.n ?? 0)
+
+  const conditions = [...baseConditions]
+  const params = [...baseParams]
+  if (filters.track_id) {
+    conditions.push('s.track_id = ?')
+    params.push(filters.track_id)
+  }
+  if (filters.q) {
+    conditions.push('s.title LIKE ?')
+    params.push(`%${filters.q}%`)
+  }
+
+  const [rows] = await pool.query(
+    `SELECT s.id, s.submission_code, s.title, s.abstract, s.keywords, s.track_id, t.name AS track_name, rb.preference AS bid
+     FROM submissions s
+     JOIN conference_tracks t ON t.id = s.track_id
+     LEFT JOIN review_bids rb ON rb.submission_id = s.id AND rb.reviewer_id = ?
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY s.submission_code`,
+    [userId, ...params],
+  )
+
+  return {
+    bidding_open: isBiddingOpen(settings),
+    bidding_start_at: settings.bidding_start_at,
+    bidding_end_at: settings.bidding_end_at,
+    bid_count: bidCount,
+    total_count: totalCount,
+    submissions: rows,
+  }
+}
+
+export async function upsertReviewBid(userId: string, submissionId: string, input: UpsertBidInput): Promise<void> {
+  const [subLookup] = await pool.query(`SELECT conference_id FROM submissions WHERE id = ? AND deleted_at IS NULL LIMIT 1`, [submissionId])
+  const conferenceId = (subLookup as Array<{ conference_id: string }>)[0]?.conference_id
+  if (!conferenceId) throw new NotFoundError('This submission does not exist.')
+
+  await assertActiveReviewer(userId, conferenceId)
+  const settings = await getSettings(conferenceId)
+  if (!isBiddingOpen(settings)) {
+    throw new ConflictError('Bidding is not currently open.')
+  }
+
+  await withTransaction(userId, async (conn) => {
+    const sub = await loadSubmissionInConference(submissionId, conferenceId, conn)
+    const [userRows] = await conn.query(`SELECT email FROM users WHERE id = ? LIMIT 1`, [userId])
+    const email = ((userRows as Array<{ email: string }>)[0]?.email ?? '').toLowerCase()
+    const [authorRows] = await conn.query(
+      `SELECT 1 FROM submission_authors WHERE submission_id = ? AND (user_id = ? OR LOWER(email) = ?) LIMIT 1`,
+      [submissionId, userId, email],
+    )
+    if ((authorRows as unknown[]).length > 0 || sub.created_by === userId) {
+      throw new BadRequestError('You cannot bid on your own submission.')
+    }
+    await conn.query(
+      `INSERT INTO review_bids (conference_id, submission_id, reviewer_id, preference) VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE preference = VALUES(preference)`,
+      [conferenceId, submissionId, userId, input.preference],
+    )
+
+    // Bidding "Conflict of interest" is itself a conflict declaration - feed
+    // it into the same conflicts_of_interest table that review.assign and
+    // auto-assign already check, so it's blocked everywhere, not just here.
+    if (input.preference === 'conflict') {
+      try {
+        await conn.query(
+          `INSERT INTO conflicts_of_interest (submission_id, user_id, source, reason, created_by)
+           VALUES (?, ?, 'reviewer_declared', 'Declared while bidding', ?)`,
+          [submissionId, userId, userId],
+        )
+      } catch (err) {
+        if (!(err && typeof err === 'object' && (err as { errno?: number }).errno === 1062)) throw err
+      }
+    }
+
+    await insertAuditLog(conn, {
+      actorUserId: userId,
+      conferenceId,
+      action: 'review.bid.set',
+      entityType: 'review_bids',
+      entityId: submissionId,
+      newValues: { preference: input.preference },
+    })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Auto-assign reviewers
+// ---------------------------------------------------------------------------
+
+export async function previewAutoAssign(actorUserId: string, conferenceId: string, options: AutoAssignPreviewInput) {
+  await assertConferencePermission(actorUserId, conferenceId, 'review.assign')
+
+  const [subRows] = await pool.query(
+    `SELECT id, title, submission_code, track_id, created_by FROM submissions
+     WHERE conference_id = ? AND deleted_at IS NULL AND status IN ('submitted', 'under_review')`,
+    [conferenceId],
+  )
+  const submissions = subRows as Array<{ id: string; title: string; submission_code: string | null; track_id: string; created_by: string }>
+  if (submissions.length === 0) {
+    return { papers_considered: 0, assignments: [], reviewer_loads: [], warnings: [] }
+  }
+  const submissionIds = submissions.map((s) => s.id)
+
+  const [authorRows] = await pool.query(
+    `SELECT submission_id, user_id, email FROM submission_authors WHERE submission_id IN (?)`,
+    [submissionIds],
+  )
+  const authorsBySubmission = new Map<string, Array<{ user_id: string | null; email: string }>>()
+  for (const row of authorRows as Array<{ submission_id: string; user_id: string | null; email: string }>) {
+    const list = authorsBySubmission.get(row.submission_id) ?? []
+    list.push(row)
+    authorsBySubmission.set(row.submission_id, list)
+  }
+
+  const [memberRows] = await pool.query(
+    `SELECT u.id AS user_id, u.full_name, u.email FROM conference_members cm JOIN users u ON u.id = cm.user_id
+     WHERE cm.conference_id = ? AND cm.role_code = 'reviewer' AND cm.status = 'active'`,
+    [conferenceId],
+  )
+  const reviewerRows = memberRows as Array<{ user_id: string; full_name: string; email: string }>
+
+  const [assignedRows] = await pool.query(
+    `SELECT submission_id, reviewer_id FROM review_assignments WHERE conference_id = ? AND status IN ('assigned', 'in_progress', 'completed')`,
+    [conferenceId],
+  )
+  const assignedBySubmission = new Map<string, string[]>()
+  for (const row of assignedRows as Array<{ submission_id: string; reviewer_id: string }>) {
+    const list = assignedBySubmission.get(row.submission_id) ?? []
+    list.push(row.reviewer_id)
+    assignedBySubmission.set(row.submission_id, list)
+  }
+
+  const [loadRows] = await pool.query(
+    `SELECT reviewer_id, COUNT(*) AS n FROM review_assignments WHERE conference_id = ? AND status IN ('assigned', 'in_progress') GROUP BY reviewer_id`,
+    [conferenceId],
+  )
+  const loadByReviewer = new Map((loadRows as Array<{ reviewer_id: string; n: number }>).map((r) => [r.reviewer_id, r.n]))
+
+  const [trackRows] = await pool.query(`SELECT user_id, track_id FROM reviewer_tracks WHERE conference_id = ?`, [conferenceId])
+  const tracksByReviewer = new Map<string, string[]>()
+  for (const row of trackRows as Array<{ user_id: string; track_id: string }>) {
+    const list = tracksByReviewer.get(row.user_id) ?? []
+    list.push(row.track_id)
+    tracksByReviewer.set(row.user_id, list)
+  }
+
+  const [bidRows] = await pool.query(`SELECT submission_id, reviewer_id, preference FROM review_bids WHERE conference_id = ?`, [conferenceId])
+  const bidsByReviewer = new Map<string, Record<string, AutoAssignBid>>()
+  for (const row of bidRows as Array<{ submission_id: string; reviewer_id: string; preference: AutoAssignBid }>) {
+    const map = bidsByReviewer.get(row.reviewer_id) ?? {}
+    map[row.submission_id] = row.preference
+    bidsByReviewer.set(row.reviewer_id, map)
+  }
+
+  // Formal conflicts (declared manually, or while declining an assignment) -
+  // bid-sourced "conflict" preferences are already excluded via bidsByReviewer.
+  const [conflictRows] = await pool.query(
+    `SELECT submission_id, user_id FROM conflicts_of_interest WHERE submission_id IN (?)`,
+    [submissionIds],
+  )
+  const conflictsBySubmission = new Map<string, Set<string>>()
+  for (const row of conflictRows as Array<{ submission_id: string; user_id: string }>) {
+    const set = conflictsBySubmission.get(row.submission_id) ?? new Set<string>()
+    set.add(row.user_id)
+    conflictsBySubmission.set(row.submission_id, set)
+  }
+
+  const papers: AutoAssignPaper[] = submissions.map((s) => {
+    const authors = authorsBySubmission.get(s.id) ?? []
+    const authorEmails = new Set(authors.map((a) => a.email.toLowerCase()))
+    const excluded = new Set<string>([
+      s.created_by,
+      ...authors.map((a) => a.user_id).filter((v): v is string => Boolean(v)),
+      ...(conflictsBySubmission.get(s.id) ?? []),
+    ])
+    for (const r of reviewerRows) {
+      if (authorEmails.has(r.email.toLowerCase())) excluded.add(r.user_id)
+    }
+    return {
+      submissionId: s.id,
+      trackId: s.track_id,
+      alreadyAssignedReviewerIds: assignedBySubmission.get(s.id) ?? [],
+      excludedReviewerIds: [...excluded],
+    }
+  })
+
+  const reviewers: AutoAssignReviewer[] = reviewerRows.map((r) => ({
+    reviewerId: r.user_id,
+    trackIds: tracksByReviewer.get(r.user_id) ?? [],
+    existingLoad: loadByReviewer.get(r.user_id) ?? 0,
+    bids: bidsByReviewer.get(r.user_id) ?? {},
+  }))
+
+  const result = planAutoAssignment({
+    papers,
+    reviewers,
+    reviewersPerPaper: options.reviewers_per_paper,
+    maxPapersPerReviewer: options.max_papers_per_reviewer,
+    onlyUnassigned: options.only_unassigned,
+  })
+
+  const submissionById = new Map(submissions.map((s) => [s.id, s]))
+  const reviewerById = new Map(reviewerRows.map((r) => [r.user_id, r]))
+
+  return {
+    papers_considered: papers.length,
+    assignments: result.assignments.map((a) => ({
+      submission_id: a.submissionId,
+      submission_title: submissionById.get(a.submissionId)?.title ?? '',
+      submission_code: submissionById.get(a.submissionId)?.submission_code ?? null,
+      reviewer_id: a.reviewerId,
+      reviewer_name: reviewerById.get(a.reviewerId)?.full_name ?? '',
+      reason: a.reason,
+    })),
+    reviewer_loads: result.reviewerLoads.map((l) => ({
+      reviewer_id: l.reviewerId,
+      reviewer_name: reviewerById.get(l.reviewerId)?.full_name ?? '',
+      assigned_count: l.assignedCount,
+      total_load: l.totalLoad,
+    })),
+    warnings: result.warnings.map((w) => ({
+      submission_id: w.submissionId,
+      submission_title: submissionById.get(w.submissionId)?.title ?? '',
+      submission_code: submissionById.get(w.submissionId)?.submission_code ?? null,
+      message: w.message,
+    })),
+  }
+}
+
+export async function confirmAutoAssign(actorUserId: string, conferenceId: string, input: AutoAssignConfirmInput): Promise<{ count: number }> {
+  await assertConferencePermission(actorUserId, conferenceId, 'review.assign')
+  const dueAt = parseDueAt(input.due_at)
+  return withTransaction(actorUserId, async (conn) => {
+    for (const a of input.assignments) {
+      await insertReviewAssignment(conn, actorUserId, conferenceId, a.submission_id, a.reviewer_id, dueAt)
+    }
+    await insertAuditLog(conn, {
+      actorUserId,
+      conferenceId,
+      action: 'review.auto_assign.confirm',
+      entityType: 'review_assignments',
+      newValues: { count: input.assignments.length, due_at: dueAt.toISOString() },
+    })
+    return { count: input.assignments.length }
   })
 }
 

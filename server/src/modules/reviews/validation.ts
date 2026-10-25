@@ -59,6 +59,40 @@ export const saveReviewDraftSchema = z.object({
 })
 export type SaveReviewDraftInput = z.infer<typeof saveReviewDraftSchema>
 
+export const BID_PREFERENCES = ['want', 'can', 'not_interested', 'conflict'] as const
+
+export const listBiddableQuerySchema = z.object({
+  conference_id: z.string().uuid(),
+  track_id: z.string().uuid().optional(),
+  q: z.string().trim().max(200).optional(),
+})
+export type ListBiddableQuery = z.infer<typeof listBiddableQuerySchema>
+
+export const upsertBidSchema = z.object({
+  preference: z.enum(BID_PREFERENCES),
+})
+export type UpsertBidInput = z.infer<typeof upsertBidSchema>
+
+export const autoAssignPreviewSchema = z.object({
+  reviewers_per_paper: z.number().int().min(1).max(10),
+  max_papers_per_reviewer: z.number().int().min(1).max(50),
+  only_unassigned: z.boolean(),
+})
+export type AutoAssignPreviewInput = z.infer<typeof autoAssignPreviewSchema>
+
+export const autoAssignConfirmSchema = z.object({
+  due_at: z.string().min(1, 'Choose a due date.'),
+  assignments: z
+    .array(
+      z.object({
+        submission_id: z.string().uuid(),
+        reviewer_id: z.string().uuid(),
+      }),
+    )
+    .min(1, 'Nothing to confirm.'),
+})
+export type AutoAssignConfirmInput = z.infer<typeof autoAssignConfirmSchema>
+
 export const submitReviewSchema = z.object({
   originality: reviewScore,
   quality: reviewScore,

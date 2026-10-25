@@ -104,7 +104,8 @@ async function resolveRecipients(queryable: Queryable, conferenceId: string, gro
   return [...byEmail.values()]
 }
 
-async function getEmailQuota(queryable: Queryable): Promise<{ dailyLimit: number; usedToday: number; remainingToday: number }> {
+/** Exported so other features that send real email outside the bulk-email flow (e.g. review reminders) can respect the same daily cap without duplicating the query. */
+export async function getEmailQuota(queryable: Queryable): Promise<{ dailyLimit: number; usedToday: number; remainingToday: number }> {
   const [rows] = await queryable.query(
     `SELECT COUNT(*) AS c FROM email_logs WHERE status IN ('queued','sending','sent') AND queued_at >= UTC_DATE()`,
   )

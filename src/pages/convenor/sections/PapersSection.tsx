@@ -1,5 +1,7 @@
 import { SubmissionsTab } from '../SubmissionsTab'
 import { ReviewSettingsTab } from '../ReviewSettingsTab'
+import { AutoAssignTab } from '../AutoAssignTab'
+import { ReviewersTab } from '../ReviewersTab'
 import { SECTIONS } from '../sidebarConfig'
 import { TabbedSection } from './TabbedSection'
 
@@ -13,6 +15,10 @@ export function PapersSection({ conferenceId, basePath }: { conferenceId: string
         element:
           t.id === 'settings' ? (
             <ReviewSettingsTab conferenceId={conferenceId} />
+          ) : t.id === 'auto-assign' ? (
+            <AutoAssignTab conferenceId={conferenceId} />
+          ) : t.id === 'reviewers' ? (
+            <ReviewersTab conferenceId={conferenceId} />
           ) : (
             // "Submissions" and "Reviews and decisions" are the same underlying
             // screen (the detail panel already covers assigning reviewers and

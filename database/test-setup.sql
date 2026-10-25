@@ -8,7 +8,8 @@
 -- that is never the development database.
 -- Regenerate this file (sed 's/conference_cms/conference_cms_test/g') if
 -- 01_schema.sql / 02_reference_data.sql / 03_triggers.sql / 04_admin_extensions.sql /
--- 04_suggestions.sql / 04_bulk_email.sql ever change.
+-- 04_suggestions.sql / 04_bulk_email.sql / 04_badges.sql / 04_review_bids.sql /
+-- 04_review_reminders.sql ever change.
 -- =====================================================================
 
 -- =====================================================================
@@ -1625,6 +1626,99 @@ END$$
 CALL _add_registrations_printed_at()$$
 DROP PROCEDURE _add_registrations_printed_at$$
 DELIMITER ;
+
+-- =====================================================================
+-- Conference Management System - reviewer bidding (MySQL)
+-- File: database/04_review_bids.sql  (run after 01/02/03; independent of
+-- the other 04_*.sql files)
+-- Adds conference_settings.bidding_enabled/bidding_start_at/bidding_end_at
+-- and review_bids (one row per submission/reviewer preference). No new
+-- permission - see that file for why.
+-- =====================================================================
+USE conference_cms_test;
+
+DELIMITER $$
+DROP PROCEDURE IF EXISTS _add_review_bidding_settings$$
+CREATE PROCEDURE _add_review_bidding_settings()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'conference_settings' AND COLUMN_NAME = 'bidding_enabled'
+  ) THEN
+    ALTER TABLE conference_settings
+      ADD COLUMN bidding_enabled   BOOLEAN     NOT NULL DEFAULT FALSE AFTER authors_see_review_comments,
+      ADD COLUMN bidding_start_at  DATETIME(3) NULL     AFTER bidding_enabled,
+      ADD COLUMN bidding_end_at    DATETIME(3) NULL     AFTER bidding_start_at;
+  END IF;
+END$$
+CALL _add_review_bidding_settings()$$
+DROP PROCEDURE _add_review_bidding_settings$$
+DELIMITER ;
+
+CREATE TABLE IF NOT EXISTS review_bids (
+  id             CHAR(36)    NOT NULL DEFAULT (UUID()),
+  conference_id  CHAR(36)    NOT NULL,
+  submission_id  CHAR(36)    NOT NULL,
+  reviewer_id    CHAR(36)    NOT NULL,
+  preference     ENUM('want','can','not_interested','conflict') NOT NULL,
+  created_at     DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at     DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  UNIQUE KEY review_bids_uq (submission_id, reviewer_id),
+  KEY review_bids_conf_reviewer_idx (conference_id, reviewer_id),
+  CONSTRAINT review_bids_sub_fk      FOREIGN KEY (submission_id, conference_id) REFERENCES submissions (id, conference_id),
+  CONSTRAINT review_bids_reviewer_fk FOREIGN KEY (reviewer_id) REFERENCES users (id)
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci
+  COMMENT='Reviewer bids (want/can/not_interested/conflict) from the reviewer portal Bid on papers screen.';
+
+-- =====================================================================
+-- Conference Management System - review reminders (MySQL)
+-- File: database/04_review_reminders.sql  (run after 01/02/03; independent
+-- of the other 04_*.sql files)
+-- Adds conference_settings' reminder controls and review_reminders (one
+-- row per assignment per reminder kind already sent, so the hourly job
+-- never double-sends even with two servers running). No new permission -
+-- see that file for why.
+-- =====================================================================
+USE conference_cms_test;
+
+DELIMITER $$
+DROP PROCEDURE IF EXISTS _add_review_reminder_settings$$
+CREATE PROCEDURE _add_review_reminder_settings()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'conference_settings' AND COLUMN_NAME = 'review_reminders_enabled'
+  ) THEN
+    ALTER TABLE conference_settings
+      ADD COLUMN review_reminders_enabled        BOOLEAN NOT NULL DEFAULT TRUE AFTER default_currency,
+      ADD COLUMN review_reminder_days_before      JSON    NOT NULL DEFAULT (JSON_ARRAY(3, 1)) AFTER review_reminders_enabled,
+      ADD COLUMN review_overdue_reminder_enabled  BOOLEAN NOT NULL DEFAULT TRUE AFTER review_reminder_days_before,
+      ADD CONSTRAINT conference_settings_reminder_days_chk CHECK (JSON_TYPE(review_reminder_days_before) = 'ARRAY');
+  END IF;
+END$$
+CALL _add_review_reminder_settings()$$
+DROP PROCEDURE _add_review_reminder_settings$$
+DELIMITER ;
+
+CREATE TABLE IF NOT EXISTS review_reminders (
+  id             CHAR(36)    NOT NULL DEFAULT (UUID()),
+  assignment_id  CHAR(36)    NOT NULL,
+  kind           VARCHAR(20) NOT NULL,
+  sent_at        DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  triggered_by   CHAR(36)    NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY review_reminders_uq (assignment_id, kind),
+  CONSTRAINT review_reminders_assignment_fk FOREIGN KEY (assignment_id) REFERENCES review_assignments (id),
+  CONSTRAINT review_reminders_user_fk       FOREIGN KEY (triggered_by)  REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci
+  COMMENT='Which automatic review-due reminder (kind = before_<days> or overdue) has been sent for each assignment, so it is sent at most once.';
+
+INSERT IGNORE INTO email_templates (conference_id, template_key, subject, body_html) VALUES
+  (NULL, 'review_reminder', '[{{conference_code}}] Reminder: review due {{due_at}}',
+         '<p>Dear {{full_name}},</p><p>This is a reminder that your review of "{{title}}" ({{submission_code}}) is due {{due_at}}.</p>'),
+  (NULL, 'review_overdue',  '[{{conference_code}}] Overdue: review of {{submission_code}}',
+         '<p>Dear {{full_name}},</p><p>Your review of "{{title}}" ({{submission_code}}) was due {{due_at}} and has not been submitted yet. Please submit it as soon as you can.</p>');
 
 -- =====================================================================
 -- Give the existing app user the same rights on the test database.

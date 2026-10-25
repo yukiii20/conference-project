@@ -45,6 +45,8 @@ export const SECTIONS: SectionConfig[] = [
     tabs: [
       { id: 'submissions', label: 'Submissions' },
       { id: 'reviews', label: 'Reviews and decisions' },
+      { id: 'auto-assign', label: 'Auto-assign' },
+      { id: 'reviewers', label: 'Reviewers' },
       { id: 'settings', label: 'Review settings' },
     ],
   },

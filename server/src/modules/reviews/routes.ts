@@ -1,31 +1,40 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.js'
 import { validateBody, validateQuery } from '../../middleware/validate.js'
+import { listReviewersWithPendingReviews, sendAllPendingReminders, sendManualReminder } from './reminders.js'
 import {
   acceptAssignment,
   addConflict,
   assignReviewer,
   cancelAssignment,
+  confirmAutoAssign,
   declareConflictAndDecline,
   declineAssignment,
   getAssignmentDetail,
   getSubmissionOverviewDetail,
+  listBiddableSubmissions,
   listMyAssignments,
   listReviewerCandidates,
   listSubmissionsOverview,
+  previewAutoAssign,
   recordDecision,
   saveReviewDraft,
   submitReview,
+  upsertReviewBid,
 } from './service.js'
 import {
   addConflictSchema,
   assignReviewerSchema,
+  autoAssignConfirmSchema,
+  autoAssignPreviewSchema,
   cancelAssignmentSchema,
   decisionSchema,
+  listBiddableQuerySchema,
   listSubmissionsQuerySchema,
   reviewerAssignmentActionSchema,
   saveReviewDraftSchema,
   submitReviewSchema,
+  upsertBidSchema,
 } from './validation.js'
 
 export const reviewsConferenceRouter = Router()
@@ -112,6 +121,60 @@ reviewsConferenceRouter.post(
   },
 )
 
+// --- Auto-assign reviewers -------------------------------------------------
+
+reviewsConferenceRouter.post(
+  '/:id/auto-assign/preview',
+  requireAuth,
+  validateBody(autoAssignPreviewSchema),
+  async (req, res, next) => {
+    try {
+      res.json(await previewAutoAssign(req.user!.id, req.params.id!, req.body))
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+reviewsConferenceRouter.post(
+  '/:id/auto-assign/confirm',
+  requireAuth,
+  validateBody(autoAssignConfirmSchema),
+  async (req, res, next) => {
+    try {
+      res.status(201).json(await confirmAutoAssign(req.user!.id, req.params.id!, req.body))
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// --- Review reminders --------------------------------------------------
+
+reviewsConferenceRouter.get('/:id/reviewers-pending', requireAuth, async (req, res, next) => {
+  try {
+    res.json({ reviewers: await listReviewersWithPendingReviews(req.user!.id, req.params.id!) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+reviewsConferenceRouter.post('/:id/reviewers/:reviewerId/remind', requireAuth, async (req, res, next) => {
+  try {
+    res.json(await sendManualReminder(req.user!.id, req.params.id!, req.params.reviewerId!))
+  } catch (err) {
+    next(err)
+  }
+})
+
+reviewsConferenceRouter.post('/:id/remind-all', requireAuth, async (req, res, next) => {
+  try {
+    res.json(await sendAllPendingReminders(req.user!.id, req.params.id!))
+  } catch (err) {
+    next(err)
+  }
+})
+
 // --- B4. Decisions ----------------------------------------------------------
 
 reviewsConferenceRouter.post(
@@ -133,6 +196,26 @@ reviewsConferenceRouter.post(
 // ---------------------------------------------------------------------------
 
 export const reviewerRouter = Router()
+
+// --- Reviewer bidding -------------------------------------------------------
+
+reviewerRouter.get('/bids', requireAuth, validateQuery(listBiddableQuerySchema), async (req, res, next) => {
+  try {
+    const { conference_id, ...filters } = req.query as unknown as { conference_id: string; track_id?: string; q?: string }
+    res.json(await listBiddableSubmissions(req.user!.id, conference_id, filters))
+  } catch (err) {
+    next(err)
+  }
+})
+
+reviewerRouter.put('/bids/:sid', requireAuth, validateBody(upsertBidSchema), async (req, res, next) => {
+  try {
+    await upsertReviewBid(req.user!.id, req.params.sid!, req.body)
+    res.json({ message: 'Bid saved.' })
+  } catch (err) {
+    next(err)
+  }
+})
 
 reviewerRouter.get('/assignments', requireAuth, async (req, res, next) => {
   try {

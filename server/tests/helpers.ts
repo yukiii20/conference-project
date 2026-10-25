@@ -57,8 +57,10 @@ export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM registration_fees')
   await pool.query('DELETE FROM registration_categories')
   await pool.query('DELETE FROM conference_speakers')
+  await pool.query('DELETE FROM review_reminders')
   await pool.query('DELETE FROM reviews')
   await pool.query('DELETE FROM review_assignments')
+  await pool.query('DELETE FROM review_bids')
   await pool.query('DELETE FROM reviewer_tracks')
   await pool.query('DELETE FROM conflicts_of_interest')
   await pool.query('DELETE FROM submission_decisions')
@@ -235,24 +237,36 @@ export async function upsertConferenceSettings(
     max_abstract_words: 300,
     max_file_size_mb: 20,
     authors_see_review_comments: true,
+    bidding_enabled: false,
+    bidding_start_at: null,
+    bidding_end_at: null,
     registration_requires_payment: true,
     session_attendance_enabled: false,
     certificate_min_sessions: null,
     default_currency: 'NPR',
+    review_reminders_enabled: true,
+    review_reminder_days_before: [3, 1],
+    review_overdue_reminder_enabled: true,
   }
   const merged = { ...defaults, ...overrides }
   await pool.query(
     `INSERT INTO conference_settings
        (conference_id, review_mode, reviews_required, max_submissions_per_author, max_abstract_words, max_file_size_mb,
-        authors_see_review_comments, registration_requires_payment, session_attendance_enabled, certificate_min_sessions, default_currency)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        authors_see_review_comments, bidding_enabled, bidding_start_at, bidding_end_at,
+        registration_requires_payment, session_attendance_enabled, certificate_min_sessions, default_currency,
+        review_reminders_enabled, review_reminder_days_before, review_overdue_reminder_enabled)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE review_mode = VALUES(review_mode), reviews_required = VALUES(reviews_required),
        max_submissions_per_author = VALUES(max_submissions_per_author), max_abstract_words = VALUES(max_abstract_words),
        max_file_size_mb = VALUES(max_file_size_mb), authors_see_review_comments = VALUES(authors_see_review_comments),
+       bidding_enabled = VALUES(bidding_enabled), bidding_start_at = VALUES(bidding_start_at), bidding_end_at = VALUES(bidding_end_at),
        registration_requires_payment = VALUES(registration_requires_payment),
        session_attendance_enabled = VALUES(session_attendance_enabled),
        certificate_min_sessions = VALUES(certificate_min_sessions),
-       default_currency = VALUES(default_currency)`,
+       default_currency = VALUES(default_currency),
+       review_reminders_enabled = VALUES(review_reminders_enabled),
+       review_reminder_days_before = VALUES(review_reminder_days_before),
+       review_overdue_reminder_enabled = VALUES(review_overdue_reminder_enabled)`,
     [
       conferenceId,
       merged.review_mode,
@@ -261,11 +275,48 @@ export async function upsertConferenceSettings(
       merged.max_abstract_words,
       merged.max_file_size_mb,
       merged.authors_see_review_comments,
+      merged.bidding_enabled,
+      merged.bidding_start_at,
+      merged.bidding_end_at,
       merged.registration_requires_payment,
       merged.session_attendance_enabled,
       merged.certificate_min_sessions,
       merged.default_currency,
+      merged.review_reminders_enabled,
+      JSON.stringify(merged.review_reminder_days_before),
+      merged.review_overdue_reminder_enabled,
     ],
+  )
+}
+
+/** Inserts a review_assignments row directly at a given due_at/status, for reminder-job tests that need a fixed clock without driving the full assign/accept flow. */
+export async function createReviewAssignment(
+  conferenceId: string,
+  submissionId: string,
+  reviewerId: string,
+  overrides: Partial<{ dueAt: Date; status: string; round: number }> = {},
+): Promise<string> {
+  await pool.query(
+    `INSERT INTO review_assignments (conference_id, submission_id, reviewer_id, round, status, due_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [conferenceId, submissionId, reviewerId, overrides.round ?? 1, overrides.status ?? 'assigned', overrides.dueAt ?? new Date()],
+  )
+  const [rows] = await pool.query(
+    `SELECT id FROM review_assignments WHERE submission_id = ? AND reviewer_id = ? LIMIT 1`,
+    [submissionId, reviewerId],
+  )
+  return (rows as Array<{ id: string }>)[0]!.id
+}
+
+export async function addReviewBid(
+  conferenceId: string,
+  submissionId: string,
+  reviewerId: string,
+  preference: 'want' | 'can' | 'not_interested' | 'conflict',
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO review_bids (conference_id, submission_id, reviewer_id, preference) VALUES (?, ?, ?, ?)`,
+    [conferenceId, submissionId, reviewerId, preference],
   )
 }
 

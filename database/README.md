@@ -12,6 +12,8 @@ On Windows, install "MySQL Community Server 8.x" with MySQL Installer (includes 
     mysql -u root -p < 04_suggestions.sql
     mysql -u root -p < 04_bulk_email.sql
     mysql -u root -p < 04_badges.sql
+    mysql -u root -p < 04_review_bids.sql
+    mysql -u root -p < 04_review_reminders.sql
 
 (MySQL Workbench: File > Open SQL Script, open each file, click the lightning icon.)
 
@@ -37,6 +39,20 @@ Safe to re-run.
 `04_badges.sql` adds `registrations.printed_at` (set when a name badge has
 been generated for that registration — the Print badges screen). No new
 table, no new permission (reuses `attendance.record`). Safe to re-run.
+
+`04_review_bids.sql` adds `conference_settings.bidding_enabled` /
+`bidding_start_at` / `bidding_end_at` (the Review settings "Bidding period"
+toggle) and `review_bids` (one row per submission/reviewer preference, set
+instantly from the reviewer portal's "Bid on papers" screen). No new
+permission (reviewers bid on their own behalf; the convenor reads bids
+through the existing `review.assign` permission). Safe to re-run.
+
+`04_review_reminders.sql` adds `conference_settings.review_reminders_enabled`
+/ `review_reminder_days_before` / `review_overdue_reminder_enabled` (the
+Review settings reminder controls) and `review_reminders` (one row per
+review assignment per reminder kind already sent, so the hourly background
+job never double-sends even with two servers running). No new permission
+(reuses `review.assign`). Safe to re-run.
 
 ## Create the application user (never let the app connect as root)
     CREATE USER 'cms_app'@'localhost' IDENTIFIED BY '<strong password>';

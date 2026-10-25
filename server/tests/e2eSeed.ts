@@ -91,10 +91,15 @@ async function main() {
     await pool.query('DELETE FROM registration_categories WHERE conference_id = ?', [existingConferenceId])
 
     await pool.query(
+      `DELETE rr FROM review_reminders rr JOIN review_assignments ra ON ra.id = rr.assignment_id WHERE ra.conference_id = ?`,
+      [existingConferenceId],
+    )
+    await pool.query(
       `DELETE r FROM reviews r JOIN review_assignments ra ON ra.id = r.assignment_id WHERE ra.conference_id = ?`,
       [existingConferenceId],
     )
     await pool.query('DELETE FROM review_assignments WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM review_bids WHERE conference_id = ?', [existingConferenceId])
     await pool.query(
       `DELETE rt FROM reviewer_tracks rt WHERE rt.conference_id = ?`,
       [existingConferenceId],
