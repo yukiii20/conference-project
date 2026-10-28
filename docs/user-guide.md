@@ -233,8 +233,15 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
     **Revoke** one if it was issued by mistake — you'll be asked for a
     reason, kept in the activity log.
 - **Communication**: announcements, **bulk email**, email templates, the
-  email log, exportable reports (CSV/XLSX), and the activity log (who did
-  what).
+  email log, exportable reports (CSV/XLSX), **analytics**, and the activity
+  log (who did what).
+  - *Analytics* — charts for a chosen date range: submissions per day and
+    per track, acceptance rate, review progress (assigned/submitted/
+    overdue), average review score per track, registrations over time and
+    by category, check-ins per hour on event days, and attendance rate.
+    Every chart has a "view as table" toggle; **Download PDF report** and
+    **Download Excel** export the same numbers (one sheet per chart).
+    Needs `report.view` (manager has it by default).
   - *Bulk email* — send one message to a combination of recipient groups
     (authors, authors with accepted/rejected papers, reviewers, reviewers
     with pending reviews, registered/confirmed/checked-in attendees,
@@ -293,3 +300,7 @@ Sign in at `/super-admin/login` (a separate login from everyone else).
   (marks it read automatically), add an internal note, change its status
   (New/Read/In progress/Resolved/Archived), reply by email if one was left,
   delete it, or export the current filter to CSV. Every change is audited.
+- **Analytics**: platform-wide charts for a chosen date range — conferences
+  by status, new users over time, emails sent/failed per day, suggestions
+  per week — each with a "view as table" toggle, plus **Download PDF
+  report** and **Download Excel** (one sheet per chart).

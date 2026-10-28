@@ -16,6 +16,7 @@ import { meRouter } from '../src/modules/me/routes.js'
 import { announcementsRouter, announcementsConferenceRouter } from '../src/modules/announcements/routes.js'
 import { bulkEmailRouter } from '../src/modules/bulkEmail/routes.js'
 import { badgesRouter } from '../src/modules/badges/routes.js'
+import { analyticsRouter, platformAnalyticsRouter } from '../src/modules/analytics/routes.js'
 import { submissionsConferenceRouter, submissionsRouter } from '../src/modules/submissions/routes.js'
 import { reviewsConferenceRouter, reviewerRouter } from '../src/modules/reviews/routes.js'
 import { dashboardRouter } from '../src/modules/dashboard/routes.js'
@@ -93,6 +94,8 @@ const ROUTERS: NamedRouter[] = [
   { name: 'activityLogRouter', router: activityLogRouter },
   { name: 'registrationRouter', router: registrationRouter },
   { name: 'badgesRouter', router: badgesRouter },
+  { name: 'analyticsRouter', router: analyticsRouter },
+  { name: 'platformAnalyticsRouter', router: platformAnalyticsRouter },
   { name: 'certificatesRouter', router: certificatesRouter },
   { name: 'certificatesPublicRouter', router: certificatesPublicRouter },
   { name: 'suggestionsPublicRouter', router: suggestionsPublicRouter },

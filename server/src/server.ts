@@ -6,16 +6,28 @@ import { startSessionCleanupJob } from './jobs/cleanup.js'
 import { startReviewReminderJob } from './jobs/reviewReminders.js'
 import { ensureStorageDirs } from './storage/paths.js'
 
+process.on('unhandledRejection', (e) => console.error('unhandledRejection:', e))
+process.on('uncaughtException', (e) => console.error('uncaughtException:', e))
+
 const app = createApp()
+
+function safeStart(name: string, fn: () => void) {
+  try {
+    fn()
+    console.log(`${name} started`)
+  } catch (err) {
+    console.error(`${name} failed to start:`, err)
+  }
+}
 
 ensureStorageDirs()
   .then(() => {
-    app.listen(env.PORT, () => {
-      console.log(`CMS backend listening on http://localhost:${env.PORT}`)
-      startEmailWorker()
-      startSessionCleanupJob()
-      startAnnouncementPublishJob()
-      startReviewReminderJob()
+    app.listen(env.PORT, '0.0.0.0', () => {
+      console.log(`CMS backend listening on port ${env.PORT}`)
+      safeStart('email worker', startEmailWorker)
+      safeStart('session cleanup job', startSessionCleanupJob)
+      safeStart('announcement job', startAnnouncementPublishJob)
+      safeStart('review reminder job', startReviewReminderJob)
     })
   })
   .catch((err) => {

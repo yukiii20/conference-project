@@ -68,6 +68,7 @@ export const SECTIONS: SectionConfig[] = [
       { id: 'templates', label: 'Email templates' },
       { id: 'emails', label: 'Email log' },
       { id: 'reports', label: 'Reports' },
+      { id: 'analytics', label: 'Analytics' },
       { id: 'activity', label: 'Activity log', hideForManager: true },
     ],
   },

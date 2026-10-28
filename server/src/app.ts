@@ -23,6 +23,7 @@ import { meRouter } from './modules/me/routes.js'
 import { announcementsRouter, announcementsConferenceRouter } from './modules/announcements/routes.js'
 import { bulkEmailRouter } from './modules/bulkEmail/routes.js'
 import { badgesRouter } from './modules/badges/routes.js'
+import { analyticsRouter, platformAnalyticsRouter } from './modules/analytics/routes.js'
 import { submissionsConferenceRouter, submissionsRouter } from './modules/submissions/routes.js'
 import { reviewsConferenceRouter, reviewerRouter } from './modules/reviews/routes.js'
 import { dashboardRouter } from './modules/dashboard/routes.js'
@@ -182,6 +183,8 @@ export function createApp() {
   app.use('/api/conferences', activityLogRouter)
   app.use('/api/conferences', registrationRouter)
   app.use('/api/conferences', badgesRouter)
+  app.use('/api/conferences', analyticsRouter)
+  app.use('/api/admin', platformAnalyticsRouter)
   app.use('/api/conferences', certificatesRouter)
   app.use('/api', certificatesPublicRouter)
   app.use('/api/submissions', submissionsRouter)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertOctagon,
@@ -28,6 +28,9 @@ import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } f
 import { useNoIndex } from '../lib/noindex'
 import { EmailLogTab } from '../components/EmailLogTab'
 import { SuggestionsAdminTab } from '../components/SuggestionsAdminTab'
+
+// Lazy so recharts is its own chunk, never part of the main bundle.
+const PlatformAnalyticsTab = lazy(() => import('../components/PlatformAnalyticsTab'))
 import { PortalHeader } from '../components/PortalHeader'
 import {
   Alert,
@@ -66,6 +69,7 @@ type AdminTab =
   | 'suggestions'
   | 'settings'
   | 'email-log'
+  | 'analytics'
 
 type ConferenceRow = {
   id: string
@@ -184,6 +188,7 @@ const TABS: { id: AdminTab; label: string }[] = [
   { id: 'suggestions', label: 'Suggestions' },
   { id: 'settings', label: 'Platform settings' },
   { id: 'email-log', label: 'Email log' },
+  { id: 'analytics', label: 'Analytics' },
 ]
 
 export function SuperAdminPage() {
@@ -275,6 +280,17 @@ export function SuperAdminPage() {
         {tab === 'suggestions' ? <SuggestionsAdminTab onCountsChange={setNewSuggestionsCount} /> : null}
         {tab === 'settings' ? <PlatformSettingsTab /> : null}
         {tab === 'email-log' ? <EmailLogTab scope="admin" /> : null}
+        {tab === 'analytics' ? (
+          <Suspense
+            fallback={
+              <div className="mt-6 flex items-center gap-2 text-sm text-text-muted">
+                <Spinner size="sm" /> Loading…
+              </div>
+            }
+          >
+            <PlatformAnalyticsTab />
+          </Suspense>
+        ) : null}
       </main>
     </div>
   )

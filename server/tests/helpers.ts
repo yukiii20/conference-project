@@ -2,6 +2,7 @@ import sharp from 'sharp'
 import { pool } from '../src/db/pool.js'
 import { hashPassword } from '../src/modules/auth/service.js'
 import { generateToken, sha256 } from '../src/utils/crypto.js'
+import { clearAnalyticsCacheForTesting } from '../src/modules/analytics/service.js'
 
 export async function pngBuffer(): Promise<Buffer> {
   return sharp({ create: { width: 4, height: 4, channels: 3, background: { r: 10, g: 20, b: 30 } } })
@@ -35,6 +36,7 @@ export function oversizedBuffer(bytes: number): Buffer {
  * alone since those come from 02_reference_data.sql, not from tests.
  */
 export async function resetDatabase(): Promise<void> {
+  clearAnalyticsCacheForTesting()
   await pool.query('DELETE FROM platform_settings')
   await pool.query('DELETE FROM suggestions')
   await pool.query('DELETE FROM notifications')
