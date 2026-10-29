@@ -692,7 +692,7 @@ export const reviewSettingsSchema = z
   })
 export type ReviewSettingsInput = z.input<typeof reviewSettingsSchema>
 
-export const ASSIGNABLE_MEMBER_ROLES = ['reviewer', 'session_chair', 'staff', 'manager'] as const
+export const ASSIGNABLE_MEMBER_ROLES = ['author', 'reviewer', 'session_chair', 'staff', 'manager'] as const
 
 export const inviteMemberSchema = z.object({
   full_name: nameSchema,

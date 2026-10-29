@@ -232,8 +232,8 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                     <td className="px-3 py-2">{m.full_name}</td>
                     <td className="px-3 py-2">{m.email}</td>
                     <td className="px-3 py-2">
-                      {m.role_code === 'convenor' ? (
-                        <span>{ROLE_LABELS.convenor}</span>
+                      {m.role_code === 'convenor' || m.role_code === 'author' ? (
+                        <span>{ROLE_LABELS[m.role_code]}</span>
                       ) : (
                         <Select
                           value={m.role_code}
@@ -241,7 +241,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                           onChange={(e) => handleRoleChange(m, e.target.value)}
                           className="w-auto text-xs"
                         >
-                          {ASSIGNABLE_MEMBER_ROLES.map((r) => (
+                          {ASSIGNABLE_MEMBER_ROLES.filter((r) => r !== 'author').map((r) => (
                             <option key={r} value={r}>
                               {ROLE_LABELS[r]}
                             </option>
