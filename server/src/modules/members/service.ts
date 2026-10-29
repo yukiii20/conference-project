@@ -68,6 +68,14 @@ export async function changeMemberRole(
     if (current.role_code === 'convenor') {
       throw new BadRequestError('The convenor role can only be changed by a platform administrator.')
     }
+    // An author's role must not be overwritten: the person would lose access to their
+    // submissions and could no longer sign in as Author. To give an author an extra role,
+    // use "Invite member" (it adds a role without replacing the existing one).
+    if (current.role_code === 'author') {
+      throw new BadRequestError(
+        "An author's role can't be changed here because the person would lose access to their submissions. Use Invite member to give them an additional role instead.",
+      )
+    }
     if (current.role_code === input.role_code) return
 
     const [dupRows] = await conn.query(

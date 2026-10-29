@@ -1,8 +1,12 @@
 import { z } from 'zod'
 import { emailSchema, nameSchema, phoneSchema } from '../auth/validation.js'
 
-/** Roles assignable here. Convenor is appointed only via the admin flow (one active per conference); author is self-signup. */
-export const ASSIGNABLE_ROLES = ['reviewer', 'session_chair', 'staff', 'manager'] as const
+/**
+ * Roles assignable here. Convenor is appointed only via the admin flow (one active per conference).
+ * Author is normally self-signup, but it is listed so a convenor can restore or grant it
+ * (e.g. through "Invite member"). Changing an existing author's role is blocked in changeMemberRole.
+ */
+export const ASSIGNABLE_ROLES = ['author', 'reviewer', 'session_chair', 'staff', 'manager'] as const
 export const MEMBER_ROLE_FILTER = ['author', 'reviewer', 'session_chair', 'staff', 'manager', 'convenor'] as const
 
 export const listMembersQuerySchema = z.object({
