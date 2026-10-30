@@ -456,7 +456,7 @@ export function ConferencePage() {
           sectionRefs.current.committees = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 py-8"
       >
         <h2 className="text-2xl font-semibold">Committees</h2>
         {committees.length === 0 ? (
@@ -492,7 +492,7 @@ export function ConferencePage() {
           sectionRefs.current.speakers = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 py-8"
       >
         <h2 className="text-2xl font-semibold">Speakers</h2>
         {speakers.length === 0 ? (
@@ -529,7 +529,7 @@ export function ConferencePage() {
           sectionRefs.current.supporters = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 py-8"
       >
         <h2 className="text-2xl font-semibold">Supporters</h2>
         {groupedSupporters.length === 0 ? (
@@ -570,7 +570,7 @@ export function ConferencePage() {
           sectionRefs.current.programme = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 py-8"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold">Programme</h2>
@@ -649,7 +649,7 @@ export function ConferencePage() {
           sectionRefs.current.registration = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-3xl px-4 py-12"
+        className="mx-auto max-w-3xl px-4 py-8"
       >
         <h2 className="text-2xl font-semibold">Registration</h2>
         <div className="mt-4">
@@ -663,7 +663,7 @@ export function ConferencePage() {
           sectionRefs.current.location = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 py-8"
       >
         <h2 className="text-2xl font-semibold">Location</h2>
         <div className="mt-6 grid gap-6 md:grid-cols-2">
@@ -689,7 +689,7 @@ export function ConferencePage() {
           sectionRefs.current['key-dates'] = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 py-8"
       >
         <h2 className="text-2xl font-semibold">Key dates</h2>
         {nextDeadline && daysUntilNext !== null ? (
