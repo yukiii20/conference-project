@@ -387,14 +387,29 @@ export function ConferencePage() {
           sectionRefs.current.about = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-3xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 py-12"
       >
-        <h2 className="text-2xl font-semibold">About</h2>
-        {conference.description ? (
-          <p className="mt-4 whitespace-pre-line text-ink/80">{conference.description}</p>
-        ) : (
-          <p className="mt-4 text-sm text-ink/60">No description yet.</p>
-        )}
+        <div className="grid gap-8 md:grid-cols-2 md:items-center">
+          <div>
+            <h2 className="text-2xl font-semibold">About {conference.name}</h2>
+            {conference.tagline ? (
+              <p className="mt-2 text-lg font-medium text-ink/70">{conference.tagline}</p>
+            ) : null}
+            {conference.description ? (
+              <p className="mt-4 whitespace-pre-line text-ink/80">{conference.description}</p>
+            ) : (
+              <p className="mt-4 text-sm text-ink/60">No description yet.</p>
+            )}
+          </div>
+          {conference.banner_path ? (
+            <img
+              src={publicImageUrl(conference.banner_path) ?? undefined}
+              alt={`${conference.name} banner`}
+              loading="lazy"
+              className="max-h-80 w-full rounded-xl object-cover"
+            />
+          ) : null}
+        </div>
 
         {tracks.length > 0 ? (
           <div className="mt-6">
