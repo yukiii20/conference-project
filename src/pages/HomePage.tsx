@@ -365,11 +365,11 @@ export function HomePage() {
           aria-hidden="true"
         />
         <div className="absolute inset-0 -z-10" style={{ backgroundColor: 'rgba(42,14,7,0.55)' }} aria-hidden="true" />
-        <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10 px-4 pb-16 pt-8 sm:px-6 lg:flex-row lg:items-center lg:pb-24 lg:pt-12">
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-8 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:py-12">
           <div className="w-full text-center lg:w-1/2 lg:text-left">
-            <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">{heroHeadline}</h1>
-            <p className="mt-4 text-lg text-white/80">{heroSubheadline}</p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+            <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{heroHeadline}</h1>
+            <p className="mt-3 text-base text-white/80 sm:text-lg">{heroSubheadline}</p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <button
                 type="button"
                 onClick={() => handleNavigate('conferences')}
@@ -392,7 +392,7 @@ export function HomePage() {
               </button>
             </div>
 
-            <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-6 text-center lg:text-left">
+            <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-white/10 pt-5 text-center lg:text-left">
               <HeroStat label="Conferences" value={confCount} />
               <HeroStat label="Open for abstracts" value={openCount} />
               <HeroStat label="Tracks" value={trackCount} />
@@ -400,7 +400,7 @@ export function HomePage() {
           </div>
 
           <div className="w-full lg:w-1/2">
-            <div className="mx-auto max-w-[480px] overflow-hidden rounded-xl shadow-2xl lg:mx-0 lg:ml-auto">
+            <div className="mx-auto max-w-[420px] overflow-hidden rounded-xl shadow-2xl lg:mx-0 lg:ml-auto">
               <ConferenceOpeningScene
                 title="Conference portal"
                 subtitle="Find a conference, submit an abstract, join the programme"
