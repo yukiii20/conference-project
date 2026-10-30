@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const SUPPORTER_TIERS = ['organizer', 'co_organizer', 'sponsor', 'partner', 'media'] as const
+export const SUPPORTER_TIERS = ['organizer', 'co_organizer', 'sponsor', 'partner', 'knowledge_partner', 'media'] as const
 export type SupporterTier = (typeof SUPPORTER_TIERS)[number]
 
 // See the comment in conferences/manage.validation.ts: transform must run

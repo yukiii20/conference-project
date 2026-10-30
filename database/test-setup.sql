@@ -415,7 +415,7 @@ CREATE TABLE conference_supporters (
   id             CHAR(36)     NOT NULL DEFAULT (UUID()),
   conference_id  CHAR(36)     NOT NULL,
   name           VARCHAR(200) NOT NULL,
-  tier           ENUM('organizer','co_organizer','sponsor','partner','media') NOT NULL DEFAULT 'sponsor',
+  tier           ENUM('organizer','co_organizer','sponsor','partner','knowledge_partner','media') NOT NULL DEFAULT 'sponsor',
   logo_path      VARCHAR(500) NULL,
   website_url    VARCHAR(500) NULL,
   display_order  SMALLINT     NOT NULL DEFAULT 0,

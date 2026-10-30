@@ -229,7 +229,7 @@ export const locationSchema = z.object({
 export type LocationInput = z.input<typeof locationSchema>
 
 /** A2.6 — Supporters tab. */
-export const SUPPORTER_TIERS = ['organizer', 'co_organizer', 'sponsor', 'partner', 'media'] as const
+export const SUPPORTER_TIERS = ['organizer', 'co_organizer', 'sponsor', 'partner', 'knowledge_partner', 'media'] as const
 export type SupporterTier = (typeof SUPPORTER_TIERS)[number]
 
 export const supporterSchema = z.object({

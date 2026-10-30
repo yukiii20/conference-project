@@ -25,6 +25,7 @@ const TIER_LABELS: Record<SupporterTier, string> = {
   co_organizer: 'Co-organizers',
   sponsor: 'Sponsors',
   partner: 'Partners',
+  knowledge_partner: 'Knowledge partners',
   media: 'Media partners',
 }
 

@@ -14,6 +14,7 @@ On Windows, install "MySQL Community Server 8.x" with MySQL Installer (includes 
     mysql -u root -p < 04_badges.sql
     mysql -u root -p < 04_review_bids.sql
     mysql -u root -p < 04_review_reminders.sql
+    mysql -u root -p < 05_knowledge_partner.sql
 
 (MySQL Workbench: File > Open SQL Script, open each file, click the lightning icon.)
 
@@ -53,6 +54,10 @@ Review settings reminder controls) and `review_reminders` (one row per
 review assignment per reminder kind already sent, so the hourly background
 job never double-sends even with two servers running). No new permission
 (reuses `review.assign`). Safe to re-run.
+
+`05_knowledge_partner.sql` adds the `knowledge_partner` supporter tier. Run it
+on an existing database before convenors create Knowledge partner entries. Safe
+to re-run.
 
 ## Create the application user (never let the app connect as root)
     CREATE USER 'cms_app'@'localhost' IDENTIFIED BY '<strong password>';
