@@ -11,7 +11,7 @@
       "destination": "https://conference-project-84xj.onrender.com/files/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }
   ],
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "source": "/index.html",
+      "source": "/((?!assets/|api/|files/).*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache" }
       ]
