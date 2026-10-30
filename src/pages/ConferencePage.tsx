@@ -387,7 +387,7 @@ export function ConferencePage() {
           sectionRefs.current.about = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-12"
+        className="mx-auto max-w-5xl px-4 pt-12 pb-4"
       >
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
@@ -432,7 +432,7 @@ export function ConferencePage() {
           sectionRefs.current.announcements = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-3xl px-4 py-12"
+        className="mx-auto max-w-3xl px-4 pt-4 pb-12"
       >
         <h2 className="text-2xl font-semibold">Announcements</h2>
         {announcements.length === 0 ? (
