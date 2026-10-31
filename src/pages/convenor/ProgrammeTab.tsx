@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
+import { SessionTimerFields, TimerDefaultsSection } from './SessionTimerSettings'
 import {
   fromKathmanduDateInputValue,
   fromKathmanduInputValue,
@@ -879,6 +880,8 @@ function SessionManagePanel({
         </div>
       </div>
 
+      <SessionTimerFields conferenceId={conferenceId} sessionId={sessionId} />
+
       <ConfirmDialog
         open={confirmingRemoveId !== null}
         title="Remove this from the programme?"
@@ -1320,6 +1323,7 @@ export function ProgrammeTab({ conferenceId }: { conferenceId: string }) {
       <RoomsSection conferenceId={conferenceId} onRoomsChanged={() => setRoomsVersion((v) => v + 1)} />
       <TimeSlotsSection conferenceId={conferenceId} onSlotsChanged={() => setSlotsVersion((v) => v + 1)} />
       <SessionsSection conferenceId={conferenceId} roomsVersion={roomsVersion} slotsVersion={slotsVersion} />
+      <TimerDefaultsSection conferenceId={conferenceId} />
     </div>
   )
 }

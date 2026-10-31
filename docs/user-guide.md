@@ -130,6 +130,16 @@ role.
    **Presented** or **Absent** as it happens. If the conference tracks
    session-level attendance, you can also check attendees into your own
    session from the same screen.
+4. **Session timer**: in **My sessions**, click **Start timer** for a
+   full-screen clock (fine on a phone or a projector — **Full screen** or
+   press **F**). It shows the current talk and speaker, who is next, and
+   counts down the talk time then the Q&A time (15 + 5 minutes unless the
+   convenor set something else): **green**, **amber** for the last 2
+   minutes, **red** when time is up, then it keeps counting the overtime.
+   **Start/Pause** (Space), **Start Q&A** (Q), **Next talk** (N), **Reset**,
+   and **Mark presented**. The screen is kept awake while it's open, and
+   once the page has loaded it keeps working without internet — a
+   "presented" mark made offline is saved as soon as you're back online.
 
 ---
 
@@ -229,6 +239,10 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
   - *Programme* — add rooms and (optionally) reusable time slots, create
     sessions, assign chairs, and schedule accepted papers or invited talks
     into them. Toggle List/Grid view; publish a session to make it public.
+    **Session timer** (bottom of the tab) sets the talk + Q&A minutes every
+    chair's timer uses (default 15 + 5); a session's **Manage** panel can
+    override them for that session (leave blank for the default) and has
+    **Open timer**, so you can run the timer for any session yourself.
   - *Attendance* — manage registration categories, see and search every
     registration, confirm a pending one, check someone in (same
     scan/upload/code check-in card the staff desk uses), see today's

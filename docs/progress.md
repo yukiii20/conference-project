@@ -1073,3 +1073,38 @@ clash + drafts refused, automatic chair/author entries, .ics download, public pe
 timezone, feed by token + reset kills old URL + audit row, bad tokens 404, feeds never leak
 another person's stars); routeGuards covers the new routes; `e2e/agenda.spec.ts` (page, feed
 link shown, fetched, reset, old URL 404, no console errors, 390px).
+
+## Features batch 3, feature 8 - Session timer - DONE (code; DB tests pending SQL)
+
+Per-session timings must be stored (the convenor can change them per session), so
+`database/batch-3-sql/04_session_timing.sql` adds `conference_settings.timer_talk_minutes`/
+`timer_qa_minutes` (conference default, 15/5) and nullable `conference_sessions.timer_talk_minutes`/
+`timer_qa_minutes` (per-session override; NULL = use the default). Column adds are
+information_schema-guarded, so re-running is safe. No new permission.
+
+Backend `server/src/modules/sessionTimer/`: `GET /api/conferences/:id/sessions/:sessionId/timer`
+(requireAuth + the same per-session check as marking presented: the session's own chairs, or
+schedule.manage, so the convenor can open any) returns the session, its talks in order with
+speaker names/status, and the resolved timing (override -> conference default -> 15/5).
+`GET/PUT /api/conferences/:id/timer-defaults` and `PUT .../sessions/:sessionId/timer-settings`
+are schedule.manage only and audit-logged (`timer.defaults_update`, `timer.session_update`).
+"Mark presented" reuses the existing mark endpoint.
+
+Frontend: `src/lib/sessionTimer.ts` is the pure timer state machine (every function takes `now`,
+so it's tested with a fake clock: green/amber at 2:00 left/red at 0 then overtime, pause/resume,
+Q&A phase, next talk, no-Q&A case, reset, clock formatting incl. no "-0:00", saved-state
+validation - `src/lib/sessionTimer.test.ts`, 9 tests). `src/pages/SessionTimerPage.tsx` at
+`/timer/:conferenceId/:sessionId` (lazy, signed-in): black full-screen high-contrast page, huge
+clock, current + next speaker, Start/Pause, Start Q&A, Next talk, Reset, Mark presented, keyboard
+Space/N/Q/F, Fullscreen API, Wake Lock API re-acquired on tab return with a muted canvas-stream
+video fallback, state saved to localStorage so a reload resumes, and "works offline once opened":
+all data is fetched once; a presented mark made offline is queued and sent on the `online`
+event. Entry points: **Start timer** on each session in the chair's My sessions, and the
+convenor's Programme tab (**Session timer** defaults section + per-session override and **Open
+timer** in each session's Manage panel, `src/pages/convenor/SessionTimerSettings.tsx`).
+
+Tests: `server/tests/sessionTimer.test.ts` (5, DB: chair opens own timer with 15+5 defaults and
+ordered talks, 401/403 for a chair of another session, convenor opens any + default and override
+resolve + audit rows, chair can't change timings + validation 400, mark presented from the timer),
+routeGuards covers the new routes, `e2e/sessionTimer.spec.ts` (opens the timer, colour, start,
+Space pause, Q&A 5:00, mark presented, N to next talk, last-talk message, no console errors, 390px).

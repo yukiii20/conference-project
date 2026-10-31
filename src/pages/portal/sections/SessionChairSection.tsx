@@ -1,7 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Timer } from 'lucide-react'
 import { api, ApiError } from '../../../lib/api'
 import { formatKathmandu } from '../../../lib/datetime'
-import { Alert, Button, EmptyState, PageHeader, SkeletonText } from '../../../components/ui'
+import { Alert, Button, EmptyState, PageHeader, SkeletonText, buttonClasses } from '../../../components/ui'
 
 // Lazy for the same reason as the staff check-in page — zxing (~450 KB)
 // only needs to load for a chair who actually opens this panel.
@@ -177,7 +179,7 @@ export function SessionChairSection() {
 
   return (
     <div className="mt-6 max-w-3xl">
-      <PageHeader title="My sessions" subtitle="Sessions you chair, across every conference — mark attendees presented or absent." />
+      <PageHeader title="My sessions" subtitle="Sessions you chair, across every conference — run the talk timer, and mark attendees presented or absent." />
 
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
@@ -207,9 +209,14 @@ export function SessionChairSection() {
                   {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
                 </p>
               </div>
-              <Button type="button" onClick={() => setOpen({ conferenceId: s.conference_id, sessionId: s.session_id })}>
-                Mark attendance
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/timer/${s.conference_id}/${s.session_id}`} className={buttonClasses('primary', 'md')}>
+                  <Timer aria-hidden className="h-4 w-4" /> Start timer
+                </Link>
+                <Button type="button" variant="secondary" onClick={() => setOpen({ conferenceId: s.conference_id, sessionId: s.session_id })}>
+                  Mark attendance
+                </Button>
+              </div>
             </li>
           ))}
         </ul>

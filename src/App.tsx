@@ -30,6 +30,7 @@ const SuperAdminPage = lazy(() => import('./pages/SuperAdminPage').then((m) => (
 const AdminViewAsPage = lazy(() => import('./pages/AdminViewAsPage').then((m) => ({ default: m.AdminViewAsPage })))
 const ConvenorPage = lazy(() => import('./pages/ConvenorPage').then((m) => ({ default: m.ConvenorPage })))
 const PortalPage = lazy(() => import('./pages/PortalPage').then((m) => ({ default: m.PortalPage })))
+const SessionTimerPage = lazy(() => import('./pages/SessionTimerPage').then((m) => ({ default: m.SessionTimerPage })))
 
 /** Old single-role URLs (bookmarked, or baked into stored notification link_path values) — kept working, query string and all. */
 function OldPortalRedirect({ to }: { to: string }) {
@@ -102,6 +103,16 @@ export default function App() {
                 <ProtectedRoute kind="authenticated">
                   <Suspense fallback={<PageLoading />}>
                     <PortalPage />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/timer/:conferenceId/:sessionId"
+              element={
+                <ProtectedRoute kind="authenticated">
+                  <Suspense fallback={<PageLoading />}>
+                    <SessionTimerPage />
                   </Suspense>
                 </ProtectedRoute>
               }
