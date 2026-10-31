@@ -114,13 +114,51 @@ export async function createUser(input: {
  * rate-limited to 20 attempts / 15 min and shared across every test in a
  * file). Returns the raw cookie value — requireAuth only ever checks the
  * session row, so this is indistinguishable from a real login.
+ *
+ * Every non-admin session is bound to one conference, exactly like a real
+ * sign-in:
+ * - `conferenceId` given -> bound to it (whether or not the user has a role there);
+ * - otherwise a platform admin gets an admin session (unbound, as from /super-admin/login);
+ * - otherwise the user's only active-membership conference, or the only
+ *   conference in the test database. Anything more ambiguous must name the
+ *   conference explicitly.
  */
-export async function createDirectSession(userId: string): Promise<string> {
+export async function createDirectSession(userId: string, conferenceId?: string): Promise<string> {
+  let boundConferenceId: string | null = conferenceId ?? null
+  let isAdminSession = false
+
+  if (!boundConferenceId) {
+    const [adminRows] = await pool.query(
+      `SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'admin' LIMIT 1`,
+      [userId],
+    )
+    if ((adminRows as unknown[]).length > 0) {
+      isAdminSession = true
+    } else {
+      const [memberRows] = await pool.query(
+        `SELECT DISTINCT conference_id FROM conference_members WHERE user_id = ? AND status = 'active'`,
+        [userId],
+      )
+      const memberConferences = (memberRows as Array<{ conference_id: string }>).map((r) => r.conference_id)
+      if (memberConferences.length === 1) {
+        boundConferenceId = memberConferences[0]!
+      } else if (memberConferences.length === 0) {
+        const [allRows] = await pool.query('SELECT id FROM conferences WHERE deleted_at IS NULL')
+        const all = allRows as Array<{ id: string }>
+        if (all.length === 1) boundConferenceId = all[0]!.id
+      }
+      if (!boundConferenceId) {
+        throw new Error('createDirectSession: pass the conference this session should be bound to.')
+      }
+    }
+  }
+
   const token = generateToken()
-  await pool.query(`INSERT INTO auth_sessions (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(3), INTERVAL 12 HOUR))`, [
-    userId,
-    sha256(token),
-  ])
+  await pool.query(
+    `INSERT INTO auth_sessions (user_id, token_hash, is_admin_session, conference_id, expires_at)
+     VALUES (?, ?, ?, ?, DATE_ADD(NOW(3), INTERVAL 12 HOUR))`,
+    [userId, sha256(token), isAdminSession, boundConferenceId],
+  )
   return `cms_session=${token}`
 }
 

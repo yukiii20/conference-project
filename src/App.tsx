@@ -20,6 +20,9 @@ import { SetPasswordPage } from './pages/SetPasswordPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SuperAdminLoginPage } from './pages/SuperAdminLoginPage'
 import { VerifyCertificatePage } from './pages/VerifyCertificatePage'
+import { ConferenceLoginPage } from './pages/conferenceAuth/ConferenceLoginPage'
+import { ConferenceSignupPage } from './pages/conferenceAuth/ConferenceSignupPage'
+import { ConferenceForgotPasswordPage } from './pages/conferenceAuth/ConferenceForgotPasswordPage'
 import { OLD_PORTAL_REDIRECTS } from './pages/portal/sidebarConfig'
 
 // Route-based code splitting for the big, role-gated portals - a visitor who
@@ -49,6 +52,12 @@ export default function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/c/:slug" element={<ConferencePage />} />
+            {/* Each conference's own account pages; a role only works at its own conference. */}
+            <Route path="/c/:slug/login" element={<ConferenceLoginPage />} />
+            <Route path="/c/:slug/signup" element={<ConferenceSignupPage />} />
+            <Route path="/c/:slug/forgot-password" element={<ConferenceForgotPasswordPage />} />
+            <Route path="/c/:slug/reset-password" element={<ResetPasswordPage />} />
+            {/* Generic /signup and /login: "Choose your conference". */}
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />

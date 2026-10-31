@@ -54,6 +54,16 @@ export function SignUpForm({
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  // Existing-account path: the email already has an account, so the person
+  // proves it with that account's CURRENT password and only a pending role
+  // request for this conference is created (no new user, nothing else changed).
+  const [joinMode, setJoinMode] = useState(false)
+  const [joinPassword, setJoinPassword] = useState('')
+  const [joinError, setJoinError] = useState<string | null>(null)
+  const [joinFieldError, setJoinFieldError] = useState<string | null>(null)
+  const [joinNotice, setJoinNotice] = useState<string | null>(null)
+  const [joinedMessage, setJoinedMessage] = useState<string | null>(null)
+  const [joining, setJoining] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -153,7 +163,13 @@ export function SignUpForm({
       })
       setSuccess(true)
     } catch (err) {
-      if (err instanceof ApiError) {
+      if (err instanceof ApiError && err.code === 'account_exists') {
+        setJoinMode(true)
+        setJoinPassword('')
+        setJoinError(null)
+        setJoinFieldError(null)
+        setJoinNotice(null)
+      } else if (err instanceof ApiError) {
         setFormError(err.message)
         if (err.fields) setErrors((prev) => ({ ...prev, ...err.fields }))
       } else {
@@ -164,17 +180,116 @@ export function SignUpForm({
     }
   }
 
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault()
+    setJoinError(null)
+    setJoinFieldError(null)
+    setJoinNotice(null)
+    if (!joinPassword) {
+      setJoinFieldError('Enter the password of your existing account.')
+      return
+    }
+    const conference = conferences.find((c) => c.id === conferenceId)
+    setJoining(true)
+    try {
+      const data = await api.post<{ message: string }>('/auth/join-conference', {
+        email: form.email.trim(),
+        password: joinPassword,
+        requested_role: role,
+        conference: conference?.slug ?? conferenceId,
+      })
+      setJoinedMessage(data.message)
+      setSuccess(true)
+    } catch (err) {
+      if (err instanceof ApiError && (err.code === 'role_request_pending' || err.code === 'role_already_active')) {
+        // Already asked / already a member here: say so plainly, nothing to retry.
+        setJoinNotice(err.message)
+      } else if (err instanceof ApiError) {
+        setJoinError(err.message)
+        if (err.fields?.password) setJoinFieldError(err.fields.password)
+      } else {
+        setJoinError("Can't reach the server. Check your connection.")
+      }
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  const selectedConference = preselectedConference ?? conferences.find((c) => c.id === conferenceId) ?? null
+  const signInHref = selectedConference ? `/c/${encodeURIComponent(selectedConference.slug)}/login` : '/login'
+
   if (success) {
     return (
       <div className="text-center">
-        <h2 className="font-display text-xl font-semibold text-brand">Account created</h2>
-        <p className="mt-3 text-sm text-text-muted">The convenor must approve it before you can sign in.</p>
+        <h2 className="font-display text-xl font-semibold text-text">{joinedMessage ? 'Request sent' : 'Account created'}</h2>
+        <p className="mt-3 text-sm text-text-muted">
+          {joinedMessage ?? 'The convenor must approve it before you can sign in.'}
+        </p>
         {showSignInLink ? (
-          <Link to="/login" className="mt-6 inline-block font-medium text-brand underline">
+          <Link to={signInHref} className="conference-link mt-6 inline-block font-medium text-brand underline">
             Back to sign in
           </Link>
         ) : null}
       </div>
+    )
+  }
+
+  if (joinMode) {
+    return (
+      <form onSubmit={handleJoin} className="space-y-4">
+        <div>
+          <h2 className="font-display text-xl font-semibold text-text">You already have an account</h2>
+          <p className="mt-2 text-sm text-text-muted">
+            <span className="font-medium text-text">{form.email.trim()}</span> already has an account on this platform.
+            Enter its current password to ask for the{' '}
+            <span className="font-medium text-text">{getRoleDefinition(role)?.label ?? role}</span> role
+            {selectedConference?.name ? (
+              <>
+                {' '}at <span className="font-medium text-text">{selectedConference.name}</span>
+              </>
+            ) : null}
+            . Your name, phone and password stay as they are.
+          </p>
+        </div>
+
+        {joinError ? <Alert variant="danger">{joinError}</Alert> : null}
+        {joinNotice ? <Alert variant="info">{joinNotice}</Alert> : null}
+
+        <FormField label="Password of your existing account" htmlFor="su-join-password" error={joinFieldError ?? undefined}>
+          <PasswordInput
+            id="su-join-password"
+            autoComplete="current-password"
+            value={joinPassword}
+            onChange={(e) => setJoinPassword(e.target.value)}
+            error={Boolean(joinFieldError)}
+          />
+        </FormField>
+
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setJoinMode(false)
+              setJoinError(null)
+              setJoinNotice(null)
+            }}
+          >
+            Use another email
+          </Button>
+          <Button type="submit" loading={joining}>
+            {joining ? 'Sending…' : 'Join this conference'}
+          </Button>
+        </div>
+
+        {showSignInLink && joinNotice ? (
+          <p className="text-center text-sm text-text-muted">
+            <Link to={signInHref} className="conference-link font-medium text-brand underline">
+              Go to sign in
+            </Link>
+          </p>
+        ) : null}
+      </form>
     )
   }
 
@@ -368,7 +483,7 @@ export function SignUpForm({
       {showSignInLink ? (
         <p className="mt-6 text-center text-sm text-text-muted">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-brand underline">
+          <Link to={signInHref} className="conference-link font-medium text-brand underline">
             Sign in
           </Link>
         </p>

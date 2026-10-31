@@ -27,7 +27,7 @@ const END = new Date('2026-11-15T05:15:00.000Z')
 async function person(conferenceId: string, email: string, role?: string) {
   const userId = await createUser({ email, password: 'Str0ng!Pass' })
   if (role) await addConferenceMember(conferenceId, userId, role)
-  return { userId, cookie: await createDirectSession(userId) }
+  return { userId, cookie: await createDirectSession(userId, conferenceId) }
 }
 
 async function sessionWithTalks(conferenceId: string) {

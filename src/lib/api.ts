@@ -36,11 +36,14 @@ function clearGetCache(): void {
 export class ApiError extends Error {
   status: number
   fields?: Record<string, string>
+  /** Machine-readable reason from the server (e.g. 'no_role_at_conference', 'account_exists', 'wrong_conference'). */
+  code?: string
 
-  constructor(status: number, message: string, fields?: Record<string, string>) {
+  constructor(status: number, message: string, fields?: Record<string, string>, code?: string) {
     super(message)
     this.status = status
     this.fields = fields
+    this.code = code
   }
 }
 
@@ -124,7 +127,7 @@ async function performFetch(url: string, method: string, options: RequestOptions
 
   if (!res.ok) {
     const message = data?.error?.message ?? 'Something went wrong. Please try again.'
-    throw new ApiError(res.status, message, data?.error?.fields)
+    throw new ApiError(res.status, message, data?.error?.fields, data?.error?.code)
   }
 
   return data
@@ -178,7 +181,7 @@ async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
 
   if (!res.ok) {
     const message = data?.error?.message ?? 'Something went wrong. Please try again.'
-    throw new ApiError(res.status, message, data?.error?.fields)
+    throw new ApiError(res.status, message, data?.error?.fields, data?.error?.code)
   }
 
   clearGetCache()

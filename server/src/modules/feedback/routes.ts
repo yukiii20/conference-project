@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, requireConferencePermission } from '../../middleware/auth.js'
 import { validateBody } from '../../middleware/validate.js'
+import { keepBoundConferenceRows } from '../../middleware/sessionScope.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { generateFeedbackXlsx } from './export.js'
 import {
@@ -94,7 +95,8 @@ export const feedbackMeRouter = Router()
 
 feedbackMeRouter.get('/me/feedback', requireAuth, async (req, res, next) => {
   try {
-    res.json({ surveys: await listMyFeedback(req.user!.id) })
+    const surveys = await listMyFeedback(req.user!.id)
+    res.json({ surveys: keepBoundConferenceRows(surveys, (s) => s.conference_id) })
   } catch (err) {
     next(err)
   }

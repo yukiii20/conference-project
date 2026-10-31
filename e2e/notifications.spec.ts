@@ -9,7 +9,7 @@ const FIXTURE = {
 }
 
 async function signIn(page: Page, email: string, password: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(password)
   await page.locator('#si-role').selectOption(role)
@@ -21,7 +21,7 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
   const authorEmail = `e2e-notif-author-${stamp}@example.com`
 
   // 1. Sign up a fresh author.
-  await page.goto(`/signup?conference=${FIXTURE.conferenceSlug}`)
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/signup`)
   await page.getByRole('button', { name: 'Author', exact: true }).click()
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.locator('#su-full_name').fill('Notif Author')

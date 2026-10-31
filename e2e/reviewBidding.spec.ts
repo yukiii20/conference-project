@@ -13,7 +13,7 @@ function randomLetters(length: number): string {
 }
 
 async function signIn(page: Page, email: string, password: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(password)
   await page.locator('#si-role').selectOption(role)
@@ -21,7 +21,7 @@ async function signIn(page: Page, email: string, password: string, role: string)
 }
 
 async function signUp(page: Page, role: 'Author' | 'Reviewer', fullName: string, email: string, phone: string) {
-  await page.goto(`/signup?conference=${FIXTURE.conferenceSlug}`)
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/signup`)
   await page.getByRole('button', { name: role, exact: true }).click()
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.locator('#su-full_name').fill(fullName)

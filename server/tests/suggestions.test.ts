@@ -3,7 +3,7 @@ import request from 'supertest'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db/pool.js'
 import { SUGGESTION_DAILY_RATE_LIMIT_CONFIG, SUGGESTION_IP_RATE_LIMIT_CONFIG } from '../src/middleware/rateLimit.js'
-import { createDirectSession, createUser, makePlatformAdmin, resetDatabase } from './helpers.js'
+import { createConference, createDirectSession, createUser, makePlatformAdmin, resetDatabase } from './helpers.js'
 
 const app = createApp()
 
@@ -104,7 +104,7 @@ describe('POST /api/suggestions (public)', () => {
 
   it('attaches user_id when the submitter is logged in', async () => {
     const userId = await createUser({ email: 'suggest-user@example.com', password: 'Str0ng!Pass' })
-    const cookie = await createDirectSession(userId)
+    const cookie = await createDirectSession(userId, await createConference())
 
     const res = await request(app)
       .post('/api/suggestions')
@@ -133,7 +133,7 @@ describe('admin suggestions endpoints', () => {
     expect(anon.status).toBe(401)
 
     const userId = await createUser({ email: 'not-admin-sugg@example.com', password: 'Str0ng!Pass' })
-    const cookie = await createDirectSession(userId)
+    const cookie = await createDirectSession(userId, await createConference())
     const res = await cookieAgent(cookie).get('/api/admin/suggestions')
     expect(res.status).toBe(403)
   })

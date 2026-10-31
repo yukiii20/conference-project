@@ -6,22 +6,30 @@ import { insertAuditLog } from '../../utils/audit.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
 import { notifyUser } from '../../utils/notifications.js'
+import { conferenceSignInPath, conferenceSignInUrl } from '../../utils/conferenceLinks.js'
 
 async function loadRoleRequestTarget(
   conn: PoolConnection,
   requestId: string,
-): Promise<{ userId: string; fullName: string; email: string; roleCode: string; conferenceName: string }> {
+): Promise<{ userId: string; fullName: string; email: string; roleCode: string; conferenceName: string; conferenceSlug: string }> {
   const [rows] = await conn.query(
-    `SELECT u.id AS user_id, u.full_name, u.email, rr.role_code, c.name AS conference_name
+    `SELECT u.id AS user_id, u.full_name, u.email, rr.role_code, c.name AS conference_name, c.slug AS conference_slug
      FROM role_requests rr
      JOIN users u ON u.id = rr.user_id
      JOIN conferences c ON c.id = rr.conference_id
      WHERE rr.id = ? LIMIT 1`,
     [requestId],
   )
-  const row = (rows as Array<{ user_id: string; full_name: string; email: string; role_code: string; conference_name: string }>)[0]
+  const row = (rows as Array<{ user_id: string; full_name: string; email: string; role_code: string; conference_name: string; conference_slug: string }>)[0]
   if (!row) throw new NotFoundError('This role request no longer exists.')
-  return { userId: row.user_id, fullName: row.full_name, email: row.email, roleCode: row.role_code, conferenceName: row.conference_name }
+  return {
+    userId: row.user_id,
+    fullName: row.full_name,
+    email: row.email,
+    roleCode: row.role_code,
+    conferenceName: row.conference_name,
+    conferenceSlug: row.conference_slug,
+  }
 }
 
 const MEMBERS_MANAGE = 'members.manage'
@@ -117,7 +125,13 @@ export async function approveRoleRequest(actorUserId: string, requestId: string)
       `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'role_request_approved' LIMIT 1`,
     )
     const template = (templateRows as Array<{ subject: string }>)[0]
-    const data = { full_name: target.fullName, role_name: target.roleCode, conference_name: target.conferenceName }
+    // sign_in_url: the email worker adds a "Sign in" link to this conference's own page.
+    const data = {
+      full_name: target.fullName,
+      role_name: target.roleCode,
+      conference_name: target.conferenceName,
+      sign_in_url: conferenceSignInUrl(target.conferenceSlug),
+    }
     const subject = template ? renderTemplate(template.subject, data) : `Your ${target.roleCode} request was approved`
     await queueEmail(conn, {
       userId: target.userId,
@@ -135,7 +149,7 @@ export async function approveRoleRequest(actorUserId: string, requestId: string)
       type: 'system',
       title: 'Role request approved',
       body: `You're now approved as ${target.roleCode} for ${target.conferenceName}.`,
-      linkPath: '/login',
+      linkPath: conferenceSignInPath(target.conferenceSlug),
       entityType: 'role_requests',
       entityId: requestId,
     })

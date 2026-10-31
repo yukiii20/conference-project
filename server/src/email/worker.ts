@@ -1,7 +1,7 @@
 import { pool } from '../db/pool.js'
 import { htmlToText, wrapEmailHtml } from './layout.js'
 import { getMailProvider } from './provider.js'
-import { renderHtmlTemplate } from './render.js'
+import { appendSignInLink, renderHtmlTemplate } from './render.js'
 
 const BATCH_SIZE = 20
 const POLL_INTERVAL_MS = 10_000
@@ -88,7 +88,9 @@ async function processRow(row: QueuedEmailRow): Promise<void> {
       row.template_key === 'bulk_email'
         ? await loadBulkEmailBody(row.template_data.bulk_email_id)
         : await loadTemplateBody(row.template_key, row.conference_id)
-    const content = bodyTemplate ? renderHtmlTemplate(bodyTemplate, row.template_data) : `<p>${row.subject}</p>`
+    const content = bodyTemplate
+      ? appendSignInLink(renderHtmlTemplate(bodyTemplate, row.template_data), bodyTemplate, row.template_data)
+      : `<p>${row.subject}</p>`
     const html = wrapEmailHtml(content)
     const text = htmlToText(html)
 

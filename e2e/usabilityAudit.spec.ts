@@ -10,6 +10,7 @@ const FIXTURE = {
   staffEmail: 'e2e-staff@example.com',
   adminEmail: 'e2e-admin@example.com',
   password: 'Str0ng!Pass1',
+  conferenceSlug: 'e2e-conf',
 }
 
 // A 401/403 from an "am I signed in / do I have this permission" probe is
@@ -72,7 +73,7 @@ async function assertNoHorizontalScroll(page: Page, label: string) {
 }
 
 async function signIn(page: Page, email: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(FIXTURE.password)
   await page.locator('#si-role').selectOption(role)

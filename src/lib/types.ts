@@ -22,6 +22,30 @@ export type MyRoleRow = {
   conference_status: string | null
 }
 
+/** The conference a sign-in session is bound to (null for a platform-admin session). */
+export type SessionConference = {
+  id: string
+  slug: string
+  name: string
+  logo_path: string | null
+  primary_color: string | null
+}
+
+/** One row of the "My conferences" switcher (GET /auth/my-conferences). */
+export type MyConferenceEntry = {
+  conference_id: string
+  slug: string
+  name: string
+  logo_path: string | null
+  primary_color: string | null
+  status: string
+  /** Active roles — the conference can be opened from the switcher only when this is non-empty. */
+  roles: string[]
+  /** Roles still waiting for the convenor's approval. */
+  pending_roles: string[]
+  is_current: boolean
+}
+
 export type RoleRequestStatus = 'pending' | 'approved' | 'rejected'
 
 export type MyRoleRequestRow = {

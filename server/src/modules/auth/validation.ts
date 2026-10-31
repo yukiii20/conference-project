@@ -50,6 +50,13 @@ export const passwordSchema = z.string().superRefine((value, ctx) => {
   }
 })
 
+/** A conference named by its slug or its id — every sign-in / sign-up / reset call carries one. */
+export const conferenceRefSchema = z
+  .string({ error: 'Choose a conference.' })
+  .trim()
+  .min(1, 'Choose a conference.')
+  .max(80, 'Choose a conference.')
+
 export const registerSchema = z.object({
   full_name: nameSchema,
   email: emailSchema,
@@ -65,8 +72,31 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
   role: z.enum(LOGIN_ROLE_CODES),
   remember_me: z.boolean().optional().default(true),
+  /** Required: a membership only ever works at its own conference. */
+  conference: conferenceRefSchema,
 })
 export type LoginInput = z.infer<typeof loginSchema>
+
+/** Sign-up at a conference with an email that already has an account — proven with that account's current password. */
+export const joinConferenceSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Enter the password of your existing account.'),
+  requested_role: z.enum(SIGNUP_ROLE_CODES),
+  conference: conferenceRefSchema,
+})
+export type JoinConferenceInput = z.infer<typeof joinConferenceSchema>
+
+/** A signed-in person asking for a role at another conference. */
+export const requestRoleSchema = z.object({
+  requested_role: z.enum(SIGNUP_ROLE_CODES),
+  conference: conferenceRefSchema,
+})
+export type RequestRoleInput = z.infer<typeof requestRoleSchema>
+
+export const switchConferenceSchema = z.object({
+  conference_id: z.string().uuid('Choose a conference.'),
+})
+export type SwitchConferenceInput = z.infer<typeof switchConferenceSchema>
 
 export const adminLoginSchema = z.object({
   email: emailSchema,
@@ -82,6 +112,8 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 
 export const forgotPasswordSchema = z.object({
   email: emailSchema,
+  /** Optional: when the request comes from a conference's own page, the email links back to it. */
+  conference: conferenceRefSchema.optional(),
 })
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
 
@@ -94,6 +126,8 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
 export const acceptInvitationSchema = z.object({
   token: z.string().min(1, 'Invitation token is required.'),
   password: passwordSchema,
+  /** The conference named in the invitation link; the new session is bound to it if the person holds a role there. */
+  conference: conferenceRefSchema.optional(),
 })
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>
 

@@ -256,7 +256,7 @@ describe('platform settings', () => {
 
   it('is forbidden for a non-admin', async () => {
     const userId = await createUser({ email: 'not-admin-settings@example.com', password: 'Str0ng!Pass' })
-    const cookie = await createDirectSession(userId)
+    const cookie = await createDirectSession(userId, await createConference())
     const res = await cookieAgent(cookie).patch('/api/admin/platform-settings').send({
       platform_name: 'Hack',
       support_email: null,

@@ -26,7 +26,7 @@ async function expectNotBlank(page: Page) {
 }
 
 async function signInAsConvenor(page: Page) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(FIXTURE.convenorEmail)
   await page.locator('#si-password').fill(FIXTURE.password)
   await page.locator('#si-role').selectOption('convenor')

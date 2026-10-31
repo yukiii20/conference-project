@@ -4,6 +4,7 @@ import { KeyRound, LogOut, User } from 'lucide-react'
 import { useAuth } from '../lib/authContext'
 import { Avatar } from './Avatar'
 import { NotificationBell } from './NotificationBell'
+import { ConferenceSwitcher } from './ConferenceSwitcher'
 import { LogoMark } from './landing/LandingHeader'
 import { ChevronDownIcon } from './ui/icons'
 import { Icon } from './ui/Icon'
@@ -53,8 +54,9 @@ export function PortalHeader({
 
   async function handleSignOut() {
     setMenuOpen(false)
-    await signOut()
-    navigate('/login')
+    // Back to the page of the conference this session belonged to.
+    const slug = await signOut()
+    navigate(slug ? `/c/${encodeURIComponent(slug)}` : '/')
   }
 
   const displayName = user?.full_name ?? user?.email ?? ''
@@ -76,6 +78,7 @@ export function PortalHeader({
           {roleLabel}
         </span>
         {tools}
+        <ConferenceSwitcher />
         <NotificationBell />
 
         <div ref={menuRef} className="relative">

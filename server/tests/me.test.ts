@@ -6,6 +6,7 @@ import { createApp } from '../src/app.js'
 import { pool } from '../src/db/pool.js'
 import { PUBLIC_DIR, ensureStorageDirs } from '../src/storage/paths.js'
 import {
+  addConferenceMember,
   createConference,
   createRoleRequest,
   createUser,
@@ -31,11 +32,12 @@ describe('PATCH /api/me/profile', () => {
     const conferenceId = await createConference()
     const userId = await createUser({ email: 'person@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
 
     const agent = request.agent(app)
     const login = await agent
       .post('/api/auth/login')
-      .send({ email: 'person@example.com', password: 'Str0ng!Pass', role: 'author' })
+      .send({ email: 'person@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId })
     expect(login.status).toBe(200)
 
     const res = await agent
@@ -55,9 +57,10 @@ describe('PATCH /api/me/profile', () => {
     const conferenceId = await createConference()
     const userId = await createUser({ email: 'phoneperson@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
 
     const agent = request.agent(app)
-    await agent.post('/api/auth/login').send({ email: 'phoneperson@example.com', password: 'Str0ng!Pass', role: 'author' })
+    await agent.post('/api/auth/login').send({ email: 'phoneperson@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId })
 
     const res = await agent.patch('/api/me/profile').send({ phone: '9811111111' })
     expect(res.status).toBe(200)
@@ -71,9 +74,10 @@ describe('PATCH /api/me/profile', () => {
     const conferenceId = await createConference()
     const userId = await createUser({ email: 'badphone@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
 
     const agent = request.agent(app)
-    await agent.post('/api/auth/login').send({ email: 'badphone@example.com', password: 'Str0ng!Pass', role: 'author' })
+    await agent.post('/api/auth/login').send({ email: 'badphone@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId })
 
     const res = await agent.patch('/api/me/profile').send({ phone: '123' })
     expect(res.status).toBe(400)
@@ -84,8 +88,9 @@ describe('profile photo', () => {
   async function loginAsAuthor(email: string, conferenceId: string) {
     const userId = await createUser({ email, password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
     const agent = request.agent(app)
-    const login = await agent.post('/api/auth/login').send({ email, password: 'Str0ng!Pass', role: 'author' })
+    const login = await agent.post('/api/auth/login').send({ email, password: 'Str0ng!Pass', role: 'author', conference: conferenceId })
     expect(login.status).toBe(200)
     return agent
   }

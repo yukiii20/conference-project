@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { publicImageUrl } from '../lib/storage'
 import { formatDateRange, formatKathmandu, formatKathmanduTime, kathmanduDateKey } from '../lib/datetime'
-import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } from '../lib/color'
+import { darken, getAccessibleTextColor, hexToRgba, resolveConferenceBrand } from '../lib/color'
 import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
 import { RegistrationPanel } from './conference/RegistrationPanel'
@@ -75,7 +75,7 @@ export function ConferencePage() {
   const [introDone, setIntroDone] = useState(false)
   const [bannerFailed, setBannerFailed] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
-  const agendaStars = useAgendaStars(conference?.id ?? null)
+  const agendaStars = useAgendaStars(conference?.id ?? null, conference?.slug ?? null)
   const abstractBook = usePublicAbstractBook(conference?.id ?? null)
 
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -274,7 +274,8 @@ export function ConferencePage() {
     )
   }
 
-  const accent = conference.primary_color ?? DEFAULT_CONFERENCE_COLOR
+  // Validated: anything that isn't a #rrggbb hex falls back to the platform default.
+  const accent = resolveConferenceBrand(conference.primary_color).color
   const accentText = getAccessibleTextColor(accent)
   const logoUrl = publicImageUrl(conference.logo_path)
   const bannerUrl = bannerFailed ? null : publicImageUrl(conference.banner_path)
@@ -289,7 +290,9 @@ export function ConferencePage() {
     items: supporters.filter((s) => s.tier === tier),
   })).filter((g) => g.items.length > 0)
 
-  const signupHref = `/signup?conference=${conference.slug}`
+  // This conference's own account pages (a role only works at its own conference).
+  const signupHref = `/c/${encodeURIComponent(conference.slug)}/signup`
+  const loginHref = `/c/${encodeURIComponent(conference.slug)}/login`
 
   const nowMs = Date.now()
   const nextDeadline = deadlines
@@ -313,6 +316,7 @@ export function ConferencePage() {
         accentText={accentText}
         logoUrl={logoUrl}
         signupHref={signupHref}
+        loginHref={loginHref}
         activeSection={activeSection}
         onNavigate={handleNavigate}
       />
@@ -384,7 +388,7 @@ export function ConferencePage() {
                 Register
               </Link>
               <Link
-                to="/login"
+                to={loginHref}
                 style={{ borderColor: heroTextColor, color: heroTextColor }}
                 className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
               >
@@ -708,7 +712,7 @@ export function ConferencePage() {
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Registration</h2>
         <div className="mt-4">
-          <RegistrationPanel conferenceId={conference.id} accent={accent} contactEmail={conference.contact_email} />
+          <RegistrationPanel conferenceId={conference.id} conferenceSlug={conference.slug} accent={accent} contactEmail={conference.contact_email} />
         </div>
       </section>
 

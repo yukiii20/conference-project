@@ -3,7 +3,21 @@ import { pool } from '../db/pool.js'
 import { resolveSessionUser } from '../modules/auth/session.js'
 import { getConferencePermissions, isPlatformAdmin } from '../modules/auth/service.js'
 import { ForbiddenError, UnauthorizedError } from '../utils/errors.js'
+import {
+  assertConferenceInSession,
+  conferenceIdFromPath,
+  getSessionConferenceId,
+  runInSessionScope,
+  wrongConferenceError,
+} from './sessionScope.js'
 
+/**
+ * Resolves the session and opens the per-request session scope (see
+ * sessionScope.ts). For a session bound to a conference, any request to
+ * `/api/conferences/<another conference id>/...` is refused right here with
+ * 403 — that single check covers every conference-scoped router, whatever
+ * guard (or none) the individual route adds after this.
+ */
 export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
     const user = await resolveSessionUser(req)
@@ -12,10 +26,30 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       return
     }
     req.user = user
-    next()
+
+    if (user.conferenceId) {
+      const pathConferenceId = conferenceIdFromPath(req)
+      if (pathConferenceId && pathConferenceId !== user.conferenceId) {
+        next(wrongConferenceError())
+        return
+      }
+    }
+
+    runInSessionScope({ userId: user.id, conferenceId: user.conferenceId }, () => next())
   } catch (err) {
     next(err)
   }
+}
+
+/**
+ * Platform-admin powers only ever come from an admin session (the
+ * /super-admin/login sign-in, never bound to a conference). An admin account
+ * that signed in at a conference's own page is treated like any other member
+ * of that conference.
+ */
+async function hasAdminPowers(userId: string): Promise<boolean> {
+  if (getSessionConferenceId()) return false
+  return isPlatformAdmin(userId)
 }
 
 export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
@@ -25,7 +59,7 @@ export function requireAdmin(req: Request, _res: Response, next: NextFunction): 
       return
     }
     try {
-      const admin = await isPlatformAdmin(req.user!.id)
+      const admin = await hasAdminPowers(req.user!.id)
       if (!admin) {
         next(new ForbiddenError('Administrator access required.'))
         return
@@ -72,12 +106,18 @@ export function requireConferencePermission(
   }
 }
 
+/**
+ * The one permission check every route and service uses. Refuses (403) any
+ * conference other than the one the current session is bound to, before
+ * looking at roles at all — so a membership elsewhere can never be used here.
+ */
 export async function assertConferencePermission(
   userId: string,
   conferenceId: string,
   permission: string,
 ): Promise<void> {
-  if (await isPlatformAdmin(userId)) return
+  assertConferenceInSession(conferenceId)
+  if (await hasAdminPowers(userId)) return
   const permissions = await getConferencePermissions(userId, conferenceId)
   if (!permissions.has(permission)) {
     throw new ForbiddenError('You do not have permission to do this.')
@@ -101,7 +141,8 @@ export function requireConferenceRole(
         return
       }
       try {
-        if (await isPlatformAdmin(req.user!.id)) {
+        assertConferenceInSession(conferenceId)
+        if (await hasAdminPowers(req.user!.id)) {
           next()
           return
         }

@@ -11,6 +11,7 @@ import {
   mapDatabaseError,
 } from '../../utils/errors.js'
 import { notifyUser } from '../../utils/notifications.js'
+import { assertConferenceInSession } from '../../middleware/sessionScope.js'
 import type { AddAuthorInput, CreateSubmissionInput, UpdateAuthorInput, UpdateSubmissionInput } from './validation.js'
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,7 @@ export async function getConferenceSettings(conferenceId: string): Promise<Confe
 }
 
 export async function assertActiveMember(userId: string, conferenceId: string): Promise<void> {
+  assertConferenceInSession(conferenceId)
   const [rows] = await pool.query(
     `SELECT 1 FROM conference_members WHERE user_id = ? AND conference_id = ? AND status = 'active' LIMIT 1`,
     [userId, conferenceId],
@@ -57,6 +59,7 @@ export async function assertActiveMember(userId: string, conferenceId: string): 
 }
 
 export async function assertActiveAuthorMember(userId: string, conferenceId: string): Promise<void> {
+  assertConferenceInSession(conferenceId)
   const [rows] = await pool.query(
     `SELECT 1 FROM conference_members WHERE user_id = ? AND conference_id = ? AND role_code = 'author' AND status = 'active' LIMIT 1`,
     [userId, conferenceId],
@@ -271,6 +274,9 @@ export async function loadSubmissionCore(submissionId: string, conn: PoolConnect
   )
   const row = (rows as SubmissionCoreRow[])[0]
   if (!row) throw new NotFoundError('This submission does not exist.')
+  // Every submission-by-id route (author, files, bids, ...) loads through
+  // here: a session bound to another conference is refused centrally.
+  assertConferenceInSession(row.conference_id)
   return row
 }
 

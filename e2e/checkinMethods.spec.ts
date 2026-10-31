@@ -12,7 +12,7 @@ function randomLetters(n: number): string {
 }
 
 async function signIn(page: Page, email: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(FIXTURE.password)
   await page.locator('#si-role').selectOption(role)
@@ -25,7 +25,7 @@ async function signIn(page: Page, email: string, role: string) {
 async function signUpAndRegister(page: Page, fullName: string): Promise<{ email: string; registrationNumber: string }> {
   const email = `e2e-checkin-${Date.now()}-${randomLetters(4)}@example.com`
 
-  await page.goto(`/signup?conference=${FIXTURE.conferenceSlug}`)
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/signup`)
   await page.getByRole('button', { name: 'Author', exact: true }).click()
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.locator('#su-full_name').fill(fullName)

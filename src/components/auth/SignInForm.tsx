@@ -4,30 +4,35 @@ import { api, ApiError } from '../../lib/api'
 import { LOGIN_ROLE_CODES, getRoleDefinition } from '../../lib/roles'
 import { loginSchema } from '../../lib/validation'
 import { prefetchPortalChunk } from '../../lib/prefetch'
+import { useAuth } from '../../lib/authContext'
 import { Alert, Button, Checkbox, FormField, Input, PasswordInput, Select } from '../ui'
 
+/** Refusals that only appear after a correct password, and get their own treatment below. */
+type Refusal = { code: string; message: string }
+
 /**
- * The sign-in form body (no page chrome). Used standalone on /login and
- * embedded in the conference page's side card — same approval logic either
- * way, so it lives in exactly one place.
+ * The sign-in form body (no page chrome) for ONE conference. A membership only
+ * works at its own conference, so the form always sends that conference to
+ * POST /auth/login and the server checks the role there.
  */
-export function SignInForm({ conferenceSlug }: { conferenceSlug?: string }) {
+export function SignInForm({ conferenceSlug }: { conferenceSlug: string }) {
   const navigate = useNavigate()
+  const { refresh } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('')
   const [rememberMe, setRememberMeState] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [refusal, setRefusal] = useState<Refusal | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  function portalUrl(path: string) {
-    return conferenceSlug ? `${path}?conference=${conferenceSlug}` : path
-  }
+  const encodedSlug = encodeURIComponent(conferenceSlug)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setFormError(null)
+    setRefusal(null)
 
     const parsed = loginSchema.safeParse({ email, password, role })
     if (!parsed.success) {
@@ -50,13 +55,19 @@ export function SignInForm({ conferenceSlug }: { conferenceSlug?: string }) {
         password: parsed.data.password,
         role: parsed.data.role,
         remember_me: rememberMe,
+        conference: conferenceSlug,
       })
+      await refresh()
       setSubmitting(false)
       const path = getRoleDefinition(parsed.data.role)?.path
       prefetchPortalChunk(path)
-      navigate(path ? portalUrl(path) : '/')
+      navigate(path ? `${path}?conference=${encodedSlug}` : '/')
     } catch (err) {
       setSubmitting(false)
+      if (err instanceof ApiError && err.code && ['no_role_at_conference', 'pending_approval', 'request_rejected', 'role_not_held'].includes(err.code)) {
+        setRefusal({ code: err.code, message: err.message })
+        return
+      }
       setFormError(err instanceof ApiError ? err.message : "Can't reach the server. Check your connection.")
     }
   }
@@ -65,16 +76,37 @@ export function SignInForm({ conferenceSlug }: { conferenceSlug?: string }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
+      {refusal ? (
+        <Alert variant={refusal.code === 'pending_approval' ? 'info' : refusal.code === 'request_rejected' ? 'danger' : 'warning'}>
+          <p>{refusal.message}</p>
+          {refusal.code === 'no_role_at_conference' || refusal.code === 'role_not_held' ? (
+            <Link
+              to={`/c/${encodedSlug}/signup`}
+              className="mt-3 inline-flex min-h-9 items-center rounded-lg bg-button px-3 text-sm font-medium text-white hover:bg-button-hover"
+            >
+              Request a role for this conference
+            </Link>
+          ) : null}
+        </Alert>
+      ) : null}
+
       <FormField label="Email" htmlFor="si-email" error={errors.email}>
-        <Input id="si-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={Boolean(errors.email)} />
+        <Input
+          id="si-email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={Boolean(errors.email)}
+        />
       </FormField>
 
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <label htmlFor="si-password" className="block text-sm font-medium text-text">
             Password
           </label>
-          <Link to="/forgot-password" className="text-sm text-brand underline">
+          <Link to={`/c/${encodedSlug}/forgot-password`} className="conference-link text-sm text-brand underline">
             Forgotten your password?
           </Link>
         </div>
@@ -104,11 +136,7 @@ export function SignInForm({ conferenceSlug }: { conferenceSlug?: string }) {
         </Select>
       </FormField>
 
-      <Checkbox
-        label="Remember me"
-        checked={rememberMe}
-        onChange={(e) => setRememberMeState(e.target.checked)}
-      />
+      <Checkbox label="Remember me" checked={rememberMe} onChange={(e) => setRememberMeState(e.target.checked)} />
 
       <Button type="submit" loading={submitting} className="w-full">
         {submitting ? 'Signing in…' : 'Sign in'}

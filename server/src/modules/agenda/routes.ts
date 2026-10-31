@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.js'
+import { keepBoundConferenceRows } from '../../middleware/sessionScope.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import {
   feedIcsByToken,
@@ -18,7 +19,8 @@ export const agendaRouter = Router()
 
 agendaRouter.get('/me/agenda-conferences', requireAuth, async (req, res, next) => {
   try {
-    res.json({ conferences: await listAgendaConferences(req.user!.id) })
+    const conferences = await listAgendaConferences(req.user!.id)
+    res.json({ conferences: keepBoundConferenceRows(conferences, (c) => c.id) })
   } catch (err) {
     next(err)
   }

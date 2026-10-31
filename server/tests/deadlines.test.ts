@@ -28,7 +28,7 @@ async function loginAsConvenor(conferenceId: string, email: string) {
   const userId = await createUser({ email, password: 'Str0ng!Pass' })
   await addConferenceMember(conferenceId, userId, 'convenor')
   const agent = request.agent(app)
-  const login = await agent.post('/api/auth/login').send({ email, password: 'Str0ng!Pass', role: 'convenor' })
+  const login = await agent.post('/api/auth/login').send({ email, password: 'Str0ng!Pass', role: 'convenor', conference: conferenceId })
   expect(login.status).toBe(200)
   return agent
 }

@@ -35,7 +35,7 @@ function cookieAgent(cookie: string) {
 async function loginAs(conferenceId: string, email: string, role: string) {
   const userId = await createUser({ email, password: 'Str0ng!Pass' })
   if (conferenceId) await addConferenceMember(conferenceId, userId, role)
-  const cookie = await createDirectSession(userId)
+  const cookie = await createDirectSession(userId, conferenceId || undefined)
   return { agent: cookieAgent(cookie), userId }
 }
 
@@ -514,7 +514,7 @@ describe('personal views', () => {
       .post(`/api/conferences/${conferenceId}/sessions/${session.body.id}/presentations/papers`)
       .send({ submission_id: submissionId })
 
-    const authorCookie = await createDirectSession(authorUserId)
+    const authorCookie = await createDirectSession(authorUserId, conferenceId)
     const res = await cookieAgent(authorCookie).get(`/api/conferences/${conferenceId}/my-presentations`)
     expect(res.status).toBe(200)
     expect(res.body.presentations).toHaveLength(1)

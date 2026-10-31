@@ -1,11 +1,14 @@
 export class AppError extends Error {
   statusCode: number
   fields?: Record<string, string>
+  /** Optional machine-readable reason (e.g. 'no_role_at_conference') so the frontend can offer the right next step without parsing the message. */
+  code?: string
 
-  constructor(statusCode: number, message: string, fields?: Record<string, string>) {
+  constructor(statusCode: number, message: string, fields?: Record<string, string>, code?: string) {
     super(message)
     this.statusCode = statusCode
     this.fields = fields
+    this.code = code
   }
 }
 

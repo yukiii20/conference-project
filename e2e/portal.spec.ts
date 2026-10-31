@@ -41,7 +41,7 @@ async function expectNotBlank(page: Page) {
 }
 
 async function signIn(page: Page, email: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(FIXTURE.password)
   await page.locator('#si-role').selectOption(role)
@@ -143,7 +143,7 @@ test('author registers to attend from My ticket, staff checks them in, convenor 
   const email = `e2e-portal-author-${stamp}@example.com`
   const fullName = `Portal Cert Author ${randomLetters(8)}`
 
-  await page.goto(`/signup?conference=${FIXTURE.conferenceSlug}`)
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/signup`)
   await page.getByRole('button', { name: 'Author', exact: true }).click()
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.locator('#su-full_name').fill(fullName)

@@ -4,10 +4,11 @@ import { expect, test } from '@playwright/test'
 const FIXTURE = {
   convenorEmail: 'e2e-convenor@example.com',
   password: 'Str0ng!Pass1',
+  conferenceSlug: 'e2e-conf',
 }
 
 test('convenor composes a bulk email, previews it, sends a test, and sends it for real (console mode)', async ({ page }) => {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(FIXTURE.convenorEmail)
   await page.locator('#si-password').fill(FIXTURE.password)
   await page.locator('#si-role').selectOption('convenor')

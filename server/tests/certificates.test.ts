@@ -37,7 +37,7 @@ function cookieAgent(cookie: string) {
 async function loginAs(conferenceId: string, email: string, role: string) {
   const userId = await createUser({ email, password: 'Str0ng!Pass' })
   if (conferenceId) await addConferenceMember(conferenceId, userId, role)
-  const cookie = await createDirectSession(userId)
+  const cookie = await createDirectSession(userId, conferenceId || undefined)
   return { agent: cookieAgent(cookie), userId }
 }
 
@@ -194,7 +194,7 @@ describe('certificate download and verification', () => {
     const { agent: convenorAgent } = await loginAs(conferenceId, 'release-convenor@example.com', 'convenor')
     const attendee = await createUser({ email: 'dl-attendee@example.com', password: 'Str0ng!Pass' })
     const cert = await issueParticipationCertificate(conferenceId, attendee, convenorAgent)
-    const cookie = await createDirectSession(attendee)
+    const cookie = await createDirectSession(attendee, conferenceId)
     const agent = cookieAgent(cookie)
 
     const beforeRelease = await agent.get(`/api/conferences/${conferenceId}/certificates/${cert.id}/download`)
@@ -271,8 +271,8 @@ describe('certificate download and verification', () => {
   })
 })
 
-describe('GET /me/certificates (cross-conference)', () => {
-  it('only lists released certificates, shows revoked ones, never another user\'s, across every conference', async () => {
+describe('GET /me/certificates (scoped to the signed-in conference)', () => {
+  it('only lists released certificates, of the session conference only, shows revoked ones, never another user\'s, across every conference', async () => {
     const conferenceA = await createConference()
     const conferenceB = await createConference()
     await upsertConferenceSettings(conferenceA)
@@ -293,7 +293,13 @@ describe('GET /me/certificates (cross-conference)', () => {
     await convenorB.post(`/api/conferences/${conferenceB}/certificates/generate`).send({ certificate_type: 'participation' })
     await convenorB.post(`/api/conferences/${conferenceB}/certificates/release-now`)
 
-    const attendeeCookie = await createDirectSession(attendee)
+    // Signed in at conference A, nothing from B is visible (and A's isn't released).
+    const attendeeAtA = cookieAgent(await createDirectSession(attendee, conferenceA))
+    const mineAtA = await attendeeAtA.get('/api/me/certificates')
+    expect(mineAtA.status).toBe(200)
+    expect(mineAtA.body.certificates).toHaveLength(0)
+
+    const attendeeCookie = await createDirectSession(attendee, conferenceB)
     const attendeeAgent = cookieAgent(attendeeCookie)
     const mine = await attendeeAgent.get('/api/me/certificates')
     expect(mine.status).toBe(200)
@@ -310,7 +316,7 @@ describe('GET /me/certificates (cross-conference)', () => {
     expect(afterRevoke.body.certificates[0].status).toBe('revoked')
 
     // A different user never sees the attendee's certificates.
-    const strangerCookie = await createDirectSession(stranger)
+    const strangerCookie = await createDirectSession(stranger, conferenceB)
     const strangerAgent = cookieAgent(strangerCookie)
     const strangerView = await strangerAgent.get('/api/me/certificates')
     expect(strangerView.body.certificates).toHaveLength(0)

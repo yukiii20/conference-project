@@ -5,6 +5,7 @@ import { validateBody } from '../../middleware/validate.js'
 import { buildPublicPath, deletePublicFile, savePublicFile } from '../../storage/fileStore.js'
 import { imageUpload, processImage } from '../../storage/imageUpload.js'
 import { BadRequestError } from '../../utils/errors.js'
+import { keepBoundConferenceRows } from '../../middleware/sessionScope.js'
 import {
   getMyProfile,
   listMyNotifications,
@@ -93,7 +94,8 @@ meRouter.post('/notifications/read-all', requireAuth, async (req, res, next) => 
 
 meRouter.get('/chair-sessions', requireAuth, async (req, res, next) => {
   try {
-    res.json({ sessions: await listMyChairSessions(req.user!.id) })
+    const sessions = await listMyChairSessions(req.user!.id)
+    res.json({ sessions: keepBoundConferenceRows(sessions, (s) => s.conference_id) })
   } catch (err) {
     next(err)
   }
@@ -101,7 +103,8 @@ meRouter.get('/chair-sessions', requireAuth, async (req, res, next) => {
 
 meRouter.get('/certificates', requireAuth, async (req, res, next) => {
   try {
-    res.json({ certificates: await listMyCertificatesEverywhere(req.user!.id) })
+    const certificates = await listMyCertificatesEverywhere(req.user!.id)
+    res.json({ certificates: keepBoundConferenceRows(certificates, (c) => c.conference_id) })
   } catch (err) {
     next(err)
   }

@@ -3,6 +3,7 @@ import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { insertAuditLog } from '../../utils/audit.js'
 import { NotFoundError } from '../../utils/errors.js'
+import { getSessionConferenceId } from '../../middleware/sessionScope.js'
 import type { UpdateProfileInput } from '../auth/validation.js'
 import type { UpdateMyProfileInput } from './validation.js'
 
@@ -90,26 +91,40 @@ export type NotificationRow = {
   created_at: string
 }
 
+/**
+ * Notifications visible to a session: its own conference's, plus ones tied
+ * to no conference at all (account-level). A conference-bound session never
+ * sees another conference's notifications. Unbound (admin) sessions see all.
+ */
+function notificationScope(): { clause: string; params: unknown[] } {
+  const bound = getSessionConferenceId()
+  if (!bound) return { clause: '', params: [] }
+  return { clause: 'AND (conference_id IS NULL OR conference_id = ?)', params: [bound] }
+}
+
 export async function listMyNotifications(userId: string, unreadOnly: boolean): Promise<NotificationRow[]> {
   const unreadClause = unreadOnly ? 'AND read_at IS NULL' : ''
+  const scope = notificationScope()
   const [rows] = await pool.query(
     `SELECT id, conference_id, type, title, body, link_path, read_at, created_at
-     FROM notifications WHERE user_id = ? ${unreadClause}
+     FROM notifications WHERE user_id = ? ${unreadClause} ${scope.clause}
      ORDER BY created_at DESC LIMIT 50`,
-    [userId],
+    [userId, ...scope.params],
   )
   return rows as NotificationRow[]
 }
 
 export async function markNotificationRead(userId: string, notificationId: string): Promise<void> {
+  const scope = notificationScope()
   const [result] = await pool.query(
-    `UPDATE notifications SET read_at = NOW(3) WHERE id = ? AND user_id = ? AND read_at IS NULL`,
-    [notificationId, userId],
+    `UPDATE notifications SET read_at = NOW(3) WHERE id = ? AND user_id = ? AND read_at IS NULL ${scope.clause}`,
+    [notificationId, userId, ...scope.params],
   )
   if ((result as { affectedRows: number }).affectedRows === 0) {
-    const [existsRows] = await pool.query('SELECT 1 FROM notifications WHERE id = ? AND user_id = ? LIMIT 1', [
+    const [existsRows] = await pool.query(`SELECT 1 FROM notifications WHERE id = ? AND user_id = ? ${scope.clause} LIMIT 1`, [
       notificationId,
       userId,
+      ...scope.params,
     ])
     if ((existsRows as unknown[]).length === 0) {
       throw new NotFoundError('This notification does not exist.')
@@ -119,5 +134,9 @@ export async function markNotificationRead(userId: string, notificationId: strin
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  await pool.query(`UPDATE notifications SET read_at = NOW(3) WHERE user_id = ? AND read_at IS NULL`, [userId])
+  const scope = notificationScope()
+  await pool.query(`UPDATE notifications SET read_at = NOW(3) WHERE user_id = ? AND read_at IS NULL ${scope.clause}`, [
+    userId,
+    ...scope.params,
+  ])
 }

@@ -10,9 +10,9 @@ const EMPTY: AgendaSnapshot = { starred: new Set(), automatic: new Set() }
 
 /**
  * Star state for the public programme. Signed-out visitors see empty stars;
- * tapping one sends them to sign in (stars are saved per account).
+ * tapping one sends them to this conference's sign-in page (stars are saved per account).
  */
-export function useAgendaStars(conferenceId: string | null) {
+export function useAgendaStars(conferenceId: string | null, conferenceSlug: string | null = null) {
   const { user } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
@@ -45,7 +45,7 @@ export function useAgendaStars(conferenceId: string | null) {
     if (!conferenceId) return
     if (!user) {
       showToast('Sign in to build your agenda.', 'info')
-      navigate('/login')
+      navigate(conferenceSlug ? `/c/${encodeURIComponent(conferenceSlug)}/login` : '/login')
       return
     }
     const isStarred = snapshot.starred.has(sessionId)

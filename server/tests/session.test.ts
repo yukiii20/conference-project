@@ -38,11 +38,12 @@ describe('POST /api/auth/logout', () => {
     const conferenceId = await createConference()
     const userId = await createUser({ email: 'logout@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
 
     const agent = request.agent(app)
     const login = await agent
       .post('/api/auth/login')
-      .send({ email: 'logout@example.com', password: 'Str0ng!Pass', role: 'author' })
+      .send({ email: 'logout@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId })
     expect(login.status).toBe(200)
 
     const meBefore = await agent.get('/api/auth/me')
@@ -68,10 +69,11 @@ describe('session cookie attributes', () => {
     const conferenceId = await createConference()
     const userId = await createUser({ email: 'cookie1@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
 
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'cookie1@example.com', password: 'Str0ng!Pass', role: 'author', remember_me: false })
+      .send({ email: 'cookie1@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId, remember_me: false })
     expect(res.status).toBe(200)
 
     const cookie = setCookieString(res)
@@ -87,10 +89,11 @@ describe('session cookie attributes', () => {
     const conferenceId = await createConference()
     const userId = await createUser({ email: 'cookie2@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
 
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'cookie2@example.com', password: 'Str0ng!Pass', role: 'author', remember_me: true })
+      .send({ email: 'cookie2@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId, remember_me: true })
     expect(res.status).toBe(200)
 
     const cookie = setCookieString(res)
@@ -154,9 +157,10 @@ describe('authorization boundaries', () => {
     const conferenceId = await createConference()
     const userId = await createUser({ email: 'plain-session@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(userId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, userId, 'author')
 
     const agent = request.agent(app)
-    await agent.post('/api/auth/login').send({ email: 'plain-session@example.com', password: 'Str0ng!Pass', role: 'author' })
+    await agent.post('/api/auth/login').send({ email: 'plain-session@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId })
 
     const res = await agent.get('/api/admin/conferences')
     expect(res.status).toBe(403)
@@ -166,9 +170,10 @@ describe('authorization boundaries', () => {
     const conferenceId = await createConference()
     const authorId = await createUser({ email: 'author-only@example.com', password: 'Str0ng!Pass' })
     await createRoleRequest(authorId, conferenceId, 'author', 'approved')
+    await addConferenceMember(conferenceId, authorId, 'author')
 
     const agent = request.agent(app)
-    await agent.post('/api/auth/login').send({ email: 'author-only@example.com', password: 'Str0ng!Pass', role: 'author' })
+    await agent.post('/api/auth/login').send({ email: 'author-only@example.com', password: 'Str0ng!Pass', role: 'author', conference: conferenceId })
 
     const res = await agent.patch(`/api/conferences/${conferenceId}`).send({ name: 'Hijacked' })
     expect(res.status).toBe(403)
