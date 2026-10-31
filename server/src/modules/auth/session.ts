@@ -17,6 +17,11 @@ export type SessionUser = {
   status: 'active' | 'suspended' | 'deactivated'
   isAdminSession: boolean
   sessionId: string
+  /**
+   * The conference this session was signed in at (see middleware/sessionScope.ts).
+   * Always set for a normal sign-in; null only for a platform admin session.
+   */
+  conferenceId: string | null
 }
 
 declare global {
@@ -32,6 +37,8 @@ type CreateSessionInput = {
   userId: string
   rememberMe: boolean
   isAdminSession: boolean
+  /** Required for every non-admin session; admin sessions are never bound to a conference. */
+  conferenceId: string | null
   userAgent?: string | null
   ipAddress?: string | null
 }
@@ -44,14 +51,28 @@ export async function createSession(
 ): Promise<void> {
   const token = generateToken()
   const tokenHash = sha256(token)
+  const conferenceId = input.isAdminSession ? null : input.conferenceId
+  if (!input.isAdminSession && !conferenceId) {
+    // Never mint an unscoped non-admin session — it would see every conference.
+    throw new Error('A non-admin session must be bound to a conference.')
+  }
   const rememberMe = input.isAdminSession ? false : input.rememberMe
   const ttlMs = input.isAdminSession ? ADMIN_IDLE_MS : rememberMe ? REMEMBER_ME_MS : DEFAULT_SESSION_MS
   const expiresAt = new Date(Date.now() + ttlMs)
 
   await conn.query(
-    `INSERT INTO auth_sessions (user_id, token_hash, remember_me, is_admin_session, user_agent, ip_address, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [input.userId, tokenHash, rememberMe, input.isAdminSession, input.userAgent ?? null, input.ipAddress ?? null, expiresAt],
+    `INSERT INTO auth_sessions (user_id, token_hash, remember_me, is_admin_session, conference_id, user_agent, ip_address, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      input.userId,
+      tokenHash,
+      rememberMe,
+      input.isAdminSession,
+      conferenceId,
+      input.userAgent ?? null,
+      input.ipAddress ?? null,
+      expiresAt,
+    ],
   )
 
   res.cookie(SESSION_COOKIE, token, {
@@ -86,10 +107,11 @@ export async function resolveSessionUser(req: Request): Promise<SessionUser | nu
 
   const tokenHash = sha256(token)
   const [rows] = await pool.query(
-    `SELECT s.id AS session_id, s.user_id, s.remember_me, s.is_admin_session, s.last_seen_at, s.expires_at,
-            u.email, u.full_name, u.status
+    `SELECT s.id AS session_id, s.user_id, s.remember_me, s.is_admin_session, s.conference_id, s.last_seen_at, s.expires_at,
+            u.email, u.full_name, u.status, c.id AS bound_conference_id
      FROM auth_sessions s
      JOIN users u ON u.id = s.user_id
+     LEFT JOIN conferences c ON c.id = s.conference_id AND c.deleted_at IS NULL
      WHERE s.token_hash = ? AND s.revoked_at IS NULL
      LIMIT 1`,
     [tokenHash],
@@ -98,6 +120,14 @@ export async function resolveSessionUser(req: Request): Promise<SessionUser | nu
   if (!row) return null
 
   const now = Date.now()
+
+  // A non-admin session must be bound to a (still existing) conference.
+  // Sessions created before sessions were scoped have conference_id NULL —
+  // they simply end here and the person signs in again at their conference.
+  if (!row.is_admin_session && (!row.conference_id || !row.bound_conference_id)) {
+    await pool.query('UPDATE auth_sessions SET revoked_at = NOW(3) WHERE id = ?', [row.session_id])
+    return null
+  }
 
   if (row.is_admin_session) {
     const lastSeen = new Date(row.last_seen_at).getTime()
@@ -128,6 +158,7 @@ export async function resolveSessionUser(req: Request): Promise<SessionUser | nu
     status: row.status,
     isAdminSession: Boolean(row.is_admin_session),
     sessionId: row.session_id,
+    conferenceId: row.is_admin_session ? null : (row.conference_id as string),
   }
 }
 

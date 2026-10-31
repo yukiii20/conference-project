@@ -29,10 +29,13 @@ const STATUS_NOTE: Record<MyRegistration['status'], string> = {
 
 export function RegistrationPanel({
   conferenceId,
+  conferenceSlug,
   accent,
   contactEmail,
 }: {
   conferenceId: string
+  /** Sends a signed-out visitor to THIS conference's sign-in page. */
+  conferenceSlug?: string | null
   accent: string
   /** Shown as a "who to contact" line while a registration is pending — omitted (not every caller has it) just drops that line. */
   contactEmail?: string | null
@@ -116,7 +119,11 @@ export function RegistrationPanel({
   if (!user) {
     return (
       <div className="rounded-lg border border-dashed border-line bg-white px-4 py-6 text-sm text-ink/70">
-        <Link to="/login" style={{ color: accent }} className="font-medium underline">
+        <Link
+          to={conferenceSlug ? `/c/${encodeURIComponent(conferenceSlug)}/login` : '/login'}
+          style={{ color: accent }}
+          className="font-medium underline"
+        >
           Sign in
         </Link>{' '}
         to register to attend this conference.

@@ -66,6 +66,7 @@ describe('A1 author form', () => {
     const conferenceId = await createConference()
     await createTrack(conferenceId, 'Active track', true)
     await createTrack(conferenceId, 'Inactive track', false)
+    await pool.query('UPDATE conferences SET submission_guidelines = ? WHERE id = ?', ['Use the **template**.', conferenceId])
     const { agent } = await loginAsAuthor(conferenceId, 'author-form@example.com')
 
     const res = await agent.get(`/api/conferences/${conferenceId}/author-form`)
@@ -73,6 +74,7 @@ describe('A1 author form', () => {
     expect(res.body.tracks).toHaveLength(1)
     expect(res.body.tracks[0].name).toBe('Active track')
     expect(res.body.settings.max_abstract_words).toBe(300)
+    expect(res.body.submission_guidelines).toBe('Use the **template**.')
   })
 
   it('is forbidden for a non-member', async () => {

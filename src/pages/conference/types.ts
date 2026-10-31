@@ -22,6 +22,9 @@ export type Conference = {
   contact_email: string | null
   contact_phone: string | null
   website_url: string | null
+  /** Convenor-written Markdown; only on the single-conference response, not the public list. */
+  welcome_text?: string | null
+  submission_guidelines?: string | null
 }
 
 export type Track = { id: string; name: string; description: string | null }

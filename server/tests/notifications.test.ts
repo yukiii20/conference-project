@@ -4,12 +4,14 @@ import { createApp } from '../src/app.js'
 import { pool } from '../src/db/pool.js'
 import { withTransaction } from '../src/db/withTransaction.js'
 import { notifyUser } from '../src/utils/notifications.js'
-import { createDirectSession, createUser, resetDatabase } from './helpers.js'
+import { createConference, createDirectSession, createUser, resetDatabase } from './helpers.js'
 
 const app = createApp()
 
 beforeEach(async () => {
   await resetDatabase()
+  // Every normal session is bound to a conference; these tests use the one conference.
+  await createConference()
 })
 
 afterAll(async () => {

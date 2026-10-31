@@ -21,7 +21,13 @@ function isMysqlError(err: unknown): err is MysqlError {
  */
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ error: { message: err.message, ...(err.fields ? { fields: err.fields } : {}) } })
+    res.status(err.statusCode).json({
+      error: {
+        message: err.message,
+        ...(err.fields ? { fields: err.fields } : {}),
+        ...(err.code ? { code: err.code } : {}),
+      },
+    })
     return
   }
 

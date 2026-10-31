@@ -29,7 +29,7 @@ async function loginAsConvenor(conferenceId: string, email: string) {
   const userId = await createUser({ email, password: 'Str0ng!Pass' })
   await addConferenceMember(conferenceId, userId, 'convenor')
   const agent = request.agent(app)
-  const login = await agent.post('/api/auth/login').send({ email, password: 'Str0ng!Pass', role: 'convenor' })
+  const login = await agent.post('/api/auth/login').send({ email, password: 'Str0ng!Pass', role: 'convenor', conference: conferenceId })
   expect(login.status).toBe(200)
   return agent
 }
@@ -99,5 +99,27 @@ describe('logo upload validation', () => {
       .post(`/api/conferences/${conferenceId}/logo`)
       .attach('file', oversizedBuffer(3 * 1024 * 1024), 'logo.png')
     expect(res.status).toBe(400)
+  })
+})
+
+describe('welcome text and submission guidelines', () => {
+  it('are returned on the public conference page, but not in the public list', async () => {
+    const conferenceId = await createConference({ slug: 'texts-conf' })
+    await pool.query('UPDATE conferences SET welcome_text = ?, submission_guidelines = ? WHERE id = ?', [
+      'Welcome **all**',
+      '## How to submit\n- One abstract',
+      conferenceId,
+    ])
+
+    const page = await request(app).get('/api/conferences/texts-conf')
+    expect(page.status).toBe(200)
+    expect(page.body.conference.welcome_text).toBe('Welcome **all**')
+    expect(page.body.conference.submission_guidelines).toBe('## How to submit\n- One abstract')
+
+    const list = await request(app).get('/api/conferences/public')
+    expect(list.status).toBe(200)
+    const listed = (list.body.conferences as Array<Record<string, unknown>>).find((c) => c.id === conferenceId)!
+    expect(listed).toBeTruthy()
+    expect(listed).not.toHaveProperty('submission_guidelines')
   })
 })

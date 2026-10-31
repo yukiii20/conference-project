@@ -29,6 +29,8 @@ type ConferenceNavProps = {
   accentText: string
   logoUrl: string | null
   signupHref: string
+  /** This conference's own sign-in page (/c/:slug/login). */
+  loginHref: string
   activeSection: string
   onNavigate: (id: SectionId) => void
 }
@@ -365,7 +367,7 @@ function NavItem({
 }
 
 export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(function ConferenceNav(
-  { conference, tracks, supporters, schedule, deadlines, accent, accentText, logoUrl, signupHref, activeSection, onNavigate },
+  { conference, tracks, supporters, schedule, deadlines, accent, accentText, logoUrl, signupHref, loginHref, activeSection, onNavigate },
   ref,
 ) {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -482,7 +484,7 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
               registerTrigger={registerTrigger}
             />
           ))}
-          <Link to="/login" className="rounded-lg border border-border-soft px-3 py-1.5 hover:bg-page-bg">
+          <Link to={loginHref} className="rounded-lg border border-border-soft px-3 py-1.5 hover:bg-page-bg">
             Sign in
           </Link>
           <Link
@@ -539,7 +541,7 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
               ))}
               <div className="mt-2 flex gap-2 border-t border-line pt-3">
                 <Link
-                  to="/login"
+                  to={loginHref}
                   onClick={() => setMobileOpen(false)}
                   className="flex-1 rounded-md border border-line px-3 py-2 text-center text-sm"
                 >

@@ -19,6 +19,10 @@ type Props =
 export function ProtectedRoute(props: Props) {
   const { refresh } = useAuth()
   const [state, setState] = useState<'checking' | 'ok' | 'denied'>('checking')
+  // Where a refused visitor goes: the sign-in page of the conference their
+  // session belongs to (a membership only works at its own conference), or the
+  // "choose your conference" page when there's no session at all.
+  const [deniedTo, setDeniedTo] = useState('/login')
   const roleKey = props.kind === 'role' ? props.role : props.kind === 'convenor' ? 'convenor' : null
 
   useEffect(() => {
@@ -29,6 +33,7 @@ export function ProtectedRoute(props: Props) {
       const data = await refresh()
       if (cancelled) return
       const ok = roleKey === null ? Boolean(data?.user) : (data?.roles.some((r) => r.role_code === roleKey) ?? false)
+      if (!ok) setDeniedTo(data?.conference ? `/c/${encodeURIComponent(data.conference.slug)}/login` : '/login')
       setState(ok ? 'ok' : 'denied')
     }
 
@@ -43,7 +48,7 @@ export function ProtectedRoute(props: Props) {
   }
 
   if (state === 'denied') {
-    return <Navigate to="/login" replace />
+    return <Navigate to={deniedTo} replace />
   }
 
   return <>{props.children}</>

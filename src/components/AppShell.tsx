@@ -1,8 +1,20 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Search, X } from 'lucide-react'
 import { PortalHeader } from './PortalHeader'
 import { LogoMark } from './landing/LandingHeader'
+import { CommandPalette, isTypingTarget, type SearchItem } from './CommandPalette'
+import { HelpMenu } from './HelpMenu'
+import { Tooltip } from './ui/Tooltip'
+import { useMediaQuery } from './ui/Popover'
+
+export type { SearchItem } from './CommandPalette'
+
+/** Account destinations every signed-in workspace can jump to. */
+const ACCOUNT_SEARCH_ITEMS: SearchItem[] = [
+  { id: 'account-profile', label: 'Profile', group: 'Account', to: '/profile', keywords: ['photo', 'name', 'orcid', 'institution'] },
+  { id: 'account-password', label: 'Change password', group: 'Account', to: '/change-password', keywords: ['security'] },
+]
 
 export type Crumb = { label: string; to?: string }
 
@@ -32,6 +44,8 @@ export function AppShell({
   context,
   renderNav,
   crumbs,
+  search = [],
+  beforeNavigate,
   children,
 }: {
   /** id of the <aside> - the mobile "Menu" button's aria-controls target. */
@@ -43,11 +57,38 @@ export function AppShell({
   context?: ReactNode
   renderNav: (opts: { collapsed: boolean; onNavigate: () => void }) => ReactNode
   crumbs: Crumb[]
+  /** Destinations for the Ctrl/⌘ K "jump to" search (account pages are added automatically). */
+  search?: SearchItem[]
+  /** Unsaved-changes guard: return false to stay on the page. */
+  beforeNavigate?: () => boolean
   children: ReactNode
 }) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const location = useLocation()
+  const searchItems = useMemo(() => [...search, ...ACCOUNT_SEARCH_ITEMS], [search])
+
+  // Global shortcuts: Ctrl/⌘ K or "/" opens search, "[" toggles the sidebar rail.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+        return
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return
+      if (document.querySelector('[aria-modal="true"]')) return
+      if (e.key === '/') {
+        e.preventDefault()
+        setPaletteOpen(true)
+      } else if (e.key === '[' && window.matchMedia('(min-width: 768px)').matches) {
+        setCollapsed((v) => !v)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     try {
@@ -72,15 +113,25 @@ export function AppShell({
       onClick={() => setMobileOpen((v) => !v)}
       aria-expanded={mobileOpen}
       aria-controls={sidebarId}
-      className="-ml-1.5 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-text hover:bg-surface-muted md:hidden"
+      className="-ml-1.5 inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium text-text hover:bg-surface-muted md:hidden"
     >
       {mobileOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
-      {mobileOpen ? 'Close menu' : 'Menu'}
+      <span className="max-sm:sr-only">{mobileOpen ? 'Close menu' : 'Menu'}</span>
     </button>
   )
 
   return (
     <div className="min-h-screen bg-page-bg text-text md:flex">
+      <a
+        href="#app-content"
+        onClick={(e) => {
+          e.preventDefault()
+          document.getElementById('app-content')?.focus()
+        }}
+        className="sr-only z-[100] rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        Skip to content
+      </a>
       {mobileOpen ? (
         <div className="fixed inset-0 z-40 animate-fade-in bg-brand/40 backdrop-blur-[2px] md:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       ) : null}
@@ -108,7 +159,7 @@ export function AppShell({
           {context ? <div className="mt-2.5">{context}</div> : null}
         </div>
 
-        <div className={`min-h-0 flex-1 overflow-y-auto pb-4 ${collapsed ? 'md:px-2.5 md:pt-4' : ''} px-3 pt-2`}>
+        <div className={`sidebar-scroll min-h-0 flex-1 overflow-y-auto pb-4 ${collapsed ? 'md:px-2.5 md:pt-4' : ''} px-3 pt-2`}>
           {renderNav({ collapsed, onNavigate: () => setMobileOpen(false) })}
         </div>
 
@@ -129,25 +180,125 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <PortalHeader roleLabel={roleLabel} leading={menuButton}>
+        <PortalHeader
+          roleLabel={roleLabel}
+          leading={menuButton}
+          tools={
+            <>
+              <SearchButton onClick={() => setPaletteOpen(true)} />
+              <HelpMenu />
+            </>
+          }
+        >
           <Breadcrumbs crumbs={crumbs} />
         </PortalHeader>
-        <div className="mx-auto w-full max-w-[1320px] flex-1 animate-fade-in px-4 py-6 sm:px-6 sm:py-8 lg:px-10">{children}</div>
+        <div id="app-content" tabIndex={-1} className="mx-auto w-full max-w-[1320px] flex-1 animate-fade-in px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10">
+          {children}
+        </div>
       </div>
+
+      <CommandPalette items={searchItems} open={paletteOpen} onOpenChange={setPaletteOpen} beforeNavigate={beforeNavigate} />
     </div>
+  )
+}
+
+function SearchButton({ onClick }: { onClick: () => void }) {
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Search pages and sections"
+      aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
+      className="flex h-10 items-center gap-2 rounded-lg text-sm text-text-muted transition-colors hover:bg-surface-muted hover:text-text max-xl:w-10 max-xl:justify-center xl:w-56 xl:border xl:border-border-soft xl:bg-page-bg xl:px-3 xl:hover:border-border"
+    >
+      <Search size={17} aria-hidden="true" className="shrink-0" />
+      <span className="flex-1 text-left max-xl:hidden">Search…</span>
+      <kbd className="rounded border border-border bg-surface px-1.5 font-sans text-[11px] leading-5 max-xl:hidden">{isMac ? '⌘ K' : 'Ctrl K'}</kbd>
+    </button>
+  )
+}
+
+/**
+ * One sidebar row as a link, with a hover/focus tooltip on the collapsed
+ * rail (the label is also kept for screen readers).
+ */
+export function SidebarNavItem({
+  to,
+  icon,
+  label,
+  badge = 0,
+  collapsed,
+  onClick,
+  end,
+}: {
+  to: string
+  icon: ReactNode
+  label: string
+  badge?: number
+  collapsed: boolean
+  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void
+  end?: boolean
+}) {
+  const showTooltips = useMediaQuery('(min-width: 768px)') && collapsed
+  return (
+    <Tooltip content={badge > 0 ? `${label} (${badge})` : label} placement="right" disabled={!showTooltips} className="block">
+      <NavLink to={to} end={end} onClick={onClick} className={({ isActive }) => sidebarLinkClass(isActive, collapsed)}>
+        <SidebarLinkContent icon={icon} label={label} badge={badge} collapsed={collapsed} />
+      </NavLink>
+    </Tooltip>
+  )
+}
+
+/** Button variant of SidebarNavItem, for workspaces whose sections are in-page state (super admin). */
+export function SidebarNavButton({
+  icon,
+  label,
+  badge = 0,
+  collapsed,
+  active,
+  onClick,
+  role,
+}: {
+  icon: ReactNode
+  label: string
+  badge?: number
+  collapsed: boolean
+  active: boolean
+  onClick: () => void
+  role?: 'tab'
+}) {
+  const showTooltips = useMediaQuery('(min-width: 768px)') && collapsed
+  return (
+    <Tooltip content={badge > 0 ? `${label} (${badge})` : label} placement="right" disabled={!showTooltips} className="block">
+      <button
+        type="button"
+        role={role}
+        aria-selected={role === 'tab' ? active : undefined}
+        aria-current={role ? undefined : active ? 'page' : undefined}
+        onClick={onClick}
+        className={`w-full text-left ${sidebarLinkClass(active, collapsed)}`}
+      >
+        <SidebarLinkContent icon={icon} label={label} badge={badge} collapsed={collapsed} />
+      </button>
+    </Tooltip>
   )
 }
 
 function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
   if (crumbs.length === 0) return null
   return (
-    <nav aria-label="Breadcrumb" className="min-w-0">
+    <nav aria-label="Breadcrumb" className="min-w-0 overflow-hidden">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1
           return (
-            <li key={`${c.label}-${i}`} className={`flex min-w-0 items-center gap-1.5 ${last ? '' : 'max-sm:hidden'}`}>
-              {i > 0 ? <ChevronRight size={14} aria-hidden="true" className="shrink-0 text-text-muted/60 max-sm:hidden" /> : null}
+            <li
+              key={`${c.label}-${i}`}
+              // Only the first crumb (the long conference name, also in the sidebar) gives way; the page you're on never truncates first.
+              className={`flex items-center gap-1.5 ${last ? 'min-w-0' : i === 0 ? 'min-w-0 max-w-[14rem] max-lg:hidden xl:max-w-[22rem]' : 'shrink-0 max-lg:hidden'}`}
+            >
+              {i > 0 ? <ChevronRight size={14} aria-hidden="true" className="shrink-0 text-text-muted/60 max-lg:hidden" /> : null}
               {c.to && !last ? (
                 <Link to={c.to} className="truncate text-text-muted transition-colors hover:text-text">
                   {c.label}

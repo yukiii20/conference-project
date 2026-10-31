@@ -5,10 +5,20 @@ import { api, ApiError } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
 import { Alert, Badge, Button, Card, FormField, PasswordInput, Spinner } from '../components/ui'
+import { portalPathForRoles } from '../components/ConferenceSwitcher'
 
 export function ChangePasswordPage() {
   const navigate = useNavigate()
-  const { refresh } = useAuth()
+  const { refresh, conference, roles, isAdmin } = useAuth()
+  // "Back" returns to the portal of the conference this session belongs to.
+  const backHref = conference
+    ? portalPathForRoles(
+        roles.map((r) => r.role_code),
+        conference.slug,
+      )
+    : isAdmin
+      ? '/super-admin'
+      : '/'
   const [checking, setChecking] = useState(true)
   const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
@@ -135,7 +145,7 @@ export function ChangePasswordPage() {
         </form>
 
         <p className="mt-6 text-sm text-text-muted">
-          <Link to="/login" className="font-medium text-brand underline">
+          <Link to={backHref} className="font-medium text-brand underline">
             Back
           </Link>
         </p>

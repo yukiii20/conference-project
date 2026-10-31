@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { publicImageUrl } from '../lib/storage'
 import { formatDateRange, formatKathmandu, formatKathmanduTime, kathmanduDateKey } from '../lib/datetime'
-import { DEFAULT_CONFERENCE_COLOR, darken, getAccessibleTextColor, hexToRgba } from '../lib/color'
+import { darken, getAccessibleTextColor, hexToRgba, resolveConferenceBrand } from '../lib/color'
 import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
 import { RegistrationPanel } from './conference/RegistrationPanel'
@@ -11,6 +11,7 @@ import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation
 import { StarButton } from '../components/agenda/StarButton'
 import { useAgendaStars } from '../components/agenda/useAgendaStars'
 import { usePublicAbstractBook } from '../components/abstractBook/usePublicAbstractBook'
+import { Markdown } from '../components/Markdown'
 import {
   DEADLINE_LABELS,
   type Committee,
@@ -74,7 +75,7 @@ export function ConferencePage() {
   const [introDone, setIntroDone] = useState(false)
   const [bannerFailed, setBannerFailed] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
-  const agendaStars = useAgendaStars(conference?.id ?? null)
+  const agendaStars = useAgendaStars(conference?.id ?? null, conference?.slug ?? null)
   const abstractBook = usePublicAbstractBook(conference?.id ?? null)
 
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -273,7 +274,8 @@ export function ConferencePage() {
     )
   }
 
-  const accent = conference.primary_color ?? DEFAULT_CONFERENCE_COLOR
+  // Validated: anything that isn't a #rrggbb hex falls back to the platform default.
+  const accent = resolveConferenceBrand(conference.primary_color).color
   const accentText = getAccessibleTextColor(accent)
   const logoUrl = publicImageUrl(conference.logo_path)
   const bannerUrl = bannerFailed ? null : publicImageUrl(conference.banner_path)
@@ -288,7 +290,9 @@ export function ConferencePage() {
     items: supporters.filter((s) => s.tier === tier),
   })).filter((g) => g.items.length > 0)
 
-  const signupHref = `/signup?conference=${conference.slug}`
+  // This conference's own account pages (a role only works at its own conference).
+  const signupHref = `/c/${encodeURIComponent(conference.slug)}/signup`
+  const loginHref = `/c/${encodeURIComponent(conference.slug)}/login`
 
   const nowMs = Date.now()
   const nextDeadline = deadlines
@@ -312,6 +316,7 @@ export function ConferencePage() {
         accentText={accentText}
         logoUrl={logoUrl}
         signupHref={signupHref}
+        loginHref={loginHref}
         activeSection={activeSection}
         onNavigate={handleNavigate}
       />
@@ -383,7 +388,7 @@ export function ConferencePage() {
                 Register
               </Link>
               <Link
-                to="/login"
+                to={loginHref}
                 style={{ borderColor: heroTextColor, color: heroTextColor }}
                 className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
               >
@@ -408,9 +413,12 @@ export function ConferencePage() {
             {conference.tagline ? (
               <p className="mt-2 text-lg font-medium text-ink/70">{conference.tagline}</p>
             ) : null}
+            {conference.welcome_text ? (
+              <Markdown source={conference.welcome_text} className="mt-4 max-w-prose text-ink/80" />
+            ) : null}
             {conference.description ? (
               <p className="mt-4 max-w-prose whitespace-pre-line leading-relaxed text-ink/80">{conference.description}</p>
-            ) : (
+            ) : conference.welcome_text ? null : (
               <p className="mt-4 text-sm text-ink/60">No description yet.</p>
             )}
           </div>
@@ -436,6 +444,22 @@ export function ConferencePage() {
                 </li>
               ))}
             </ul>
+          </div>
+        ) : null}
+
+        {conference.submission_guidelines ? (
+          <div id="submission-guidelines" className="mt-8 rounded-xl border border-border-soft bg-surface p-5 shadow-card sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-display text-2xl font-semibold tracking-tight">Submission guidelines</h3>
+              <Link
+                to={signupHref}
+                style={{ backgroundColor: accent, color: getAccessibleTextColor(accent) }}
+                className="rounded-xl px-4 py-2 text-sm font-medium shadow-sm hover:opacity-90"
+              >
+                Submit an abstract
+              </Link>
+            </div>
+            <Markdown source={conference.submission_guidelines} className="mt-4 max-w-prose text-ink/80" />
           </div>
         ) : null}
       </section>
@@ -688,7 +712,7 @@ export function ConferencePage() {
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Registration</h2>
         <div className="mt-4">
-          <RegistrationPanel conferenceId={conference.id} accent={accent} contactEmail={conference.contact_email} />
+          <RegistrationPanel conferenceId={conference.id} conferenceSlug={conference.slug} accent={accent} contactEmail={conference.contact_email} />
         </div>
       </section>
 

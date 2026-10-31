@@ -34,7 +34,7 @@ function cookieAgent(cookie: string) {
 async function loginAs(conferenceId: string, email: string, role: string) {
   const userId = await createUser({ email, password: 'Str0ng!Pass' })
   if (conferenceId) await addConferenceMember(conferenceId, userId, role)
-  const cookie = await createDirectSession(userId)
+  const cookie = await createDirectSession(userId, conferenceId || undefined)
   return { agent: cookieAgent(cookie), userId }
 }
 

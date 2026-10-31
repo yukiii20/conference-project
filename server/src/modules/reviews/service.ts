@@ -7,6 +7,7 @@ import { insertAuditLog } from '../../utils/audit.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, mapDatabaseError } from '../../utils/errors.js'
 import { notifyUser } from '../../utils/notifications.js'
+import { assertConferenceInSession, effectiveConferenceFilter } from '../../middleware/sessionScope.js'
 import { getSettings } from '../settings/service.js'
 import { planAutoAssignment, type AutoAssignBid, type AutoAssignPaper, type AutoAssignReviewer } from './autoAssign.js'
 import type {
@@ -465,6 +466,7 @@ function isBiddingOpen(settings: { bidding_enabled: unknown; bidding_start_at: u
 }
 
 async function assertActiveReviewer(userId: string, conferenceId: string): Promise<void> {
+  assertConferenceInSession(conferenceId)
   const [rows] = await pool.query(
     `SELECT 1 FROM conference_members WHERE conference_id = ? AND user_id = ? AND role_code = 'reviewer' AND status = 'active' LIMIT 1`,
     [conferenceId, userId],
@@ -894,7 +896,9 @@ export type MyAssignmentRow = {
   is_overdue: number | boolean
 }
 
-export async function listMyAssignments(userId: string, conferenceId?: string): Promise<MyAssignmentRow[]> {
+export async function listMyAssignments(userId: string, requestedConferenceId?: string): Promise<MyAssignmentRow[]> {
+  // A conference-bound session only ever lists its own conference's assignments.
+  const conferenceId = effectiveConferenceFilter(requestedConferenceId)
   const params: unknown[] = [userId]
   let conferenceClause = ''
   if (conferenceId) {
@@ -919,13 +923,15 @@ async function loadOwnAssignment(
   userId: string,
   assignmentId: string,
   forUpdate = false,
-): Promise<{ id: string; submission_id: string; reviewer_id: string; status: string }> {
+): Promise<{ id: string; submission_id: string; reviewer_id: string; status: string; conference_id: string }> {
   const [rows] = await conn.query(
-    `SELECT id, submission_id, reviewer_id, status FROM review_assignments WHERE id = ? AND reviewer_id = ? LIMIT 1${forUpdate ? ' FOR UPDATE' : ''}`,
+    `SELECT id, submission_id, reviewer_id, status, conference_id FROM review_assignments WHERE id = ? AND reviewer_id = ? LIMIT 1${forUpdate ? ' FOR UPDATE' : ''}`,
     [assignmentId, userId],
   )
-  const row = (rows as Array<{ id: string; submission_id: string; reviewer_id: string; status: string }>)[0]
+  const row = (rows as Array<{ id: string; submission_id: string; reviewer_id: string; status: string; conference_id: string }>)[0]
   if (!row) throw new NotFoundError('This assignment does not exist.')
+  // Every reviewer-assignment-by-id route loads through here.
+  assertConferenceInSession(row.conference_id)
   return row
 }
 

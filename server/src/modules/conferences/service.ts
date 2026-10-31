@@ -16,8 +16,9 @@ export async function listPublicConferences() {
 }
 
 export async function getPublicConferenceBySlug(slug: string) {
+  // The two long convenor texts only on the single-conference page, not the list.
   const [rows] = await pool.query(
-    `SELECT ${PUBLIC_CONFERENCE_COLUMNS} FROM conferences
+    `SELECT ${PUBLIC_CONFERENCE_COLUMNS}, welcome_text, submission_guidelines FROM conferences
      WHERE slug = ? AND status <> 'draft' AND deleted_at IS NULL LIMIT 1`,
     [slug],
   )

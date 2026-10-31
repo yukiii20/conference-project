@@ -4,6 +4,7 @@ import { KeyRound, LogOut, User } from 'lucide-react'
 import { useAuth } from '../lib/authContext'
 import { Avatar } from './Avatar'
 import { NotificationBell } from './NotificationBell'
+import { ConferenceSwitcher } from './ConferenceSwitcher'
 import { LogoMark } from './landing/LandingHeader'
 import { ChevronDownIcon } from './ui/icons'
 import { Icon } from './ui/Icon'
@@ -18,7 +19,18 @@ import { Icon } from './ui/Icon'
  * Inside <AppShell> it's the top bar (`leading` = the mobile menu button,
  * `children` = breadcrumbs). On its own it shows the platform logo instead.
  */
-export function PortalHeader({ roleLabel, leading, children }: { roleLabel: string; leading?: ReactNode; children?: ReactNode }) {
+export function PortalHeader({
+  roleLabel,
+  leading,
+  tools,
+  children,
+}: {
+  roleLabel: string
+  leading?: ReactNode
+  /** Extra top-bar controls (global search, help) shown before the notification bell. */
+  tools?: ReactNode
+  children?: ReactNode
+}) {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -42,8 +54,9 @@ export function PortalHeader({ roleLabel, leading, children }: { roleLabel: stri
 
   async function handleSignOut() {
     setMenuOpen(false)
-    await signOut()
-    navigate('/login')
+    // Back to the page of the conference this session belonged to.
+    const slug = await signOut()
+    navigate(slug ? `/c/${encodeURIComponent(slug)}` : '/')
   }
 
   const displayName = user?.full_name ?? user?.email ?? ''
@@ -61,9 +74,11 @@ export function PortalHeader({ roleLabel, leading, children }: { roleLabel: stri
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-        <span className="hidden max-w-[16rem] truncate rounded-full border border-gold/60 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold-ink sm:inline">
+        <span className="hidden max-w-[16rem] truncate rounded-full border border-gold/60 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold-ink xl:inline">
           {roleLabel}
         </span>
+        {tools}
+        <ConferenceSwitcher />
         <NotificationBell />
 
         <div ref={menuRef} className="relative">

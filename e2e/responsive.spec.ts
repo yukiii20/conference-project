@@ -33,7 +33,7 @@ async function expectNoHorizontalOverflow(page: Page, label: string) {
 }
 
 async function signIn(page: Page, email: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(FIXTURE.password)
   await page.locator('#si-role').selectOption(role)
@@ -88,7 +88,7 @@ for (const width of WIDTHS) {
       await page.goto(`/c/${FIXTURE.conferenceSlug}`)
       await expectNoHorizontalOverflow(page, `conference detail`)
 
-      await page.goto('/login')
+      await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
       await expectNoHorizontalOverflow(page, `login`)
 
       await page.goto('/signup')

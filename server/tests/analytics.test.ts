@@ -35,6 +35,14 @@ function cookieAgent(cookie: string) {
 async function loginAs(conferenceId: string | null, email: string, roleCode: string | null) {
   const userId = await createUser({ email, password: 'Str0ng!Pass' })
   if (conferenceId && roleCode) await addConferenceMember(conferenceId, userId, roleCode)
+  const cookie = await createDirectSession(userId, conferenceId ?? undefined)
+  return { agent: cookieAgent(cookie), userId }
+}
+
+/** Admin powers come only from an admin session — make the account an admin BEFORE its session exists. */
+async function loginAsAdmin(email: string) {
+  const userId = await createUser({ email, password: 'Str0ng!Pass' })
+  await makePlatformAdmin(userId)
   const cookie = await createDirectSession(userId)
   return { agent: cookieAgent(cookie), userId }
 }
@@ -94,7 +102,7 @@ describe('convenor analytics', () => {
     const { agent } = await loginAs(conferenceId, 'an-conv3@example.com', 'convenor')
     const trackId = await createTrack(conferenceId, 'Track R')
     const creatorId = await createUser({ email: 'an-creator2@example.com', password: 'Str0ng!Pass' })
-    const { userId: reviewerId } = await loginAs(null, 'an-reviewer@example.com', null)
+    const { userId: reviewerId } = await loginAs(conferenceId, 'an-reviewer@example.com', null)
 
     const sub1 = await createSubmission(conferenceId, trackId, creatorId, 'under_review')
     const sub2 = await createSubmission(conferenceId, trackId, creatorId, 'under_review')
@@ -150,12 +158,12 @@ describe('convenor analytics', () => {
 
 describe('platform analytics', () => {
   it('is forbidden for a non-admin; works for a platform admin', async () => {
-    const { agent: plainAgent } = await loginAs(null, 'an-plain@example.com', null)
+    const conferenceId = await createConference()
+    const { agent: plainAgent } = await loginAs(conferenceId, 'an-plain@example.com', 'author')
     const res1 = await plainAgent.get('/api/admin/analytics')
     expect(res1.status).toBe(403)
 
-    const { agent: adminAgent, userId: adminId } = await loginAs(null, 'an-admin@example.com', null)
-    await makePlatformAdmin(adminId)
+    const { agent: adminAgent } = await loginAsAdmin('an-admin@example.com')
     const res2 = await adminAgent.get('/api/admin/analytics')
     expect(res2.status).toBe(200)
     expect(res2.body.conferences_by_status).toBeInstanceOf(Array)
@@ -164,8 +172,7 @@ describe('platform analytics', () => {
   it('counts conferences by status', async () => {
     await createConference({ status: 'published' })
     await createConference({ status: 'draft' })
-    const { agent, userId } = await loginAs(null, 'an-admin2@example.com', null)
-    await makePlatformAdmin(userId)
+    const { agent } = await loginAsAdmin('an-admin2@example.com')
 
     const res = await agent.get('/api/admin/analytics')
     const byStatus: Record<string, number> = {}

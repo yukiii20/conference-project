@@ -7,6 +7,7 @@ import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
+import { setPasswordUrl } from '../../utils/conferenceLinks.js'
 import { pingDatabase, getStorageDiskSpace, getEmailQueueCounts } from '../../utils/health.js'
 import type {
   AppointConvenorInput,
@@ -285,10 +286,10 @@ export async function inviteConvenor(
 ): Promise<{ invited: boolean; appointed: boolean }> {
   return withTransaction(actorUserId, async (conn) => {
     const [confRows] = await conn.query(
-      'SELECT id, name FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+      'SELECT id, name, slug FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1',
       [conferenceId],
     )
-    const conference = (confRows as Array<{ id: string; name: string }>)[0]
+    const conference = (confRows as Array<{ id: string; name: string; slug: string }>)[0]
     if (!conference) {
       throw new NotFoundError('This conference does not exist.')
     }
@@ -318,7 +319,7 @@ export async function inviteConvenor(
         `SELECT subject, body_html FROM email_templates WHERE conference_id IS NULL AND template_key = 'convenor_invitation' LIMIT 1`,
       )
       const template = (templateRows as Array<{ subject: string; body_html: string }>)[0]
-      const inviteUrl = `${env.APP_URL}/set-password?token=${rawToken}`
+      const inviteUrl = setPasswordUrl(rawToken, conference.slug)
       const data = { full_name: input.full_name, conference_name: conference.name, invite_url: inviteUrl }
       const subject = template
         ? renderTemplate(template.subject, data)

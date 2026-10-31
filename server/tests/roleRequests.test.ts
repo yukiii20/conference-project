@@ -14,9 +14,9 @@ afterAll(async () => {
   await pool.end()
 })
 
-async function loginAs(email: string, password: string, role: string) {
+async function loginAs(email: string, password: string, role: string, conference: string) {
   const agent = request.agent(app)
-  const res = await agent.post('/api/auth/login').send({ email, password, role })
+  const res = await agent.post('/api/auth/login').send({ email, password, role, conference })
   expect(res.status).toBe(200)
   return agent
 }
@@ -30,7 +30,7 @@ describe('GET /api/auth/me conference selector data', () => {
     const [rows] = await pool.query('SELECT slug FROM conferences WHERE id = ?', [conferenceId])
     const expectedSlug = (rows as Array<{ slug: string }>)[0]!.slug
 
-    const agent = await loginAs('slug-convenor@example.com', 'Str0ng!Pass', 'convenor')
+    const agent = await loginAs('slug-convenor@example.com', 'Str0ng!Pass', 'convenor', conferenceId)
     const me = await agent.get('/api/auth/me')
     expect(me.status).toBe(200)
 
@@ -38,6 +38,7 @@ describe('GET /api/auth/me conference selector data', () => {
       (r) => r.role_code === 'convenor' && r.conference_id === conferenceId,
     )
     expect(role?.conference_slug).toBe(expectedSlug)
+    expect(me.body.conference.slug).toBe(expectedSlug)
   })
 })
 
@@ -50,7 +51,7 @@ describe('role request authorization', () => {
     await createRoleRequest(reviewerId, conferenceId, 'reviewer', 'approved')
     const requestId = await createRoleRequest(authorId, conferenceId, 'author')
 
-    const reviewerAgent = await loginAs('reviewer@example.com', 'Str0ng!Pass', 'reviewer')
+    const reviewerAgent = await loginAs('reviewer@example.com', 'Str0ng!Pass', 'reviewer', conferenceId)
     const res = await reviewerAgent.post(`/api/role-requests/${requestId}/approve`)
     expect(res.status).toBe(403)
   })
@@ -65,7 +66,7 @@ describe('role request authorization', () => {
     const applicantId = await createUser({ email: 'applicant@example.com', password: 'Str0ng!Pass' })
     const requestId = await createRoleRequest(applicantId, conferenceB, 'author')
 
-    const convenorAAgent = await loginAs('convenor-a@example.com', 'Str0ng!Pass', 'convenor')
+    const convenorAAgent = await loginAs('convenor-a@example.com', 'Str0ng!Pass', 'convenor', conferenceA)
     const res = await convenorAAgent.post(`/api/role-requests/${requestId}/approve`)
     expect(res.status).toBe(403)
   })
@@ -76,7 +77,7 @@ describe('role request authorization', () => {
     await addConferenceMember(conferenceId, staffId, 'staff')
     await createRoleRequest(staffId, conferenceId, 'staff', 'approved')
 
-    const staffAgent = await loginAs('staff@example.com', 'Str0ng!Pass', 'staff')
+    const staffAgent = await loginAs('staff@example.com', 'Str0ng!Pass', 'staff', conferenceId)
     const res = await staffAgent.get(`/api/conferences/${conferenceId}/role-requests`)
     expect(res.status).toBe(403)
   })

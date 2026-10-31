@@ -43,6 +43,8 @@ const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferen
 // announcements, public deadline/track counts for the homepage).
 const PUBLIC_ROUTES = new Set([
   'authRouter POST /register',
+  // Proven with the existing account's password; only ever creates a pending role request.
+  'authRouter POST /join-conference',
   'authRouter POST /login',
   'authRouter POST /admin-login',
   'authRouter POST /logout',

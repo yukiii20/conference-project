@@ -8,7 +8,7 @@ const FIXTURE = {
 }
 
 async function signIn(page: Page, email: string, password: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(password)
   await page.locator('#si-role').selectOption(role)

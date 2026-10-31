@@ -105,7 +105,7 @@ describe('GET /api/admin/conferences', () => {
       [conferenceId],
     )
     const regAuthorId = await createUser({ email: 'count-registrant@example.com', password: 'Str0ng!Pass' })
-    const regSession = await createDirectSession(regAuthorId)
+    const regSession = await createDirectSession(regAuthorId, conferenceId)
     const regAgent = {
       post: (url: string) => request(app).post(url).set('Cookie', regSession),
     }

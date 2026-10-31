@@ -15,6 +15,7 @@ On Windows, install "MySQL Community Server 8.x" with MySQL Installer (includes 
     mysql -u root -p < 04_review_bids.sql
     mysql -u root -p < 04_review_reminders.sql
     mysql -u root -p < 05_knowledge_partner.sql
+    mysql -u root -p conference_cms < 06_session_conference.sql
 
 (MySQL Workbench: File > Open SQL Script, open each file, click the lightning icon.)
 
@@ -54,6 +55,13 @@ Review settings reminder controls) and `review_reminders` (one row per
 review assignment per reminder kind already sent, so the hourly background
 job never double-sends even with two servers running). No new permission
 (reuses `review.assign`). Safe to re-run.
+
+`06_session_conference.sql` adds `auth_sessions.conference_id`: every normal
+sign-in session is bound to the conference it was made at (platform admin
+sessions keep NULL), and the backend refuses anything belonging to another
+conference. Existing rows are left alone; sessions without a conference just
+stop working and those people sign in again. Safe to re-run. It has no `USE`
+line, so name the database (as above) or select it first.
 
 `05_knowledge_partner.sql` adds the `knowledge_partner` supporter tier. Run it
 on an existing database before convenors create Knowledge partner entries. Safe

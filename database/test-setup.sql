@@ -1721,6 +1721,42 @@ INSERT IGNORE INTO email_templates (conference_id, template_key, subject, body_h
          '<p>Dear {{full_name}},</p><p>Your review of "{{title}}" ({{submission_code}}) was due {{due_at}} and has not been submitted yet. Please submit it as soon as you can.</p>');
 
 -- =====================================================================
+-- 06_session_conference.sql (auth_sessions.conference_id)
+-- =====================================================================
+USE conference_cms_test;
+
+DELIMITER $$
+DROP PROCEDURE IF EXISTS _add_auth_sessions_conference_id$$
+CREATE PROCEDURE _add_auth_sessions_conference_id()
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'auth_sessions' AND COLUMN_NAME = 'conference_id'
+  ) THEN
+    ALTER TABLE auth_sessions ADD COLUMN conference_id CHAR(36) NULL AFTER is_admin_session;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'auth_sessions' AND INDEX_NAME = 'auth_sessions_conference_idx'
+  ) THEN
+    ALTER TABLE auth_sessions ADD KEY auth_sessions_conference_idx (conference_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'auth_sessions'
+      AND CONSTRAINT_NAME = 'auth_sessions_conference_fk' AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+  ) THEN
+    ALTER TABLE auth_sessions
+      ADD CONSTRAINT auth_sessions_conference_fk FOREIGN KEY (conference_id) REFERENCES conferences (id) ON DELETE CASCADE;
+  END IF;
+END$$
+CALL _add_auth_sessions_conference_id()$$
+DROP PROCEDURE _add_auth_sessions_conference_id$$
+DELIMITER ;
+
+-- =====================================================================
 -- Give the existing app user the same rights on the test database.
 -- =====================================================================
 GRANT SELECT, INSERT, UPDATE, DELETE ON conference_cms_test.* TO 'cms_app'@'localhost';

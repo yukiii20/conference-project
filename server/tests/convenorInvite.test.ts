@@ -88,7 +88,7 @@ describe('convenor-invite: brand-new email', () => {
 
     const loginRes = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'nopass@example.com', password: 'AnyPassword1!', role: 'convenor' })
+      .send({ email: 'nopass@example.com', password: 'AnyPassword1!', role: 'convenor', conference: conferenceId })
     expect(loginRes.status).toBe(401)
     expect(loginRes.body.error.message).toBe('Email or password is incorrect.')
   })
@@ -151,14 +151,18 @@ describe('convenor-invite: existing email', () => {
 })
 
 describe('accept-invitation', () => {
-  it('sets the password, marks the token used, and logs the user in', async () => {
+  it('sets the password, marks the token used, and signs the user in at the conference named in the invitation', async () => {
+    const conferenceId = await createConference()
     const userId = await createPendingInviteUser({ email: 'invitee@example.com' })
+    await addConferenceMember(conferenceId, userId, 'reviewer')
     const token = await createInvitationToken(userId)
 
     const agent = request.agent(app)
-    const res = await agent.post('/api/auth/accept-invitation').send({ token, password: 'Str0ng!Pass' })
+    const res = await agent.post('/api/auth/accept-invitation').send({ token, password: 'Str0ng!Pass', conference: conferenceId })
     expect(res.status).toBe(200)
+    expect(res.body.signed_in).toBe(true)
     expect(res.body.user.email).toBe('invitee@example.com')
+    expect(res.body.conference.id).toBe(conferenceId)
 
     const [tokenRows] = await pool.query('SELECT used_at FROM auth_tokens WHERE user_id = ?', [userId])
     expect((tokenRows as Array<{ used_at: string | null }>)[0]?.used_at).not.toBeNull()
@@ -171,11 +175,20 @@ describe('accept-invitation', () => {
     // And the password now works for a normal login too.
     const loginRes = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'invitee@example.com', password: 'Str0ng!Pass', role: 'convenor' })
-    // No conference membership was granted here, only the password was set, so this should
-    // fail for lack of convenor membership rather than for the password.
+      .send({ email: 'invitee@example.com', password: 'Str0ng!Pass', role: 'convenor', conference: conferenceId })
+    // Only a reviewer role was granted, so this fails for the role rather than for the password.
     expect(loginRes.status).toBe(403)
-    expect(loginRes.body.error.message).toBe('You did not sign up for this role.')
+    expect(loginRes.body.error.code).toBe('role_not_held')
+  })
+
+  it('sets the password but creates no session when the link names no conference where they hold a role', async () => {
+    const userId = await createPendingInviteUser({ email: 'invitee-nosession@example.com' })
+    const token = await createInvitationToken(userId)
+    const agent = request.agent(app)
+    const res = await agent.post('/api/auth/accept-invitation').send({ token, password: 'Str0ng!Pass' })
+    expect(res.status).toBe(200)
+    expect(res.body.signed_in).toBe(false)
+    expect((await agent.get('/api/auth/me')).status).toBe(401)
   })
 
   it('rejects an expired token', async () => {

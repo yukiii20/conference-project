@@ -1,5 +1,4 @@
 import type { PoolConnection } from 'mysql2/promise'
-import { env } from '../../config/env.js'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { insertAuditLog } from '../../utils/audit.js'
@@ -7,6 +6,7 @@ import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
 import { notifyUser } from '../../utils/notifications.js'
+import { conferenceSignInPath, conferenceSignInUrl, setPasswordUrl } from '../../utils/conferenceLinks.js'
 import type { ChangeRoleInput, InviteMemberInput, ListMembersQuery, SetMaxReviewLoadInput } from './validation.js'
 
 const INVITATION_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -155,10 +155,10 @@ export async function inviteMember(
   input: InviteMemberInput,
 ): Promise<{ invited: boolean }> {
   return withTransaction(actorUserId, async (conn) => {
-    const [confRows] = await conn.query('SELECT id, name FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1', [
+    const [confRows] = await conn.query('SELECT id, name, slug FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1', [
       conferenceId,
     ])
-    const conference = (confRows as Array<{ id: string; name: string }>)[0]
+    const conference = (confRows as Array<{ id: string; name: string; slug: string }>)[0]
     if (!conference) throw new NotFoundError('This conference does not exist.')
 
     const [existingRows] = await conn.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
@@ -206,8 +206,14 @@ export async function inviteMember(
         `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'invitation' LIMIT 1`,
       )
       const template = (templateRows as Array<{ subject: string }>)[0]
-      const acceptUrl = `${env.APP_URL}/set-password?token=${rawToken}`
-      const data = { full_name: input.full_name, conference_name: conference.name, role_name: input.role_code, accept_url: acceptUrl }
+      const acceptUrl = setPasswordUrl(rawToken, conference.slug)
+      const data = {
+        full_name: input.full_name,
+        conference_name: conference.name,
+        role_name: input.role_code,
+        accept_url: acceptUrl,
+        sign_in_url: conferenceSignInUrl(conference.slug),
+      }
       const subject = template ? renderTemplate(template.subject, data) : `You are invited to ${conference.name}`
 
       await queueEmail(conn, {
@@ -225,7 +231,7 @@ export async function inviteMember(
         type: 'system',
         title: 'Added to a conference',
         body: `You've been added to ${conference.name} as ${input.role_code}.`,
-        linkPath: '/login',
+        linkPath: conferenceSignInPath(conference.slug),
       })
     }
 

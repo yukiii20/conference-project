@@ -34,7 +34,7 @@ async function expectNotBlank(page: Page) {
 }
 
 async function signIn(page: Page, email: string, password: string, role: string) {
-  await page.goto('/login')
+  await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
   await page.locator('#si-email').fill(email)
   await page.locator('#si-password').fill(password)
   await page.locator('#si-role').selectOption(role)
@@ -80,7 +80,7 @@ test.describe('author sign-up -> convenor approval -> author login', () => {
 
   test('sign up as author', async ({ page }) => {
     const errors = trackConsoleErrors(page)
-    await page.goto(`/signup?conference=${FIXTURE.conferenceSlug}`)
+    await page.goto(`/c/${FIXTURE.conferenceSlug}/signup`)
 
     await page.getByRole('button', { name: 'Author', exact: true }).click()
     await page.getByRole('button', { name: 'Continue' }).click()
@@ -181,7 +181,7 @@ test.describe('convenor edits the conference', () => {
 test.describe('authorization boundaries', () => {
   test('an author visiting /convenor is redirected away, not shown the page', async ({ page }) => {
     const authorEmail = `e2e-blocked-${Date.now()}@example.com`
-    await page.goto(`/signup?conference=${FIXTURE.conferenceSlug}`)
+    await page.goto(`/c/${FIXTURE.conferenceSlug}/signup`)
     await page.getByRole('button', { name: 'Author', exact: true }).click()
     await page.getByRole('button', { name: 'Continue' }).click()
     await page.locator('#su-full_name').fill('Blocked Author')
@@ -255,7 +255,7 @@ test.describe('password reset', () => {
 test.describe('password visibility toggle', () => {
   test('typing, toggling to show/hide, and keeping the value works on the login password field', async ({ page }) => {
     const errors = trackConsoleErrors(page)
-    await page.goto('/login')
+    await page.goto(`/c/${FIXTURE.conferenceSlug}/login`)
 
     const passwordField = page.locator('#si-password')
     await passwordField.fill('Str0ng!Pass1')
