@@ -7,6 +7,7 @@ import { formatKathmandu } from '../../lib/datetime'
 import { getRoleDefinition } from '../../lib/roles'
 import { DEADLINE_LABELS } from '../conference/types'
 import { Card, CardHeader, SkeletonText } from '../../components/ui'
+import { GiveFeedbackCard } from '../../components/feedback/GiveFeedbackCard'
 import { Icon } from '../../components/ui/Icon'
 
 type Deadline = { deadline_type: string; opens_at: string; closes_at: string | null }
@@ -151,6 +152,8 @@ export function DashboardTab({
           subtitle={myRoleLabels.length > 0 ? `Your roles: ${myRoleLabels.join(', ')}` : undefined}
         />
       </Card>
+
+      <GiveFeedbackCard base={base} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>

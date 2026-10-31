@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   FileText,
   LayoutDashboard,
+  MessageSquareHeart,
   QrCode,
   Ticket,
   type LucideIcon,
@@ -24,6 +25,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   staff: QrCode,
   ticket: Ticket,
   certificates: Award,
+  feedback: MessageSquareHeart,
   notifications: Bell,
 }
 

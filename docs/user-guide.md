@@ -42,6 +42,13 @@ role.
   in Google Calendar (Other calendars → + → From URL) or Outlook (Add
   calendar → Subscribe from web) so it stays in sync; **Reset link** makes
   the old URL stop working if you think someone else has it.
+- **Give feedback**: after a conference you checked in to, chaired or
+  presented at, a **Give feedback** card appears on your portal dashboard
+  (and you get an email with the link) while its survey is open. Rate the
+  conference 1-5, pick the session you enjoyed most, add comments, and
+  press **Send feedback** — once per conference. Tick **Answer
+  anonymously** (when the organisers allow it) and your name is never shown
+  to them.
 - **My certificates**: every certificate issued to you, across every
   conference, once the organisers release it (a revoked one still shows,
   marked **Revoked**). **Download PDF** or **Copy verify link** to hand
@@ -269,6 +276,18 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
     Tick **Publish on conference page** to add a **Book of abstracts (PDF)**
     link next to the programme download on the public page; untick to
     remove it.
+  - *Feedback survey* — **Create the survey**: it starts with the standard
+    questions (overall, organisation, venue and sessions ratings, best
+    session, comments); add up to 10 of your own (rating, free text or
+    choice), set **Opens**/**Closes** (Nepal time) and whether anonymous
+    answers are allowed, then **Save survey** and **Open survey**. Your own
+    questions lock once someone has answered. From the conference's last
+    day, **Email N people** sends the link to everyone eligible (checked in,
+    chaired or presented) who hasn't been invited or answered yet — never
+    more than today's remaining emails (300/day); press it again tomorrow
+    for the rest. **Results** shows the response rate, average rating, a
+    chart per question and every comment ("Anonymous" where chosen);
+    **Download Excel** gives a summary sheet and one row per response.
 - **Communication**: announcements, **bulk email**, email templates, the
   email log, exportable reports (CSV/XLSX), **analytics**, and the activity
   log (who did what).

@@ -1142,3 +1142,38 @@ page count, long abstract flows, extra contents pages for 50 abstracts, empty bo
 for the seeded data + stored file + audit, session order with unscheduled last, publish toggle
 gates the public download and survives re-generate which replaces the file, 401/403),
 `e2e/abstractBook.spec.ts`, and the convenor portal spec's Event tab list.
+
+## Features batch 3, feature 10 - Feedback survey - DONE (code; DB tests pending SQL)
+
+`database/batch-3-sql/04_feedback.sql`: `feedback_surveys` (one per conference: title, intro,
+is_open, opens_at/closes_at, allow_anonymous), `feedback_questions` (built-ins carry a
+`builtin_key`; custom ones rating/text/choice), `feedback_responses` (UNIQUE survey+user -
+user_id kept only for de-duplication), `feedback_answers`, `feedback_invitations` (emailed once
+each) and the `feedback_invitation` email template. No new permission: building/results reuse
+`conference.manage`.
+
+Backend `server/src/modules/feedback/`: eligibility = checked in (`conference_attendance`), chair
+of a non-cancelled session, or linked author/presenter of a non-cancelled presentation. Survey
+create/update (built-ins created automatically; custom questions 409 once anyone answered),
+open/close (opening needs both dates), invitations through `queueEmail` only from the
+conference's last day (its timezone), only while accepting answers, capped by
+`getEmailQuota().remainingToday` (rest go on a later click), results (`results.ts`, pure: 2-dp
+averages, 1-5 distributions, choice/session counts, non-blank comments), Excel export (Summary +
+Responses sheets). Anonymous names are blanked in SQL (`IF(is_anonymous, NULL, full_name)`), and
+response submissions are deliberately not audit-logged (the convenor can read the activity log,
+which would de-anonymise). Audit: `feedback.survey_create/update/open/close`, `feedback.invite`.
+Routes: `GET/PUT /api/conferences/:id/feedback-survey`, `PATCH .../open`, `POST .../invite`,
+`GET .../results`, `GET .../results.xlsx` (conference.manage); `GET .../form`,
+`POST .../responses`, `GET /api/me/feedback` (requireAuth + eligibility in the service).
+
+Frontend: Event -> **Feedback survey** tab (`src/pages/convenor/FeedbackSurveyTab.tsx`: builder,
+open/close + confirm, invitations with quota + confirm, results with ChartCard/MagnitudeBar,
+comments, Excel); portal **Give feedback** section (`src/pages/portal/GiveFeedbackTab.tsx`) and
+a **Give feedback** card on the portal dashboard (`src/components/feedback/GiveFeedbackCard.tsx`).
+
+Tests: `server/tests/feedbackResults.test.ts` (3, pure, results maths), `server/tests/feedback.test.ts`
+(10, DB: 401/403, built-ins + audit + open needs dates, questions lock after answers, only eligible,
+one response per person + validation, closed survey, anonymity in results + Excel, anonymity off,
+invitations once each skipping responders, not before the last day), routeGuards entries,
+`e2e/feedback.spec.ts`, convenor portal spec Event tab list. Also fixed a duplicated
+`sessionTimerRouter` import/mount in `app.ts` and `routeGuards.test.ts` left by feature 8's wiring.

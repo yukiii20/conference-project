@@ -31,8 +31,8 @@ import { certificatesRouter, certificatesPublicRouter } from '../src/modules/cer
 import { suggestionsAdminRouter, suggestionsPublicRouter } from '../src/modules/suggestions/routes.js'
 import { agendaFeedRouter, agendaRouter } from '../src/modules/agenda/routes.js'
 import { sessionTimerRouter } from '../src/modules/sessionTimer/routes.js'
-import { sessionTimerRouter } from '../src/modules/sessionTimer/routes.js'
 import { abstractBookRouter } from '../src/modules/abstractBook/routes.js'
+import { feedbackMeRouter, feedbackRouter } from '../src/modules/feedback/routes.js'
 
 const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
 
@@ -112,8 +112,9 @@ const ROUTERS: NamedRouter[] = [
   { name: 'agendaRouter', router: agendaRouter },
   { name: 'agendaFeedRouter', router: agendaFeedRouter },
   { name: 'sessionTimerRouter', router: sessionTimerRouter },
-  { name: 'sessionTimerRouter', router: sessionTimerRouter },
   { name: 'abstractBookRouter', router: abstractBookRouter },
+  { name: 'feedbackRouter', router: feedbackRouter },
+  { name: 'feedbackMeRouter', router: feedbackMeRouter },
 ]
 
 type RouteEntry = { key: string; middlewareNames: string[] }

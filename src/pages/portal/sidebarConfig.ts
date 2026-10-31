@@ -6,6 +6,7 @@
 export type PortalSectionId =
   | 'dashboard'
   | 'agenda'
+  | 'feedback'
   | 'certificates'
   | 'ticket'
   | 'notifications'
@@ -33,6 +34,8 @@ export const PORTAL_SECTIONS: PortalSectionConfig[] = [
   { id: 'staff', label: 'Check-in desk', requiresRole: 'staff' },
   { id: 'ticket', label: 'My ticket', requiresRole: null },
   { id: 'certificates', label: 'My certificates', requiresRole: null, crossConference: true },
+  // Has its own conference list: anyone who checked in, chaired or presented, with or without a conference role.
+  { id: 'feedback', label: 'Give feedback', requiresRole: null, crossConference: true },
   { id: 'notifications', label: 'Notifications', requiresRole: null, crossConference: true },
 ]
 

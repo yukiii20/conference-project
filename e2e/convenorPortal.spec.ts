@@ -41,7 +41,7 @@ const PAGES: Array<{ label: string; tabs: string[] }> = [
   { label: 'Dates and tracks', tabs: ['Key dates', 'Tracks'] },
   { label: 'People', tabs: ['Role requests', 'Members and roles', 'Committees', 'Speakers'] },
   { label: 'Papers', tabs: ['Submissions', 'Reviews and decisions', 'Review settings'] },
-  { label: 'Event', tabs: ['Programme', 'Attendance', 'Certificates', 'Book of abstracts'] },
+  { label: 'Event', tabs: ['Programme', 'Attendance', 'Certificates', 'Book of abstracts', 'Feedback survey'] },
   { label: 'Communication', tabs: ['Announcements', 'Bulk email', 'Email templates', 'Email log', 'Reports', 'Analytics', 'Activity log'] },
 ]
 
