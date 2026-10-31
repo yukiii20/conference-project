@@ -30,6 +30,18 @@ role.
   before the event. If a conference charges for registration, your
   ticket shows **pending** until the organisers confirm your payment —
   the page tells you who to email about it.
+- **My agenda**: tap the **star** next to any session on a conference's
+  public programme (sign in first), or in the portal under **My agenda** →
+  **Star more sessions from the full programme**. Your own presentations
+  and the sessions you chair are added automatically (marked **Your
+  presentation** / **You chair this**; their star can't be removed). The
+  agenda is grouped by day in Nepal time, shows the room, venue and map
+  link, and warns in red when two sessions overlap. **Add all to calendar
+  (.ics)** downloads the whole agenda (each session also has its own
+  **.ics**). **Show my calendar link** gives a private URL to subscribe to
+  in Google Calendar (Other calendars → + → From URL) or Outlook (Add
+  calendar → Subscribe from web) so it stays in sync; **Reset link** makes
+  the old URL stop working if you think someone else has it.
 - **My certificates**: every certificate issued to you, across every
   conference, once the organisers release it (a revoked one still shows,
   marked **Revoked**). **Download PDF** or **Copy verify link** to hand

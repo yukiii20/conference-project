@@ -1,36 +1,6 @@
 import PDFDocument from 'pdfkit'
 import type { PublicSessionRow } from './service.js'
 
-function icsEscape(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
-}
-
-function icsDate(value: string | Date): string {
-  return new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
-}
-
-/** A single-event .ics file for one session — "add to calendar". */
-export function generateSessionIcs(session: PublicSessionRow, conferenceName: string): string {
-  const location = session.room ? `${session.room.name}${session.room.building ? `, ${session.room.building}` : ''}` : ''
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Conference Management System//EN',
-    'CALSCALE:GREGORIAN',
-    'BEGIN:VEVENT',
-    `UID:${session.id}@conference-management-system`,
-    `DTSTAMP:${icsDate(new Date())}`,
-    `DTSTART:${icsDate(session.starts_at)}`,
-    `DTEND:${icsDate(session.ends_at)}`,
-    `SUMMARY:${icsEscape(`${conferenceName}: ${session.title}`)}`,
-    location ? `LOCATION:${icsEscape(location)}` : null,
-    session.description ? `DESCRIPTION:${icsEscape(session.description)}` : null,
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].filter((line): line is string => line !== null)
-  return lines.join('\r\n')
-}
-
 /** The full published programme as a PDF, grouped by day, for "Download programme". */
 export function generateProgrammePdf(
   conferenceName: string,

@@ -29,6 +29,7 @@ import { activityLogRouter } from '../src/modules/activityLog/routes.js'
 import { registrationRouter } from '../src/modules/registration/routes.js'
 import { certificatesRouter, certificatesPublicRouter } from '../src/modules/certificates/routes.js'
 import { suggestionsAdminRouter, suggestionsPublicRouter } from '../src/modules/suggestions/routes.js'
+import { agendaFeedRouter, agendaRouter } from '../src/modules/agenda/routes.js'
 
 const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
 
@@ -56,6 +57,8 @@ const PUBLIC_ROUTES = new Set([
   'platformSettingsPublicRouter GET /platform-settings',
   'certificatesPublicRouter GET /verify/:token',
   'suggestionsPublicRouter POST /suggestions',
+  // The secret token in the URL is the credential (calendar apps can't send a session cookie).
+  'agendaFeedRouter GET /calendar/:token.ics',
 ])
 
 type NamedRouter = { name: string; router: import('express').Router }
@@ -100,6 +103,8 @@ const ROUTERS: NamedRouter[] = [
   { name: 'certificatesPublicRouter', router: certificatesPublicRouter },
   { name: 'suggestionsPublicRouter', router: suggestionsPublicRouter },
   { name: 'suggestionsAdminRouter', router: suggestionsAdminRouter },
+  { name: 'agendaRouter', router: agendaRouter },
+  { name: 'agendaFeedRouter', router: agendaFeedRouter },
 ]
 
 type RouteEntry = { key: string; middlewareNames: string[] }

@@ -31,7 +31,8 @@ import {
   updateScheduleSlot,
   updateSession,
 } from './service.js'
-import { generateProgrammePdf, generateSessionIcs } from './export.js'
+import { generateProgrammePdf } from './export.js'
+import { sessionIcs } from '../agenda/service.js'
 import { pool } from '../../db/pool.js'
 import { NotFoundError } from '../../utils/errors.js'
 import {
@@ -178,12 +179,7 @@ scheduleRouter.get('/:id/sessions/public', async (req, res, next) => {
 
 scheduleRouter.get('/:id/sessions/public/:sessionId/ics', async (req, res, next) => {
   try {
-    const schedule = await getPublicSchedule(req.params.id!)
-    const session = schedule.find((s) => s.id === req.params.sessionId)
-    if (!session) throw new NotFoundError('This session does not exist.')
-    const [confRows] = await pool.query('SELECT name FROM conferences WHERE id = ? LIMIT 1', [req.params.id])
-    const conferenceName = (confRows as Array<{ name: string }>)[0]?.name ?? ''
-    const ics = generateSessionIcs(session, conferenceName)
+    const ics = await sessionIcs(req.params.id!, req.params.sessionId!)
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="session.ics"`)
     res.send(ics)

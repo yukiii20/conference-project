@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   Award,
   Bell,
+  CalendarCheck,
   CalendarDays,
   ClipboardCheck,
   FileText,
@@ -16,6 +17,7 @@ import type { PortalSectionConfig } from './sidebarConfig'
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard,
+  agenda: CalendarCheck,
   author: FileText,
   reviewer: ClipboardCheck,
   'session-chair': CalendarDays,

@@ -45,6 +45,8 @@ export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM email_templates WHERE conference_id IS NOT NULL')
   await pool.query('DELETE FROM announcements')
   await pool.query('DELETE FROM bulk_emails') // cascades to bulk_email_recipients
+  await pool.query('DELETE FROM agenda_feed_tokens')
+  await pool.query('DELETE FROM agenda_items')
   await pool.query('DELETE FROM committee_members')
   await pool.query('DELETE FROM committees')
   await pool.query('DELETE FROM presentations')
@@ -363,5 +365,25 @@ export async function createRoleRequest(
     'SELECT id FROM role_requests WHERE user_id = ? AND conference_id = ? AND role_code = ? LIMIT 1',
     [userId, conferenceId, roleCode],
   )
+  return (rows as Array<{ id: string }>)[0]!.id
+}
+
+/** A room plus a session in it, inserted directly (the programme API's own validation is covered by programme.test.ts). */
+export async function createSessionDirect(
+  conferenceId: string,
+  input: { title: string; startsAt: Date; endsAt: Date; status?: string; roomName?: string },
+): Promise<string> {
+  const roomName = input.roomName ?? 'Hall A'
+  await pool.query('INSERT IGNORE INTO rooms (conference_id, name) VALUES (?, ?)', [conferenceId, roomName])
+  const [roomRows] = await pool.query('SELECT id FROM rooms WHERE conference_id = ? AND name = ? LIMIT 1', [conferenceId, roomName])
+  const roomId = (roomRows as Array<{ id: string }>)[0]!.id
+  await pool.query(
+    `INSERT INTO conference_sessions (conference_id, room_id, title, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?)`,
+    [conferenceId, roomId, input.title, input.startsAt, input.endsAt, input.status ?? 'published'],
+  )
+  const [rows] = await pool.query('SELECT id FROM conference_sessions WHERE conference_id = ? AND title = ? LIMIT 1', [
+    conferenceId,
+    input.title,
+  ])
   return (rows as Array<{ id: string }>)[0]!.id
 }

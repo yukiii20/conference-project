@@ -8,6 +8,8 @@ import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
 import { RegistrationPanel } from './conference/RegistrationPanel'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
+import { StarButton } from '../components/agenda/StarButton'
+import { useAgendaStars } from '../components/agenda/useAgendaStars'
 import {
   DEADLINE_LABELS,
   type Committee,
@@ -70,6 +72,7 @@ export function ConferencePage() {
   const [activeSection, setActiveSection] = useState<SectionId>('home')
   const [introDone, setIntroDone] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
+  const agendaStars = useAgendaStars(conference?.id ?? null)
 
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const headerRef = useRef<HTMLElement | null>(null)
@@ -607,13 +610,23 @@ export function ConferencePage() {
                             <span className="capitalize"> · {row.session_type}</span>
                           </p>
                         </div>
-                        <a
-                          href={`/api/conferences/${conference.id}/sessions/public/${row.id}/ics`}
-                          style={{ color: accent }}
-                          className="shrink-0 text-xs font-medium hover:underline"
-                        >
-                          Add to calendar
-                        </a>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <a
+                            href={`/api/conferences/${conference.id}/sessions/public/${row.id}/ics`}
+                            style={{ color: accent }}
+                            className="text-xs font-medium hover:underline"
+                          >
+                            Add to calendar
+                          </a>
+                          <StarButton
+                            starred={agendaStars.starred.has(row.id)}
+                            locked={!agendaStars.starred.has(row.id) && agendaStars.automatic.has(row.id)}
+                            busy={agendaStars.busyId === row.id}
+                            onToggle={() => agendaStars.toggle(row.id)}
+                            accent={accent}
+                            sessionTitle={row.title}
+                          />
+                        </div>
                       </div>
                       {row.description ? <p className="mt-2 text-sm text-ink/70">{row.description}</p> : null}
                       {row.chairs.length > 0 ? (

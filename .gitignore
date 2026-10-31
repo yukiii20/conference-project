@@ -38,3 +38,6 @@ demo-video/assets/music.mp3
 *.njsproj
 *.sln
 *.sw?
+
+# Batch 3 SQL files (run by hand in MySQL Workbench; kept out of git)
+database/batch-3-sql/

@@ -5,6 +5,7 @@
 
 export type PortalSectionId =
   | 'dashboard'
+  | 'agenda'
   | 'certificates'
   | 'ticket'
   | 'notifications'
@@ -24,6 +25,8 @@ export type PortalSectionConfig = {
 
 export const PORTAL_SECTIONS: PortalSectionConfig[] = [
   { id: 'dashboard', label: 'Dashboard', requiresRole: null },
+  // Has its own conference picker: attendees with only a registration hold no conference role.
+  { id: 'agenda', label: 'My agenda', requiresRole: null, crossConference: true },
   { id: 'author', label: 'My submissions', requiresRole: 'author' },
   { id: 'reviewer', label: 'My reviews', requiresRole: 'reviewer' },
   { id: 'session-chair', label: 'My sessions', requiresRole: 'session_chair', crossConference: true },

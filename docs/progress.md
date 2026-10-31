@@ -1039,3 +1039,37 @@ a full run end to end - not a code issue, see the Step 3/Step 10 notes above for
 **No further SQL needed before this deploys** - `04_review_bids.sql` and `04_review_reminders.sql`
 are already applied to all three databases (you ran all three, including Aiven, before I
 continued).
+
+## Features batch 3, feature 7 - My agenda + calendar - DONE (code; DB tests pending SQL)
+
+New `database/batch-3-sql/04_agenda.sql` (kept out of git - `database/batch-3-sql/` is in
+`.gitignore` at your request; all batch-3 SQL is in that folder, with one master file
+`RUN-ALL-batch-3.sql` that applies everything to `conference_cms` and then
+`conference_cms_test`). Tables: `agenda_items` (only explicit stars; unique
+user+session; cascades when a session is deleted) and `agenda_feed_tokens` (one 64-hex secret
+per user+conference behind the private calendar feed; reset replaces it). Authors' own
+presentations (presenter or any linked co-author) and chairs' own sessions are worked out from
+`presentations`/`session_chairs` at read time, so they never go stale. No new permission.
+
+Backend `server/src/modules/agenda/`: `ics.ts` is now the one RFC 5545 writer (TZID=conference
+timezone wall-clock times + matching VTIMEZONE, so Asia/Kathmandu shows correctly in
+Google/Outlook; 75-octet UTF-8-safe line folding; feed adds REFRESH-INTERVAL). The existing public
+per-session `.ics` route now uses it too (old UTC-only generator removed from
+`schedule/export.ts`). Routes: `GET /api/me/agenda-conferences`, `GET/PUT/DELETE
+/api/conferences/:id/my-agenda[/:sessionId]` (only published sessions can be starred),
+`GET /api/conferences/:id/my-agenda.ics`, `GET /api/conferences/:id/my-agenda-feed`,
+`POST .../my-agenda-feed/reset` (audit-logged as `agenda.feed_reset`), and the public
+`GET /api/calendar/:token.ics` (token is the credential; listed in routeGuards' PUBLIC_ROUTES
+with that reason). Clash detection (`findClashes`) flags overlapping, not back-to-back, sessions.
+
+Frontend: new portal section **My agenda** (`src/pages/portal/MyAgendaTab.tsx`, own conference
+picker because attendee-only users hold no conference role), shared `StarButton` +
+`useAgendaStars` (`src/components/agenda/`), and a star next to "Add to calendar" on the public
+programme (`ConferencePage.tsx`; signed-out visitors are sent to sign in).
+
+Tests: `server/tests/agendaIcs.test.ts` (3, pure: Kathmandu TZID/offset, BEGIN/END balance,
+escaping, folding, clash logic) and `server/tests/agenda.test.ts` (8, DB: 401, star/unstar +
+clash + drafts refused, automatic chair/author entries, .ics download, public per-session .ics
+timezone, feed by token + reset kills old URL + audit row, bad tokens 404, feeds never leak
+another person's stars); routeGuards covers the new routes; `e2e/agenda.spec.ts` (page, feed
+link shown, fetched, reset, old URL 404, no console errors, 390px).

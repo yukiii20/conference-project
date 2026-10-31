@@ -132,6 +132,11 @@ async function main() {
     await pool.query('DELETE FROM email_logs WHERE conference_id = ?', [existingConferenceId])
     // Convenor portal (Part A) features — same FK-safe ordering as tests/helpers.ts's resetDatabase.
     await pool.query('DELETE FROM email_templates WHERE conference_id = ?', [existingConferenceId])
+    // Features batch 3 (database/batch-3-sql). Survey rows cascade to their questions/responses/answers/invitations.
+    await pool.query('DELETE FROM agenda_items WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM agenda_feed_tokens WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM abstract_books WHERE conference_id = ?', [existingConferenceId])
+    await pool.query('DELETE FROM feedback_surveys WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM announcements WHERE conference_id = ?', [existingConferenceId])
     await pool.query(
       `DELETE cm FROM committee_members cm JOIN committees c ON c.id = cm.committee_id WHERE c.conference_id = ?`,

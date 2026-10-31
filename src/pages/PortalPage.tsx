@@ -7,6 +7,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { Select } from '../components/ui/Input'
 import { PortalSidebar } from './portal/PortalSidebar'
 import { DashboardTab } from './portal/DashboardTab'
+import { MyAgendaTab } from './portal/MyAgendaTab'
 import { MyCertificatesTab } from './portal/MyCertificatesTab'
 import { MyTicketTab } from './portal/MyTicketTab'
 import { NotificationsTab } from './portal/NotificationsTab'
@@ -188,6 +189,7 @@ function PortalPageInner() {
                   )
                 }
               />
+              <Route path="agenda" element={<MyAgendaTab conferenceId={conferenceId} />} />
               <Route path="ticket" element={<MyTicketTab conferenceId={conferenceId} />} />
               <Route path="certificates" element={<MyCertificatesTab />} />
               <Route path="notifications" element={<NotificationsTab />} />

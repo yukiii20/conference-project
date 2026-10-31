@@ -36,6 +36,7 @@ import { activityLogRouter } from './modules/activityLog/routes.js'
 import { registrationRouter } from './modules/registration/routes.js'
 import { certificatesRouter, certificatesPublicRouter } from './modules/certificates/routes.js'
 import { suggestionsAdminRouter, suggestionsPublicRouter } from './modules/suggestions/routes.js'
+import { agendaFeedRouter, agendaRouter } from './modules/agenda/routes.js'
 import { PUBLIC_DIR } from './storage/paths.js'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -192,6 +193,8 @@ export function createApp() {
   app.use('/api/role-requests', roleRequestsRouter)
   app.use('/api', platformSettingsPublicRouter)
   app.use('/api', suggestionsPublicRouter)
+  app.use('/api', agendaRouter)
+  app.use('/api', agendaFeedRouter)
   app.use('/api/admin', adminRouter)
   app.use('/api/admin', adminEmailsRouter)
   app.use('/api/admin', platformSettingsAdminRouter)
