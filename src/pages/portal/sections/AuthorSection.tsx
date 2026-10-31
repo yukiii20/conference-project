@@ -3,6 +3,7 @@ import { api } from '../../../lib/api'
 import { SubmissionsList } from '../../author/SubmissionsList'
 import { SubmissionDetail } from '../../author/SubmissionDetail'
 import { Button, PageHeader, Tabs } from '../../../components/ui'
+import { Markdown } from '../../../components/Markdown'
 
 type Tab = 'new' | 'submissions'
 type Track = { id: string; name: string }
@@ -10,6 +11,7 @@ type Track = { id: string; name: string }
 export function AuthorSection({ conferenceId }: { conferenceId: string }) {
   const [tracks, setTracks] = useState<Track[]>([])
   const [maxAbstractWords, setMaxAbstractWords] = useState(300)
+  const [guidelines, setGuidelines] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('submissions')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -18,16 +20,18 @@ export function AuthorSection({ conferenceId }: { conferenceId: string }) {
     let cancelled = false
     async function reload() {
       try {
-        const data = await api.get<{ tracks: Track[]; settings: { max_abstract_words: number } }>(
+        const data = await api.get<{ tracks: Track[]; settings: { max_abstract_words: number }; submission_guidelines: string | null }>(
           `/conferences/${conferenceId}/author-form`,
         )
         if (cancelled) return
         setTracks(data.tracks)
         setMaxAbstractWords(data.settings.max_abstract_words)
+        setGuidelines(data.submission_guidelines?.trim() ? data.submission_guidelines : null)
       } catch {
         if (cancelled) return
         setTracks([])
         setMaxAbstractWords(300)
+        setGuidelines(null)
       }
       setSelectedId(null)
       setTab('submissions')
@@ -64,6 +68,13 @@ export function AuthorSection({ conferenceId }: { conferenceId: string }) {
           setSelectedId(null)
         }}
       />
+
+      {tab === 'new' && guidelines ? (
+        <details open className="mt-4 rounded-xl border border-border-soft bg-surface p-4 shadow-card">
+          <summary className="cursor-pointer text-sm font-semibold text-text">Submission guidelines</summary>
+          <Markdown source={guidelines} className="mt-3 text-sm text-text/80" />
+        </details>
+      ) : null}
 
       {tab === 'new' ? (
         <SubmissionDetail

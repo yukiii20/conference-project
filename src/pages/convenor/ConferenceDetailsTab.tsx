@@ -79,8 +79,9 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
         ) : null}
       </div>
       <p className="mt-1 text-sm text-text-muted">
-        Shown on the public submission page. Plain text only — line breaks are kept, and any https:// link becomes
-        clickable, but no formatting or HTML is rendered.
+        The welcome text appears in the About section of the public conference page; the guidelines appear there
+        and above the authors' abstract form. Markdown is supported: # headings, - bullet lists, 1. numbered lists,
+        **bold**, *italic* and [links](https://...). HTML is not rendered.
       </p>
 
       <form onSubmit={handleSave} className="mt-4 space-y-4">

@@ -11,6 +11,7 @@ import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation
 import { StarButton } from '../components/agenda/StarButton'
 import { useAgendaStars } from '../components/agenda/useAgendaStars'
 import { usePublicAbstractBook } from '../components/abstractBook/usePublicAbstractBook'
+import { Markdown } from '../components/Markdown'
 import {
   DEADLINE_LABELS,
   type Committee,
@@ -408,9 +409,12 @@ export function ConferencePage() {
             {conference.tagline ? (
               <p className="mt-2 text-lg font-medium text-ink/70">{conference.tagline}</p>
             ) : null}
+            {conference.welcome_text ? (
+              <Markdown source={conference.welcome_text} className="mt-4 max-w-prose text-ink/80" />
+            ) : null}
             {conference.description ? (
               <p className="mt-4 max-w-prose whitespace-pre-line leading-relaxed text-ink/80">{conference.description}</p>
-            ) : (
+            ) : conference.welcome_text ? null : (
               <p className="mt-4 text-sm text-ink/60">No description yet.</p>
             )}
           </div>
@@ -436,6 +440,22 @@ export function ConferencePage() {
                 </li>
               ))}
             </ul>
+          </div>
+        ) : null}
+
+        {conference.submission_guidelines ? (
+          <div id="submission-guidelines" className="mt-8 rounded-xl border border-border-soft bg-surface p-5 shadow-card sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-display text-2xl font-semibold tracking-tight">Submission guidelines</h3>
+              <Link
+                to={signupHref}
+                style={{ backgroundColor: accent, color: getAccessibleTextColor(accent) }}
+                className="rounded-xl px-4 py-2 text-sm font-medium shadow-sm hover:opacity-90"
+              >
+                Submit an abstract
+              </Link>
+            </div>
+            <Markdown source={conference.submission_guidelines} className="mt-4 max-w-prose text-ink/80" />
           </div>
         ) : null}
       </section>

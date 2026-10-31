@@ -113,6 +113,8 @@ export type AuthorFormData = {
     review_mode: string
   }
   windows: Record<'abstract_submission' | 'full_paper' | 'final_paper', { opens_at: string | null; closes_at: string | null; is_open: boolean }>
+  /** The convenor's guidelines (Markdown), shown above the abstract form. */
+  submission_guidelines: string | null
 }
 
 export async function getAuthorFormData(userId: string, conferenceId: string): Promise<AuthorFormData> {
@@ -123,6 +125,8 @@ export async function getAuthorFormData(userId: string, conferenceId: string): P
     [conferenceId],
   )
   const settings = await getConferenceSettings(conferenceId)
+  const [conferenceRows] = await pool.query('SELECT submission_guidelines FROM conferences WHERE id = ? LIMIT 1', [conferenceId])
+  const submissionGuidelines = (conferenceRows as Array<{ submission_guidelines: string | null }>)[0]?.submission_guidelines ?? null
 
   const windowTypes = ['abstract_submission', 'full_paper', 'final_paper'] as const
   const windows: AuthorFormData['windows'] = {} as AuthorFormData['windows']
@@ -144,6 +148,7 @@ export async function getAuthorFormData(userId: string, conferenceId: string): P
       review_mode: settings.review_mode,
     },
     windows,
+    submission_guidelines: submissionGuidelines,
   }
 }
 
