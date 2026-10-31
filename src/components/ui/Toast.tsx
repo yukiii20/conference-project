@@ -63,7 +63,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div
                 key={t.id}
                 role="status"
-                className={`pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-md px-4 py-3 text-sm shadow-lg ${VARIANT_CLASSES[t.variant]}`}
+                className={`pointer-events-auto flex w-full max-w-sm animate-slide-up items-start gap-2.5 rounded-xl px-4 py-3 text-sm shadow-pop ${VARIANT_CLASSES[t.variant]}`}
               >
                 <Icon className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span className="flex-1">{t.message}</span>

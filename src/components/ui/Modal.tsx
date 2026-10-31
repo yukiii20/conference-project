@@ -41,7 +41,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
+      className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-brand/40 px-4 py-8 backdrop-blur-[2px]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -52,10 +52,10 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? labelledBy ?? 'modal-title' : undefined}
         tabIndex={-1}
-        className={`max-h-full w-full overflow-y-auto rounded-lg bg-surface p-5 shadow-lg focus:outline-none ${SIZE_CLASSES[size]}`}
+        className={`max-h-full w-full animate-pop-in overflow-y-auto rounded-2xl border border-border-soft bg-surface p-6 shadow-pop focus:outline-none ${SIZE_CLASSES[size]}`}
       >
         {title ? (
-          <h2 id={labelledBy ?? 'modal-title'} className="text-lg font-semibold text-text">
+          <h2 id={labelledBy ?? 'modal-title'} className="font-display text-xl font-semibold tracking-tight text-text">
             {title}
           </h2>
         ) : null}
@@ -89,8 +89,8 @@ export function ConfirmDialog({
 }) {
   return (
     <Modal open={open} onClose={onCancel} title={title} size="sm">
-      <div className="mt-2 text-sm text-text-muted">{message}</div>
-      <div className="mt-4 flex justify-end gap-2">
+      <div className="mt-2 text-sm leading-relaxed text-text-muted">{message}</div>
+      <div className="mt-6 flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
           {cancelLabel}
         </Button>

@@ -3,17 +3,19 @@ import { Link } from 'react-router-dom'
 import {
   Award,
   CheckCircle2,
+  ChevronRight,
   Circle,
   Clock,
   FileText,
   Ticket,
   Users,
-  type LucideIcon,
 } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { Spinner } from '../../components/ui/Spinner'
+import { Skeleton } from '../../components/ui/Spinner'
+import { StatCard } from '../../components/ui/StatCard'
+import { buttonClasses } from '../../components/ui/Button'
 import { ErrorState } from '../../components/ui/EmptyState'
 import { Badge } from '../../components/ui/Badge'
 import { Icon } from '../../components/ui/Icon'
@@ -73,30 +75,35 @@ function SetupChecklistCard({ checklist, base }: { checklist: Dashboard['setup_c
   if (doneCount === steps.length) return null // every step done - no need to keep showing this
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="rounded-xl border border-border-soft bg-surface p-5 shadow-card sm:p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Setup checklist</h2>
-        <span className="text-xs text-text-muted">
+        <h2 className="text-sm font-semibold text-text">Setup checklist</h2>
+        <span className="text-xs font-medium text-text-muted">
           {doneCount} of {steps.length} done
         </span>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
+        <div className="h-full rounded-full bg-gold transition-[width] duration-700" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
       </div>
       <p className="mt-1 text-sm text-text-muted">
         {checklist.published
           ? "A few things are still worth finishing."
           : "Your conference isn't visible on the public home page yet — here's what's left."}
       </p>
-      <ul className="mt-3 space-y-1.5">
+      <ul className="mt-4 grid gap-1 md:grid-cols-2">
         {steps.map((step) => {
           const done = checklist[step.id]
           return (
             <li key={step.id}>
               <Link
                 to={`${base}/${step.to}`}
-                className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-surface-muted ${done ? 'text-text-muted line-through' : 'text-text'}`}
+                className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:bg-page-bg ${done ? 'text-text-muted' : 'text-text'}`}
               >
-                <Icon icon={done ? CheckCircle2 : Circle} size={18} className={done ? 'text-success' : 'text-text-muted'} />
-                <span className="flex-1">{step.label}</span>
-                {!done ? <span className="hidden text-xs text-text-muted sm:inline">{step.hint}</span> : null}
+                <Icon icon={done ? CheckCircle2 : Circle} size={18} className={`mt-px shrink-0 ${done ? 'text-success' : 'text-border-strong'}`} />
+                <span className="min-w-0 flex-1">
+                  <span className={done ? 'line-through decoration-text-muted/50' : 'font-medium'}>{step.label}</span>
+                  {!done ? <span className="block text-xs text-text-muted">{step.hint}</span> : null}
+                </span>
               </Link>
             </li>
           )
@@ -106,33 +113,18 @@ function SetupChecklistCard({ checklist, base }: { checklist: Dashboard['setup_c
   )
 }
 
-function Card({ label, value, to, icon }: { label: string; value: number | string; to?: string; icon: LucideIcon }) {
-  const content = (
-    <div className="flex h-full flex-col gap-2 rounded-lg border border-border bg-surface p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</p>
-        <Icon icon={icon} className="text-brand/60" />
-      </div>
-      <p className="text-2xl font-semibold text-brand">{value}</p>
-    </div>
-  )
-  if (!to) return content
-  return (
-    <Link to={to} className="block h-full transition-shadow hover:shadow-md">
-      {content}
-    </Link>
-  )
-}
-
 function AttentionRow({ label, count, to }: { label: string; count: number; to: string }) {
   if (count <= 0) return null
   return (
     <Link
       to={to}
-      className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-muted"
+      className="group flex items-center justify-between gap-3 rounded-lg border border-border-soft bg-page-bg/50 px-3.5 py-2.5 text-sm transition-colors hover:border-border hover:bg-surface"
     >
-      <span className="text-text/80">{label}</span>
-      <Badge tone="warning">{count}</Badge>
+      <span className="text-text">{label}</span>
+      <span className="flex items-center gap-2">
+        <Badge tone="warning">{count}</Badge>
+        <Icon icon={ChevronRight} size={16} className="text-text-muted transition-transform group-hover:translate-x-0.5" />
+      </span>
     </Link>
   )
 }
@@ -164,8 +156,17 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
 
   if (loading) {
     return (
-      <div className="mt-10 flex justify-center">
-        <Spinner size="lg" />
+      <div className="space-y-8" aria-busy="true">
+        <Skeleton className="h-16 w-72" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
+        </div>
       </div>
     )
   }
@@ -189,23 +190,25 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
     Boolean(attention.deadline_within_week)
 
   return (
-    <div className="mt-6 space-y-8">
+    <div className="space-y-8">
       <PageHeader title="Dashboard" subtitle="An overview of this conference's submissions, reviews and registrations." />
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <StatCard label="Submissions" value={totalSubmissions} to={`${base}/papers/submissions`} icon={FileText} />
+        <StatCard label="Reviews pending" value={data.reviews.assigned} to={`${base}/papers/reviews`} icon={Clock} />
+        <StatCard label="Reviews done" value={data.reviews.completed} to={`${base}/papers/reviews`} icon={CheckCircle2} />
+        <StatCard label="Accepted papers" value={data.accepted_papers} to={`${base}/papers/submissions`} icon={Award} />
+        <StatCard label="Members" value={totalMembers} to={`${base}/people/members`} icon={Users} />
+        <StatCard label="Registrations" value={data.registrations} to={`${base}/event/attendance`} icon={Ticket} />
+      </div>
+
+      <SubmissionPipeline byStatus={data.submissions_by_status} total={totalSubmissions} reviews={data.reviews} />
 
       <SetupChecklistCard checklist={data.setup_checklist} base={base} />
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <Card label="Submissions" value={totalSubmissions} to={`${base}/papers/submissions`} icon={FileText} />
-        <Card label="Reviews pending" value={data.reviews.assigned} to={`${base}/papers/reviews`} icon={Clock} />
-        <Card label="Reviews done" value={data.reviews.completed} to={`${base}/papers/reviews`} icon={CheckCircle2} />
-        <Card label="Accepted papers" value={data.accepted_papers} to={`${base}/papers/submissions`} icon={Award} />
-        <Card label="Members" value={totalMembers} to={`${base}/people/members`} icon={Users} />
-        <Card label="Registrations" value={data.registrations} to={`${base}/event/attendance`} icon={Ticket} />
-      </div>
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Needs your attention</h2>
+        <div className="rounded-xl border border-border-soft bg-surface p-5 shadow-card sm:p-6">
+          <h2 className="text-sm font-semibold text-text">Needs your attention</h2>
           {data.next_key_date ? (
             <p className="mt-2 text-sm text-text-muted">
               Next key date: <span className="font-medium text-text">{data.next_key_date.deadline_type.replace(/_/g, ' ')}</span>{' '}
@@ -235,9 +238,9 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
               {attention.deadline_within_week ? (
                 <Link
                   to={`${base}/schedule-basics/dates`}
-                  className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-muted"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border-soft bg-page-bg/50 px-3.5 py-2.5 text-sm transition-colors hover:border-border hover:bg-surface"
                 >
-                  <span className="text-text/80">
+                  <span className="text-text">
                     {attention.deadline_within_week.deadline_type.replace(/_/g, ' ')} closes within a week
                   </span>
                   <Badge tone="warning">{attention.deadline_within_week.days}d</Badge>
@@ -247,33 +250,33 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
           )}
         </div>
 
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Submissions per track</h2>
+        <div className="rounded-xl border border-border-soft bg-surface p-5 shadow-card sm:p-6">
+          <h2 className="text-sm font-semibold text-text">Submissions per track</h2>
           {data.submissions_per_track.length === 0 ? (
             <div className="mt-2 flex flex-col items-center gap-3 py-6 text-center">
               <Icon icon={FileText} size={28} className="text-text-muted" />
               <p className="text-sm text-text-muted">No tracks yet.</p>
               <Link
                 to={`${base}/schedule-basics/tracks`}
-                className="inline-flex min-h-10 items-center rounded-md bg-button px-4 text-sm font-medium text-white hover:bg-button-hover"
+                className={buttonClasses('primary', 'md')}
               >
                 Add tracks
               </Link>
             </div>
           ) : (
-            <div className="mt-3 space-y-2">
+            <div className="mt-4 space-y-3">
               {data.submissions_per_track.map((t) => (
-                <div key={t.track_name} className="flex h-6 items-center gap-3">
-                  <span className="w-32 shrink-0 truncate text-sm text-text-muted">{t.track_name}</span>
-                  <div className="h-3 flex-1 rounded-full bg-surface-muted">
+                <div key={t.track_name} className="flex items-center gap-3">
+                  <span className="w-36 shrink-0 truncate text-sm text-text-muted" title={t.track_name}>{t.track_name}</span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
                     {t.count > 0 ? (
                       <div
-                        className="h-3 rounded-full bg-brand"
+                        className="h-full rounded-full bg-button transition-[width] duration-700"
                         style={{ width: `${(t.count / maxTrackCount) * 100}%` }}
                       />
                     ) : null}
                   </div>
-                  <span className="w-8 shrink-0 text-right text-sm text-text-muted">{t.count}</span>
+                  <span className="w-8 shrink-0 text-right text-sm font-medium tabular-nums text-text">{t.count}</span>
                 </div>
               ))}
             </div>
@@ -281,5 +284,97 @@ export function DashboardTab({ conferenceId, base, isManager }: { conferenceId: 
         </div>
       </div>
     </div>
+  )
+}
+
+const PIPELINE: Array<{ status: string; label: string; color: string }> = [
+  { status: 'draft', label: 'Draft', color: 'bg-border-strong' },
+  { status: 'submitted', label: 'Submitted', color: 'bg-indigo' },
+  { status: 'under_review', label: 'Under review', color: 'bg-button-active' },
+  { status: 'revision_required', label: 'Revision', color: 'bg-gold' },
+  { status: 'accepted', label: 'Accepted', color: 'bg-success' },
+  { status: 'rejected', label: 'Rejected', color: 'bg-danger/70' },
+]
+
+/** One stacked bar of every submission by status, plus review completion - both from the dashboard payload. */
+function SubmissionPipeline({
+  byStatus,
+  total,
+  reviews,
+}: {
+  byStatus: Record<string, number>
+  total: number
+  reviews: { assigned: number; completed: number }
+}) {
+  const known = new Set(PIPELINE.map((p) => p.status))
+  const other = Object.entries(byStatus)
+    .filter(([k]) => !known.has(k))
+    .reduce((a, [, v]) => a + v, 0)
+  const segments = [...PIPELINE.map((p) => ({ ...p, count: byStatus[p.status] ?? 0 })), { status: 'other', label: 'Other', color: 'bg-surface-muted', count: other }].filter(
+    (s) => s.count > 0,
+  )
+  const reviewTotal = reviews.assigned + reviews.completed
+  const reviewPct = reviewTotal === 0 ? 0 : Math.round((reviews.completed / reviewTotal) * 100)
+
+  return (
+    <div className="grid gap-6 rounded-xl border border-border-soft bg-surface p-5 shadow-card sm:p-6 lg:grid-cols-[1fr_auto]">
+      <div className="min-w-0">
+        <h2 className="text-sm font-semibold text-text">Submission pipeline</h2>
+        {total === 0 ? (
+          <p className="mt-3 text-sm text-text-muted">No submissions yet.</p>
+        ) : (
+          <>
+            <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-surface-muted" role="img" aria-label={segments.map((s) => `${s.label}: ${s.count}`).join(', ')}>
+              {segments.map((s) => (
+                <div key={s.status} className={`${s.color} h-full first:rounded-l-full last:rounded-r-full`} style={{ width: `${(s.count / total) * 100}%` }} />
+              ))}
+            </div>
+            <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              {segments.map((s) => (
+                <li key={s.status} className="flex items-center gap-2 text-text-muted">
+                  <span className={`h-2.5 w-2.5 rounded-sm ${s.color}`} aria-hidden="true" />
+                  {s.label}
+                  <span className="font-medium tabular-nums text-text">{s.count}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-4 border-t border-border-soft pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+        <ProgressRing pct={reviewPct} />
+        <div>
+          <p className="text-sm font-semibold text-text">Reviews completed</p>
+          <p className="mt-0.5 text-sm text-text-muted">
+            {reviews.completed} of {reviewTotal} assigned
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProgressRing({ pct }: { pct: number }) {
+  const r = 26
+  const c = 2 * Math.PI * r
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" className="shrink-0" aria-hidden="true">
+      <circle cx="32" cy="32" r={r} fill="none" strokeWidth="7" className="stroke-surface-muted" />
+      <circle
+        cx="32"
+        cy="32"
+        r={r}
+        fill="none"
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c - (pct / 100) * c}
+        transform="rotate(-90 32 32)"
+        className="stroke-button transition-[stroke-dashoffset] duration-700"
+      />
+      <text x="32" y="36.5" textAnchor="middle" className="fill-brand text-[13px] font-semibold">
+        {pct}%
+      </text>
+    </svg>
   )
 }

@@ -28,18 +28,18 @@ export function FormField({
   return (
     <div>
       {label ? (
-        <label htmlFor={htmlFor} className="mb-1 block text-sm font-medium text-text">
+        <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-text">
           {label}
           {required ? <span className="text-danger"> *</span> : null}
         </label>
       ) : null}
       {children}
       {error ? (
-        <p className="mt-1 text-sm text-danger" role="alert">
+        <p className="mt-1.5 text-sm text-danger" role="alert">
           {error}
         </p>
       ) : help ? (
-        <p className="mt-1 text-sm text-text-muted">{help}</p>
+        <p className="mt-1.5 text-sm text-text-muted">{help}</p>
       ) : null}
     </div>
   )

@@ -6,22 +6,22 @@
  */
 export type StatusTone = 'neutral' | 'info' | 'warning' | 'success' | 'danger'
 
-// Step 7B+C palette — withdrawn/inactive/draft-style statuses use 'neutral'.
+// Navy/ivory/indigo palette — withdrawn/inactive/draft-style statuses use 'neutral'.
 const TONE_CLASSES: Record<StatusTone, string> = {
-  neutral: 'bg-[#E7E5E4] text-[#57534E]',
-  info: 'bg-[#E0E7FF] text-[#1E3A8A]',
-  warning: 'bg-[#FEF3C7] text-[#92400E]',
-  success: 'bg-[#DCFCE7] text-[#166534]',
-  danger: 'bg-[#FEE2E2] text-[#991B1B]',
+  neutral: 'bg-[#EEF0F3] text-[#475063] ring-1 ring-inset ring-[#475063]/10',
+  info: 'bg-[#EEF0FB] text-[#3443A0] ring-1 ring-inset ring-[#3443A0]/15',
+  warning: 'bg-[#FBF3E2] text-[#8A5A0F] ring-1 ring-inset ring-[#8A5A0F]/15',
+  success: 'bg-[#E8F5EC] text-[#166534] ring-1 ring-inset ring-[#166534]/15',
+  danger: 'bg-[#FDECEC] text-[#9B1C1C] ring-1 ring-inset ring-[#9B1C1C]/15',
 }
 
 // Same tones, plus a border — for banners (Alert, Toast) rather than small pill chips.
 const TONE_BANNER_CLASSES: Record<StatusTone, string> = {
-  neutral: 'border-[#D6D3D1] bg-[#E7E5E4] text-[#57534E]',
-  info: 'border-[#C7D2FE] bg-[#E0E7FF] text-[#1E3A8A]',
-  warning: 'border-[#FDE68A] bg-[#FEF3C7] text-[#92400E]',
-  success: 'border-[#86EFAC] bg-[#DCFCE7] text-[#166534]',
-  danger: 'border-[#FCA5A5] bg-[#FEE2E2] text-[#991B1B]',
+  neutral: 'border-[#DADDE3] bg-[#F4F5F7] text-[#3B4456]',
+  info: 'border-[#CDD2F3] bg-[#F3F4FC] text-[#2F3C92]',
+  warning: 'border-[#EED9AE] bg-[#FDF8EC] text-[#7A4F0C]',
+  success: 'border-[#B9DFC4] bg-[#F1F9F3] text-[#14592E]',
+  danger: 'border-[#F2C2C2] bg-[#FEF4F4] text-[#8F1A1A]',
 }
 
 /**

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Ticket, UserCheck } from 'lucide-react'
 import { api } from '../../lib/api'
+import { StatCard } from '../ui'
 
 export function AttendanceDashboard({ conferenceId, refreshKey }: { conferenceId: string; refreshKey: number }) {
   const [dashboard, setDashboard] = useState<{ registered: number; checked_in_today: number } | null>(null)
@@ -22,15 +24,9 @@ export function AttendanceDashboard({ conferenceId, refreshKey }: { conferenceId
   if (!dashboard) return null
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-      <div className="rounded-lg border border-border bg-surface p-4">
-        <p className="text-xs text-text-muted">Confirmed registrations</p>
-        <p className="mt-1 text-2xl font-semibold text-text">{dashboard.registered}</p>
-      </div>
-      <div className="rounded-lg border border-border bg-surface p-4">
-        <p className="text-xs text-text-muted">Checked in today</p>
-        <p className="mt-1 text-2xl font-semibold text-text">{dashboard.checked_in_today}</p>
-      </div>
+    <div className="grid grid-cols-2 gap-4">
+      <StatCard label="Confirmed registrations" value={dashboard.registered} icon={Ticket} />
+      <StatCard label="Checked in today" value={dashboard.checked_in_today} icon={UserCheck} />
     </div>
   )
 }

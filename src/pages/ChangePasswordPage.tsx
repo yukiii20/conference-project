@@ -1,3 +1,4 @@
+import { PortalHeader } from '../components/PortalHeader'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
@@ -73,9 +74,11 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-      <Card className="w-full max-w-md">
-        <h1 className="text-xl font-semibold text-text">Change password</h1>
+    <div className="min-h-screen bg-page-bg">
+      <PortalHeader roleLabel="Account" />
+      <div className="flex justify-center px-4 py-12">
+        <Card className="w-full max-w-md">
+        <h1 className="font-display text-2xl font-semibold text-brand">Change password</h1>
         <p className="mt-1 text-sm text-text-muted">Set a new password for your account.</p>
 
         {error ? (
@@ -136,7 +139,8 @@ export function ChangePasswordPage() {
             Back
           </Link>
         </p>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }

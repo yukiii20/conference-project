@@ -151,7 +151,7 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
 
       {submission ? (
         <Card>
-          <h2 className="text-lg font-semibold text-text">{submission.title}</h2>
+          <h2 className="font-display text-xl font-semibold text-brand">{submission.title}</h2>
           <p className="mt-1 text-sm text-text-muted">Track: {submission.track_name || '—'}</p>
           <p className="mt-4 whitespace-pre-line text-sm text-text/80">{submission.abstract}</p>
           <div className="mt-3 flex flex-wrap gap-2">

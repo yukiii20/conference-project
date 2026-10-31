@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { MessageSquareHeart } from 'lucide-react'
 import { formatKathmandu } from '../../lib/datetime'
-import { Card, buttonClasses } from '../ui'
+import { buttonClasses } from '../ui'
 import { Icon } from '../ui/Icon'
 import { useMyFeedback } from './useMyFeedback'
 
@@ -12,10 +12,12 @@ export function GiveFeedbackCard({ base }: { base: string }) {
   if (pending.length === 0) return null
 
   return (
-    <Card>
+    <section className="rounded-xl border border-gold/40 bg-gold-soft/60 p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <Icon icon={MessageSquareHeart} className="mt-0.5 text-brand/70" />
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-gold-ink">
+            <Icon icon={MessageSquareHeart} size={18} />
+          </span>
           <div>
             <h2 className="text-sm font-semibold text-text">Give feedback</h2>
             <p className="text-sm text-text-muted">
@@ -29,6 +31,6 @@ export function GiveFeedbackCard({ base }: { base: string }) {
           Give feedback
         </Link>
       </div>
-    </Card>
+    </section>
   )
 }

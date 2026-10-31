@@ -3,10 +3,9 @@ import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from 'rea
 import { api, setAdminViewAs } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { AdminViewAsProvider } from '../lib/adminViewAsContext'
-import { PortalHeader } from '../components/PortalHeader'
+import { AppShell, ShellConferenceContext, type Crumb } from '../components/AppShell'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Alert } from '../components/ui/Alert'
-import { Select } from '../components/ui/Input'
 import { Spinner } from '../components/ui/Spinner'
 import { ConvenorSidebar } from './convenor/ConvenorSidebar'
 import { DashboardTab } from './convenor/DashboardTab'
@@ -17,7 +16,7 @@ import { PapersSection } from './convenor/sections/PapersSection'
 import { EventSection } from './convenor/sections/EventSection'
 import { CommunicationSection } from './convenor/sections/CommunicationSection'
 import { DirtyGuardProvider, useDirtyGuard } from './convenor/DirtyGuard'
-import { OLD_PATH_REDIRECTS } from './convenor/sidebarConfig'
+import { OLD_PATH_REDIRECTS, SECTIONS } from './convenor/sidebarConfig'
 
 type ConvenorConference = { id: string; name: string; slug: string; roleCode: string }
 
@@ -55,7 +54,6 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
   const [missingAbstractDates, setMissingAbstractDates] = useState(false)
   const [pendingRoleRequests, setPendingRoleRequests] = useState(0)
   const [papersAttention, setPapersAttention] = useState(0)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
     if (viewAs) return
@@ -131,33 +129,65 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conferenceId, location.pathname])
 
+  const workspaceLabel = viewAs ? 'Admin view' : isManagerPortal ? 'Manager workspace' : 'Convenor workspace'
+  const activeSectionId = location.pathname.slice(base.length + 1).split('/')[0]
+  const activeSection = SECTIONS.find((s) => s.id === activeSectionId)
+  const activeTabId = location.pathname.slice(base.length + 1).split('/')[1]
+  const activeTab = activeSection?.tabs.find((t) => t.id === activeTabId)
+  const crumbs: Crumb[] = [
+    { label: conferenceName || (isManagerPortal ? 'Manager' : 'Convenor'), to: `${base}/dashboard` },
+    ...(activeSection ? [{ label: activeSection.label }] : []),
+    ...(activeTab ? [{ label: activeTab.label }] : []),
+  ]
+  const conferenceContext = viewAs ? (
+    <ShellConferenceContext id="convenor-conference" conferences={[{ id: viewAs.conferenceId, name: viewAs.conferenceName }]} value={viewAs.conferenceId} onChange={() => {}} />
+  ) : (
+    <ShellConferenceContext id="convenor-conference" conferences={myConferences} value={conferenceId} onChange={setConferenceId} />
+  )
+
   if (loading || !conferenceId) {
     return (
-      <div className="min-h-screen bg-background text-ink">
-        <PortalHeader roleLabel={isManagerPortal ? 'Manager' : 'Convenor'} />
-        <div className="mx-auto max-w-[1440px] px-6 py-8 sm:px-8">
-          <PageHeader title={isManagerPortal ? 'Manager' : 'Convenor'} />
-          {loading ? (
-            <div className="mt-6 flex justify-center">
-              <Spinner size="lg" />
-            </div>
-          ) : (
-            <p className="mt-6 rounded-lg border border-dashed border-border bg-surface px-4 py-6 text-sm text-text-muted">
-              You are not set up as {isManagerPortal ? 'a manager' : 'convenor'} of any conference yet.
-            </p>
-          )}
-        </div>
-      </div>
+      <AppShell
+        sidebarId="convenor-sidebar"
+        workspaceLabel={workspaceLabel}
+        roleLabel={isManagerPortal ? 'Manager' : 'Convenor'}
+        renderNav={() => null}
+        crumbs={[{ label: isManagerPortal ? 'Manager' : 'Convenor' }]}
+      >
+        <PageHeader title={isManagerPortal ? 'Manager' : 'Convenor'} />
+        {loading ? (
+          <div className="mt-6 flex justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
+            You are not set up as {isManagerPortal ? 'a manager' : 'convenor'} of any conference yet.
+          </p>
+        )}
+      </AppShell>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-ink">
-      <PortalHeader roleLabel={viewAs ? 'Administrator' : isManagerPortal ? 'Manager' : 'Convenor'} />
-
-      <div className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 sm:px-8">
+    <AppShell
+      sidebarId="convenor-sidebar"
+      workspaceLabel={workspaceLabel}
+      roleLabel={viewAs ? 'Administrator' : isManagerPortal ? 'Manager' : 'Convenor'}
+      context={conferenceContext}
+      renderNav={({ collapsed, onNavigate }) => (
+        <ConvenorSidebar
+          base={base}
+          isManager={isManagerPortal}
+          pendingRoleRequests={pendingRoleRequests}
+          papersAttention={papersAttention}
+          onNavigate={onNavigate}
+          collapsed={collapsed}
+        />
+      )}
+      crumbs={crumbs}
+    >
         {viewAs ? (
-          <div role="status" className="mb-4">
+          <div role="status" className="mb-6">
             <Alert variant="warning">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
@@ -171,65 +201,13 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
           </div>
         ) : null}
 
-        <PageHeader
-          title={isManagerPortal ? 'Manager' : 'Convenor'}
-          actions={
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen((v) => !v)}
-              aria-expanded={mobileNavOpen}
-              aria-controls="convenor-sidebar"
-              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-muted md:hidden"
-            >
-              {mobileNavOpen ? 'Close menu' : 'Menu'}
-            </button>
-          }
-          className="mb-0"
-        />
-
-        {myConferences.length > 1 ? (
-          <div className="mt-3">
-            <label htmlFor="convenor-conference" className="block text-xs font-medium text-text-muted">
-              Conference
-            </label>
-            <Select
-              id="convenor-conference"
-              value={conferenceId ?? ''}
-              onChange={(e) => setConferenceId(e.target.value)}
-              className="mt-1 max-w-sm"
-            >
-              {myConferences.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        ) : conferenceName ? (
-          <p className="mt-1 text-text-muted">{conferenceName}</p>
-        ) : null}
-
         {missingAbstractDates ? (
-          <div className="mt-4">
+          <div className="mb-6">
             <Alert variant="warning">Authors cannot submit until you set the Abstract submission dates in Key dates.</Alert>
           </div>
         ) : null}
 
-        <div className="mt-6 flex flex-col gap-8 md:flex-row">
-          <aside
-            id="convenor-sidebar"
-            className={`shrink-0 self-start rounded-lg border border-border bg-surface p-2 md:sticky md:top-6 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
-          >
-            <ConvenorSidebar
-              base={base}
-              isManager={isManagerPortal}
-              pendingRoleRequests={pendingRoleRequests}
-              papersAttention={papersAttention}
-              onNavigate={() => setMobileNavOpen(false)}
-            />
-          </aside>
-
-          <main className="min-w-0 flex-1" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
+          <main className="min-w-0" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
             {/* In "view as admin" mode this disables every input/select/textarea/button inside —
                 the real enforcement is server-side (blockWritesInAdminViewAsMode), this just keeps
                 the admin from clicking a save button that would only fail anyway. */}
@@ -266,8 +244,6 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
               </AdminViewAsProvider>
             </fieldset>
           </main>
-        </div>
-      </div>
-    </div>
+    </AppShell>
   )
 }

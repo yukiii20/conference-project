@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
-import { Alert, Badge, Button, Card, FormField, PasswordInput } from '../components/ui'
+import { Alert, Badge, Button, FormField, PasswordInput } from '../components/ui'
+import { AuthShell } from '../components/auth/AuthShell'
 
 /** Landed on from the invitation email link: /set-password?token=... */
 export function SetPasswordPage() {
@@ -38,30 +39,23 @@ export function SetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-        <Card className="w-full max-w-md text-center">
-          <h1 className="text-xl font-semibold text-text">Link expired</h1>
-          <p className="mt-3 text-sm text-text-muted">
-            This link has expired. Ask the administrator to send a new invitation.
-          </p>
-        </Card>
-      </div>
+      <AuthShell title="Link expired" centered>
+        <p className="text-center text-sm text-text-muted">
+          This link has expired. Ask the administrator to send a new invitation.
+        </p>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-      <Card className="w-full max-w-md">
-        <h1 className="text-xl font-semibold text-text">Set your password</h1>
-        <p className="mt-1 text-sm text-text-muted">Choose a password to finish setting up your account.</p>
-
+    <AuthShell title="Set your password" subtitle="Choose a password to finish setting up your account.">
         {error ? (
-          <div className="mt-4">
+          <div className="mb-4">
             <Alert variant="danger">{error}</Alert>
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <FormField label="Password" htmlFor="password">
             <PasswordInput
               id="password"
@@ -93,7 +87,6 @@ export function SetPasswordPage() {
             {submitting ? 'Saving…' : 'Set password and continue'}
           </Button>
         </form>
-      </Card>
-    </div>
+    </AuthShell>
   )
 }

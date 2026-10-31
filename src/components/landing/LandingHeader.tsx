@@ -1,5 +1,6 @@
-import { forwardRef, useState } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
 import { SITE } from '../../content/site'
 
 type LandingHeaderProps = {
@@ -14,49 +15,65 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
   ref,
 ) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const navLinkClass = (active: boolean) =>
+    `relative rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      active ? 'text-brand' : 'text-text-muted hover:text-text'
+    }`
 
   return (
-    <header ref={ref} className="sticky top-0 z-30 border-b border-brand-hover bg-brand text-on-brand">
-      <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link to="/" className="flex items-center gap-2 font-semibold text-on-brand">
-          <LogoMark />
-          <span>{SITE.name}</span>
+    <header
+      ref={ref}
+      className={`sticky top-0 z-30 border-b bg-page-bg/85 backdrop-blur-md transition-shadow supports-[backdrop-filter]:bg-page-bg/70 ${
+        scrolled || mobileOpen ? 'border-border-soft shadow-[0_1px_12px_rgb(43_36_32/0.06)]' : 'border-transparent'
+      }`}
+    >
+      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
+        <Link to="/" className="flex min-w-0 items-center gap-2.5 font-semibold text-text">
+          <LogoMark size={32} />
+          <span className="truncate text-[15px] tracking-tight">{SITE.name}</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm md:flex">
-          {SITE.nav.map((item) =>
-            onNavigate ? (
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
+          {SITE.nav.map((item) => {
+            const active = activeSection === item.id
+            return onNavigate ? (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => onNavigate(item.id)}
-                aria-current={activeSection === item.id ? 'true' : undefined}
-                className={
-                  activeSection === item.id
-                    ? 'font-medium text-on-brand underline underline-offset-4'
-                    : 'text-on-brand/80 hover:text-on-brand'
-                }
+                aria-current={active ? 'true' : undefined}
+                className={navLinkClass(active)}
               >
                 {item.label}
+                {active ? <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-brand" aria-hidden="true" /> : null}
               </button>
             ) : (
-              <Link key={item.id} to={`/#${item.id}`} className="text-on-brand/80 hover:text-on-brand">
+              <Link key={item.id} to={`/#${item.id}`} className={navLinkClass(false)}>
                 {item.label}
               </Link>
-            ),
-          )}
+            )
+          })}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 lg:flex">
           <Link
             to="/login"
-            className="rounded-md border border-on-brand/40 px-4 py-2 text-sm font-medium text-on-brand hover:bg-white/10"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-text hover:bg-surface-muted/60"
           >
             Sign in
           </Link>
           <Link
             to="/signup"
-            className="rounded-md bg-button px-4 py-2 text-sm font-medium text-on-brand hover:bg-button-hover"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-on-brand shadow-sm transition-colors hover:bg-brand-hover"
           >
             Register
           </Link>
@@ -68,23 +85,15 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
           aria-controls="landing-mobile-menu"
           aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
           onClick={() => setMobileOpen((v) => !v)}
-          className="rounded-md p-2 text-on-brand hover:bg-white/10 md:hidden"
+          className="-mr-2 rounded-lg p-2 text-text hover:bg-surface-muted/60 lg:hidden"
         >
-          {mobileOpen ? (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          )}
+          {mobileOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
         </button>
       </div>
 
       {mobileOpen ? (
-        <div id="landing-mobile-menu" className="border-t border-brand-hover bg-brand px-4 py-3 md:hidden">
-          <nav className="flex flex-col gap-1">
+        <div id="landing-mobile-menu" className="border-t border-border-soft bg-page-bg px-4 pb-4 pt-2 lg:hidden">
+          <nav className="flex flex-col" aria-label="Main">
             {SITE.nav.map((item) =>
               onNavigate ? (
                 <button
@@ -95,8 +104,8 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
                     onNavigate(item.id)
                   }}
                   aria-current={activeSection === item.id ? 'true' : undefined}
-                  className={`rounded-md px-2 py-2.5 text-left text-base ${
-                    activeSection === item.id ? 'font-medium text-on-brand underline underline-offset-4' : 'text-on-brand/80'
+                  className={`rounded-lg px-3 py-3 text-left text-base ${
+                    activeSection === item.id ? 'bg-surface font-medium text-brand' : 'text-text'
                   }`}
                 >
                   {item.label}
@@ -106,25 +115,25 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
                   key={item.id}
                   to={`/#${item.id}`}
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-md px-2 py-2.5 text-base text-on-brand/80"
+                  className="rounded-lg px-3 py-3 text-base text-text"
                 >
                   {item.label}
                 </Link>
               ),
             )}
           </nav>
-          <div className="mt-3 flex gap-2 border-t border-brand-hover pt-3">
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border-soft pt-4">
             <Link
               to="/login"
               onClick={() => setMobileOpen(false)}
-              className="flex-1 rounded-md border border-on-brand/40 px-3 py-2 text-center text-sm font-medium text-on-brand"
+              className="rounded-lg border border-border px-3 py-2.5 text-center text-sm font-medium text-text"
             >
               Sign in
             </Link>
             <Link
               to="/signup"
               onClick={() => setMobileOpen(false)}
-              className="flex-1 rounded-md bg-button px-3 py-2 text-center text-sm font-medium text-on-brand"
+              className="rounded-lg bg-brand px-3 py-2.5 text-center text-sm font-medium text-on-brand"
             >
               Register
             </Link>
@@ -136,20 +145,24 @@ export const LandingHeader = forwardRef<HTMLElement, LandingHeaderProps>(functio
 })
 
 /** The platform logo; falls back to the text name if /logo.png fails to load. */
-export function LogoMark({ size = 28 }: { size?: number }) {
+export function LogoMark({ size = 28, onDark = false }: { size?: number; onDark?: boolean }) {
   const [failed, setFailed] = useState(false)
   if (failed) {
-    return <span className="font-bold text-on-brand">{SITE.shortName}</span>
+    return <span className={`font-bold ${onDark ? 'text-white' : 'text-brand'}`}>{SITE.shortName}</span>
   }
   return (
-    <img
-      src="/logo.png"
-      alt={`${SITE.name} logo`}
-      width={size}
-      height={size}
+    <span
+      className={`inline-flex shrink-0 items-center justify-center rounded-lg ${onDark ? 'bg-white p-1' : ''}`}
       style={{ width: size, height: size }}
-      className="shrink-0 object-contain"
-      onError={() => setFailed(true)}
-    />
+    >
+      <img
+        src="/logo.png"
+        alt={`${SITE.name} logo`}
+        width={size}
+        height={size}
+        className="h-full w-full object-contain"
+        onError={() => setFailed(true)}
+      />
+    </span>
   )
 }

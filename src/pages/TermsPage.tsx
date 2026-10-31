@@ -17,7 +17,7 @@ export function TermsPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-landing-bg text-landing-text">
+    <div className="min-h-screen bg-page-bg text-text">
       {/* eslint-disable-next-line react/no-danger */}
       <div
         dangerouslySetInnerHTML={{
@@ -27,10 +27,10 @@ export function TermsPage() {
       />
       <LandingHeader />
       <main className="mx-auto max-w-[760px] px-4 py-14 sm:px-6">
-        <h1 className="text-3xl font-semibold">Terms of use</h1>
-        <p className="mt-2 text-sm text-landing-muted">Last updated: {LEGAL_LAST_UPDATED}</p>
+        <h1 className="font-display text-4xl font-semibold tracking-tight">Terms of use</h1>
+        <p className="mt-2 text-sm text-text-muted">Last updated: {LEGAL_LAST_UPDATED}</p>
 
-        <div className="mt-8 space-y-8 text-landing-text [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold [&_p]:mt-3 [&_p]:text-landing-muted [&_li]:mt-2 [&_li]:text-landing-muted [&_ul]:list-disc [&_ul]:pl-5">
+        <div className="mt-8 space-y-8 text-text [&_h2]:mt-8 [&_h2]:font-display [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_p]:leading-relaxed [&_p]:mt-3 [&_p]:text-text-muted [&_li]:mt-2 [&_li]:text-text-muted [&_ul]:list-disc [&_ul]:pl-5">
           <section>
             <h2>Accounts and accurate information</h2>
             <p>
@@ -98,7 +98,7 @@ export function TermsPage() {
                 href={SITE.contactGmailHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-landing-navy-600 underline"
+                className="font-medium text-brand underline"
               >
                 {SITE.contactEmail}
               </a>

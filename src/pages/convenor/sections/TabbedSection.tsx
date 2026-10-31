@@ -27,8 +27,8 @@ export function TabbedSection({ basePath, tabs }: { basePath: string; tabs: TabW
 
   return (
     <div>
-      <div className="overflow-x-auto border-b border-border">
-        <div className="flex gap-1 whitespace-nowrap">
+      <div className="mb-8 overflow-x-auto border-b border-border-soft">
+        <div className="flex gap-6 whitespace-nowrap">
           {tabs.map((t) => {
             const active = t.id === currentId
             return (
@@ -37,8 +37,8 @@ export function TabbedSection({ basePath, tabs }: { basePath: string; tabs: TabW
                 to={`${basePath}/${t.id}`}
                 onClick={(e) => handleTabClick(e, t.id)}
                 aria-current={active ? 'true' : undefined}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-                  active ? 'border-brand text-brand' : 'border-transparent text-text-muted hover:text-text'
+                className={`-mb-px border-b-2 px-0.5 py-3 text-sm font-medium transition-colors ${
+                  active ? 'border-button text-brand' : 'border-transparent text-text-muted hover:border-border hover:text-text'
                 }`}
               >
                 {t.label}

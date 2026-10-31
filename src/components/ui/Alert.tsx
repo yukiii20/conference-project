@@ -24,7 +24,7 @@ export function Alert({ variant = 'info', children }: { variant?: AlertVariant; 
   return (
     <div
       role="alert"
-      className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${toneBannerClasses(VARIANT_TONE[variant])}`}
+      className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm leading-relaxed ${toneBannerClasses(VARIANT_TONE[variant])}`}
     >
       <Icon className="mt-0.5 h-4 w-4 flex-shrink-0" />
       <div>{children}</div>

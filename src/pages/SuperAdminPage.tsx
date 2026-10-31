@@ -1,7 +1,8 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertOctagon,
+  BarChart3,
   Building2,
   Database,
   ExternalLink,
@@ -9,6 +10,8 @@ import {
   FileStack,
   FileText,
   HardDrive,
+  LayoutDashboard,
+  Lightbulb,
   Mail,
   MessageSquare,
   MoreHorizontal,
@@ -16,8 +19,11 @@ import {
   Save,
   Search,
   Send,
+  Settings,
+  ShieldCheck,
   Ticket,
   UserCheck,
+  UserPlus,
   Users,
   UserX,
   type LucideIcon,
@@ -31,7 +37,7 @@ import { SuggestionsAdminTab } from '../components/SuggestionsAdminTab'
 
 // Lazy so recharts is its own chunk, never part of the main bundle.
 const PlatformAnalyticsTab = lazy(() => import('../components/PlatformAnalyticsTab'))
-import { PortalHeader } from '../components/PortalHeader'
+import { AppShell, SidebarGroupLabel, SidebarLinkContent, sidebarLinkClass } from '../components/AppShell'
 import {
   Alert,
   Badge,
@@ -44,6 +50,8 @@ import {
   EmptyState,
   ErrorState,
   FormField,
+  Panel,
+  StatCard,
   Icon,
   Input,
   LinkButton,
@@ -240,18 +248,54 @@ export function SuperAdminPage() {
     loadConferences()
   }, [loadConferences])
 
-  return (
-    <div className="min-h-screen bg-page-bg text-text">
-      <PortalHeader roleLabel="Administrator" />
+  const tabsWithCounts = TABS.map((t) => (t.id === 'suggestions' ? { ...t, count: newSuggestionsCount } : t))
+  const activeTab = TABS.find((t) => t.id === tab)
 
-      <main className="mx-auto max-w-[1440px] px-6 py-8 sm:px-8">
+  return (
+    <AppShell
+      sidebarId="admin-sidebar"
+      workspaceLabel="Platform administration"
+      roleLabel="Administrator"
+      renderNav={({ collapsed, onNavigate }) => (
+        <div role="tablist" aria-orientation="vertical" aria-label="Administration" className="space-y-0.5">
+          {tabsWithCounts.map((t) => {
+            const isActive = t.id === tab
+            const group = ADMIN_GROUP_BEFORE[t.id]
+            return (
+              <Fragment key={t.id}>
+                {group ? <SidebarGroupLabel collapsed={collapsed}>{group}</SidebarGroupLabel> : null}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  title={collapsed ? t.label : undefined}
+                  onClick={() => {
+                    setTab(t.id)
+                    onNavigate()
+                  }}
+                  className={`w-full text-left ${sidebarLinkClass(isActive, collapsed)}`}
+                >
+                  <SidebarLinkContent
+                    icon={<AdminTabIcon id={t.id} />}
+                    label={t.label}
+                    badge={'count' in t ? (t.count ?? 0) : 0}
+                    collapsed={collapsed}
+                  />
+                </button>
+              </Fragment>
+            )
+          })}
+        </div>
+      )}
+      crumbs={[{ label: 'Administration', to: undefined }, { label: activeTab?.label ?? 'Dashboard' }]}
+    >
+      <main>
         <PageHeader title="Administrator" subtitle="Manage conferences, convenors, user accounts, and platform-wide settings." />
 
-        <Tabs
-          tabs={TABS.map((t) => (t.id === 'suggestions' ? { ...t, count: newSuggestionsCount } : t))}
-          active={tab}
-          onChange={(id) => setTab(id as AdminTab)}
-        />
+        {/* Phones: the sidebar is an off-canvas drawer, so the sections are also an inline tab row here. */}
+        <div className="md:hidden">
+          <Tabs tabs={tabsWithCounts} active={tab} onChange={(id) => setTab(id as AdminTab)} className="mb-6" />
+        </div>
 
         {tab === 'dashboard' ? (
           <DashboardTab newSuggestionsCount={newSuggestionsCount} onViewSuggestions={() => setTab('suggestions')} />
@@ -292,8 +336,31 @@ export function SuperAdminPage() {
           </Suspense>
         ) : null}
       </main>
-    </div>
+    </AppShell>
   )
+}
+
+const ADMIN_GROUP_BEFORE: Partial<Record<AdminTab, string>> = {
+  conferences: 'Conferences',
+  users: 'People',
+  suggestions: 'Platform',
+}
+
+const ADMIN_TAB_ICONS: Record<AdminTab, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  conferences: Building2,
+  'create-convenor': UserPlus,
+  'appoint-convenor': UserCheck,
+  users: Users,
+  admins: ShieldCheck,
+  suggestions: Lightbulb,
+  settings: Settings,
+  'email-log': Mail,
+  analytics: BarChart3,
+}
+
+function AdminTabIcon({ id }: { id: AdminTab }) {
+  return <Icon icon={ADMIN_TAB_ICONS[id]} size={18} />
 }
 
 function ConferencesTab({
@@ -1395,123 +1462,98 @@ function DashboardTab({
     { label: 'Archived conferences', value: data.archived_conferences, icon: Building2 },
   ]
 
+  const health = data.health
+  const healthRows: Array<{ label: string; icon: LucideIcon; value: ReactNode }> = [
+    {
+      label: 'Database',
+      icon: Database,
+      value: <Badge tone={health.database.ok ? 'success' : 'danger'}>{health.database.ok ? `${health.database.latency_ms} ms` : 'Down'}</Badge>,
+    },
+    { label: 'Email mode', icon: Mail, value: <span className="font-medium uppercase tracking-wide">{health.email_mode}</span> },
+    {
+      label: 'Failed emails (24h)',
+      icon: AlertOctagon,
+      value: <Badge tone={health.failed_emails_24h > 0 ? 'danger' : 'neutral'}>{health.failed_emails_24h}</Badge>,
+    },
+    { label: 'Queued emails', icon: Mail, value: <span className="font-medium tabular-nums">{health.queued_emails}</span> },
+    { label: 'Free disk space', icon: HardDrive, value: <span className="font-medium tabular-nums">{formatBytes(health.storage_disk.free_bytes)}</span> },
+  ]
+  const allHealthy = health.database.ok && health.failed_emails_24h === 0
+
   return (
-    <div className="mt-6 space-y-8">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
         {tiles.map((t) => (
-          <Card key={t.label}>
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wide text-text-muted">{t.label}</p>
-              <Icon icon={t.icon} className="text-brand/60" />
-            </div>
-            <p className="mt-1 text-2xl font-semibold text-text">{t.value}</p>
-          </Card>
+          <StatCard key={t.label} label={t.label} value={t.value} icon={t.icon} />
         ))}
+        <button type="button" onClick={onViewSuggestions} className="group block h-full rounded-xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-button">
+          <StatCard label="New suggestions" value={newSuggestionsCount} icon={MessageSquare} hint="Open the inbox →" />
+        </button>
       </div>
 
-      <button type="button" onClick={onViewSuggestions} className="block w-full text-left sm:w-auto">
-        <Card className="transition hover:shadow-md">
-          <div className="flex items-center justify-between gap-6">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-text-muted">New suggestions</p>
-              <p className="mt-1 text-2xl font-semibold text-text">{newSuggestionsCount}</p>
-            </div>
-            <Icon icon={MessageSquare} className="text-brand/60" />
-          </div>
-        </Card>
-      </button>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-lg font-semibold text-text">Conferences by status</h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div className="space-y-6">
+          <Panel title="Conferences by status">
             {data.conferences_by_status.length === 0 ? (
-              <div className="mt-3 rounded-lg border border-border bg-surface">
-                <EmptyState
-                  title="No conferences yet."
-                  message="Create the first one from the Conferences tab."
-                  icon={<Icon icon={Building2} size={28} className="text-text-muted" />}
-                />
-              </div>
+              <EmptyState
+                title="No conferences yet."
+                message="Create the first one from the Conferences tab."
+                icon={<Icon icon={Building2} size={28} />}
+              />
             ) : (
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {data.conferences_by_status.map((s) => (
-                  <Badge key={s.status} tone="neutral">
-                    {formatStatus(s.status)}: {s.count}
-                  </Badge>
+                  <span key={s.status} className="inline-flex items-center gap-2 rounded-lg border border-border-soft bg-page-bg px-3 py-1.5 text-sm">
+                    <StatusChip status={s.status} labels={{ [s.status]: formatStatus(s.status) }} />
+                    <span className="font-semibold tabular-nums text-text">{s.count}</span>
+                  </span>
                 ))}
               </div>
             )}
-          </div>
+          </Panel>
 
-          <div>
-            <h2 className="text-lg font-semibold text-text">Recent activity</h2>
+          <Panel title="Recent activity">
             {data.recent_actions.length === 0 ? (
-              <div className="mt-3 rounded-lg border border-border bg-surface">
-                <EmptyState title="No activity yet." message="Audited actions will show up here as they happen." />
-              </div>
+              <EmptyState title="No activity yet." message="Audited actions will show up here as they happen." />
             ) : (
-              <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-surface">
+              <ol className="relative space-y-4 border-l border-border-soft pl-5">
                 {data.recent_actions.map((a) => (
-                  <li key={a.id} className="px-4 py-2.5 text-sm">
-                    <span className="text-text-muted">{formatDateTime(a.occurred_at)}</span>
-                    {' — '}
-                    <span className="font-medium">{a.actor_name ?? 'System'}</span> {humanizeAuditAction(a.action)}
+                  <li key={a.id} className="relative text-sm">
+                    <span className="absolute -left-[1.6rem] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-button" aria-hidden="true" />
+                    <p className="text-text">
+                      <span className="font-medium">{a.actor_name ?? 'System'}</span> {humanizeAuditAction(a.action)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-text-muted">{formatDateTime(a.occurred_at)}</p>
                   </li>
                 ))}
-              </ul>
+              </ol>
             )}
-          </div>
+          </Panel>
         </div>
 
-        <div>
-          <h2 className="text-lg font-semibold text-text">System health</h2>
-          <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-            <Card>
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-text-muted">Database</p>
-                <Icon icon={Database} className="text-brand/60" />
-              </div>
-              <div className="mt-1">
-                <Badge tone={data.health.database.ok ? 'success' : 'danger'}>
-                  {data.health.database.ok ? `${data.health.database.latency_ms} ms` : 'Down'}
-                </Badge>
-              </div>
-            </Card>
-            <Card>
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-text-muted">Email mode</p>
-                <Icon icon={Mail} className="text-brand/60" />
-              </div>
-              <p className="mt-1 text-lg font-semibold uppercase text-text">{data.health.email_mode}</p>
-            </Card>
-            <Card>
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-text-muted">Failed emails (24h)</p>
-                <Icon icon={AlertOctagon} className="text-brand/60" />
-              </div>
-              <div className="mt-1">
-                <Badge tone={data.health.failed_emails_24h > 0 ? 'danger' : 'neutral'}>
-                  {data.health.failed_emails_24h}
-                </Badge>
-              </div>
-            </Card>
-            <Card>
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-text-muted">Queued emails</p>
-                <Icon icon={Mail} className="text-brand/60" />
-              </div>
-              <p className="mt-1 text-lg font-semibold text-text">{data.health.queued_emails}</p>
-            </Card>
-            <Card>
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-text-muted">Free disk space</p>
-                <Icon icon={HardDrive} className="text-brand/60" />
-              </div>
-              <p className="mt-1 text-lg font-semibold text-text">{formatBytes(data.health.storage_disk.free_bytes)}</p>
-            </Card>
-          </div>
-        </div>
+        <Panel
+          title="System health"
+          action={
+            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${allHealthy ? 'text-success' : 'text-danger'}`}>
+              <span className={`h-2 w-2 rounded-full ${allHealthy ? 'bg-success' : 'bg-danger'}`} aria-hidden="true" />
+              {allHealthy ? 'All systems normal' : 'Needs attention'}
+            </span>
+          }
+        >
+          <ul className="divide-y divide-border-soft">
+            {healthRows.map((r) => (
+              <li key={r.label} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <span className="flex items-center gap-3 text-sm text-text-muted">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-page-bg text-text-muted">
+                    <Icon icon={r.icon} size={16} />
+                  </span>
+                  {r.label}
+                </span>
+                <span className="text-sm text-text">{r.value}</span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       </div>
     </div>
   )

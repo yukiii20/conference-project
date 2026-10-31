@@ -18,7 +18,7 @@ export interface Column<T> {
  */
 export function TableContainer({ children, minWidth = 640 }: { children: ReactNode; minWidth?: number }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+    <div className="overflow-x-auto rounded-xl border border-border-soft bg-surface shadow-card">
       <table className="w-full text-left text-sm" style={{ minWidth }}>
         {children}
       </table>
@@ -46,15 +46,15 @@ export function Table<T>({
   return (
     <TableContainer minWidth={minWidth}>
       <thead>
-        <tr className="border-b border-border bg-surface-muted text-text-muted">
+        <tr className="border-b border-border-soft bg-page-bg/70 text-xs uppercase tracking-wider text-text-muted">
           {columns.map((c) => (
-            <th key={c.key} className={`px-4 py-2 font-medium ${c.className ?? ''}`}>
+            <th key={c.key} className={`px-4 py-3 font-semibold ${c.className ?? ''}`}>
               {c.header}
             </th>
           ))}
         </tr>
       </thead>
-      <tbody className="divide-y divide-border">
+      <tbody className="divide-y divide-border-soft">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <tr key={`skeleton-${i}`}>
@@ -73,7 +73,7 @@ export function Table<T>({
           </tr>
         ) : (
           rows.map((row) => (
-            <tr key={rowKey(row)} className="hover:bg-surface-muted">
+            <tr key={rowKey(row)} className="transition-colors hover:bg-page-bg/60">
               {columns.map((c) => (
                 <td key={c.key} className={`px-4 py-3 ${c.className ?? ''}`}>
                   {c.render(row)}
@@ -113,7 +113,7 @@ export function Pagination({
           aria-label="Previous page"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="flex h-10 w-10 items-center justify-center rounded-md border border-border hover:bg-surface-muted disabled:opacity-40 disabled:hover:bg-transparent"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface hover:bg-page-bg disabled:opacity-40 disabled:hover:bg-surface"
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </button>
@@ -125,7 +125,7 @@ export function Pagination({
           aria-label="Next page"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="flex h-10 w-10 items-center justify-center rounded-md border border-border hover:bg-surface-muted disabled:opacity-40 disabled:hover:bg-transparent"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface hover:bg-page-bg disabled:opacity-40 disabled:hover:bg-surface"
         >
           <ChevronRightIcon className="h-4 w-4" />
         </button>

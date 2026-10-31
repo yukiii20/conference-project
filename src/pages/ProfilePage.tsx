@@ -4,7 +4,9 @@ import { api, ApiError } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { profileSchema, type ProfileInput } from '../lib/validation'
 import { cropToSquareJpeg } from '../lib/imageCrop'
+import { ChevronLeft } from 'lucide-react'
 import { ImageUpload } from '../components/ImageUpload'
+import { PortalHeader } from '../components/PortalHeader'
 import { COUNTRIES } from '../lib/countries'
 import { Alert, Button, Card, FormField, Input, PageHeader, Select, Spinner, Textarea, useToast } from '../components/ui'
 
@@ -115,8 +117,13 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-page-bg px-4 py-10">
-      <div className="mx-auto max-w-2xl">
+    <div className="min-h-screen bg-page-bg">
+      <PortalHeader roleLabel="Account" />
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <Link to="/portal" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-text-muted hover:text-button">
+          <ChevronLeft size={16} aria-hidden="true" />
+          My portal
+        </Link>
         <PageHeader title="My profile" subtitle="Your name, photo, and contact details." />
         <Card>
           <div className="border-b border-border pb-8">
@@ -244,12 +251,6 @@ export function ProfilePage() {
           <p className="mt-6 text-xs text-text-muted">
             Changing your profile does not update details you've already submitted on a paper (name, affiliation) — those
             keep the information used at the time you submitted, as the record of record.
-          </p>
-
-          <p className="mt-6 text-sm text-text-muted">
-            <Link to="/" className="font-medium text-brand underline">
-              Back
-            </Link>
           </p>
         </Card>
       </div>
