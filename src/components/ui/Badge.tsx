@@ -4,7 +4,7 @@ import { statusBadgeClasses, statusLabel, toneBadgeClasses, type StatusTone } fr
 /** Generic pill badge for a fixed tone (not tied to a status string). */
 export function Badge({ tone = 'neutral', children }: { tone?: StatusTone; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${toneBadgeClasses(tone)}`}>
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${toneBadgeClasses(tone)}`}>
       {children}
     </span>
   )
@@ -13,7 +13,7 @@ export function Badge({ tone = 'neutral', children }: { tone?: StatusTone; child
 /** Status chip driven by the shared status->colour map, e.g. draft/submitted/accepted/revoked. */
 export function StatusChip({ status, labels }: { status: string; labels?: Record<string, string> }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClasses(status)}`}>
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(status)}`}>
       {statusLabel(status, labels)}
     </span>
   )

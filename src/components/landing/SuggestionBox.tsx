@@ -83,12 +83,13 @@ export function SuggestionBox() {
   return (
     <section
       id="suggestions"
-      className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6"
+      className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6"
     >
       <Reveal>
         <div className="mx-auto max-w-[640px] text-center">
-          <h2 className="text-2xl font-semibold sm:text-3xl">Help us improve</h2>
-          <p className="mt-2 text-text-muted">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Feedback</p>
+          <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">Help us improve</h2>
+          <p className="mt-3 text-base leading-relaxed text-text-muted sm:text-lg">
             Found a bug, want a feature, or just have a question? Tell us — we read every one.
           </p>
         </div>
@@ -119,10 +120,10 @@ export function SuggestionBox() {
                       type="button"
                       aria-pressed={category === c.id}
                       onClick={() => setCategory(c.id)}
-                      className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                         category === c.id
                           ? 'border-brand bg-brand text-on-brand'
-                          : 'border-border text-text-muted hover:bg-surface-muted'
+                          : 'border-border-soft bg-surface text-text-muted hover:border-border hover:text-text'
                       }`}
                     >
                       <Icon icon={c.icon} size={16} />

@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Mail } from 'lucide-react'
 import { SITE } from '../../content/site'
 import { usePlatformSettings } from '../../lib/platformSettings'
 import { LogoMark } from './LandingHeader'
@@ -36,33 +37,34 @@ export function LandingFooter() {
   }
 
   return (
-    <footer className="bg-brand text-on-brand">
-      <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+    <footer className="bg-footer text-white">
+      <div className="mx-auto max-w-[1200px] px-4 pb-10 pt-14 sm:px-6">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <div className="flex items-center gap-2 font-semibold">
-              <LogoMark size={28} />
+            <div className="flex items-center gap-2.5 font-semibold">
+              <LogoMark size={32} onDark />
               <span>{platformName}</span>
             </div>
-            <p className="mt-3 max-w-xs text-sm text-on-brand/70">{footerText}</p>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/60">{footerText}</p>
             <a
               href={gmailComposeHref(contactEmail)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-block text-sm text-on-brand/80 hover:text-on-brand"
+              className="mt-4 inline-flex items-center gap-2 break-all text-sm text-white/80 hover:text-white"
             >
+              <Mail size={16} aria-hidden="true" className="shrink-0" />
               {contactEmail}
             </a>
           </div>
 
           {columns.map((col) => (
             <div key={col.heading}>
-              <p className="text-sm font-semibold uppercase tracking-wide text-on-brand/50">{col.heading}</p>
-              <ul className="mt-3 space-y-2 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/40">{col.heading}</p>
+              <ul className="mt-4 space-y-2.5 text-sm">
                 {col.links.map((link) =>
                   'to' in link ? (
                     <li key={link.label}>
-                      <Link to={link.to} className="text-on-brand/80 hover:text-on-brand">
+                      <Link to={link.to} className="text-white/70 transition-colors hover:text-white">
                         {link.label}
                       </Link>
                     </li>
@@ -71,7 +73,7 @@ export function LandingFooter() {
                       <a
                         href={`/${link.href}`}
                         onClick={(e) => handleSectionLink(e, link.href)}
-                        className="text-on-brand/80 hover:text-on-brand"
+                        className="text-white/70 transition-colors hover:text-white"
                       >
                         {link.label}
                       </a>
@@ -83,8 +85,11 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-10 border-t border-on-brand/10 pt-6 text-sm text-on-brand/50">
-          © {year} {platformName} · Banepa, Nepal
+        <div className="mt-12 flex flex-col gap-2 border-t border-white/10 pt-6 text-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            © {year} {platformName}
+          </span>
+          <span>Banepa, Nepal</span>
         </div>
       </div>
     </footer>

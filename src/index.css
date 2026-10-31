@@ -1,36 +1,47 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Step 7B+C app theme — Cosmic Latte / Mocha Cream / Deep Burgundy. Applies to
-     the whole app (home page except the hero, login/signup/forgot/reset,
-     /portal, convenor portal, super admin, /verify, check-in desk, header,
-     footer, toasts, dialogs) including the shared ui/ library used everywhere.
-     The legacy --color-ink/background/line/button names are kept (every page
-     already references them) but repointed to this palette, so the whole app
-     updates from one place. Change colours only through these tokens, never
-     hard-coded hex in pages. CONFERENCE pages still layer the convenor's own
-     primary_color on top via inline styles/props — that mechanism is untouched. */
-  --color-ink: #2b2420;
-  --color-background: #f7f2ea;
-  --color-line: #b7a89a;
-  --color-button: #1e3a8a;
-  --color-button-hover: #172f6e;
-  --color-button-active: #13285c;
-  --color-outline-hover: #e8edf8;
+  /* "Academic Editorial + Premium SaaS" theme - Midnight Navy / Warm Ivory /
+     Indigo / Muted Gold. Applies to the whole app (public site, auth pages,
+     /portal, convenor portal, super admin, /verify, check-in desk, toasts,
+     dialogs) including the shared ui/ library used everywhere. The legacy
+     --color-ink/background/line/button names are kept (every page already
+     references them) but repointed to this palette, so the whole app updates
+     from one place. Change colours only through these tokens, never hard-coded
+     hex in pages. CONFERENCE pages still layer the convenor's own
+     primary_color on top via inline styles/props - that mechanism is untouched. */
+  --color-ink: #1e293b;
+  --color-background: #f7f5f0;
+  --color-line: #d9d5cb;
+  /* Indigo action colour. #4f5fc0 is the brief's #5969c9 deepened one step so
+     white-on-indigo and indigo-on-ivory text both clear WCAG AA (5.2:1+). */
+  --color-button: #4f5fc0;
+  --color-button-hover: #4251ad;
+  --color-button-active: #374596;
+  --color-outline-hover: #eef0fb;
   --color-danger: #b42318;
   --color-danger-hover: #912018;
 
   /* Semantic names for new/updated markup. */
-  --color-page-bg: #f7f2ea;
-  --color-surface: #fffdf9;
-  --color-surface-muted: #e8dcc6;
-  --color-border: #b7a89a;
-  --color-border-soft: #ddd1c2;
-  --color-brand: #722f37;
-  --color-brand-hover: #5c252c;
-  --color-text: #2b2420;
-  --color-text-muted: #6b5e52;
+  --color-page-bg: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-surface-muted: #efece5;
+  --color-border: #d9d5cb;
+  --color-border-soft: #e8e5de;
+  /* Form-control outline: darker than --color-border so inputs stay visible. */
+  --color-border-strong: #a3a9b5;
+  --color-brand: #101c32;
+  --color-brand-hover: #1c2b4a;
+  --color-text: #1e293b;
+  --color-text-muted: #5e6676;
   --color-on-brand: #ffffff;
+  --color-indigo: #5969c9;
+  --color-indigo-soft: #eef0fb;
+  /* Muted gold: decorative only (rules, dots, icon accents) - too light for text
+     on ivory. Use --color-gold-ink when gold-toned text is needed. */
+  --color-gold: #d9b982;
+  --color-gold-soft: #f5ecdb;
+  --color-gold-ink: #8a6a2e;
   /* Same green as the shared success tone (src/lib/status.ts TONE_CLASSES.success
      text colour) - lets a standalone icon (e.g. a checklist tick) use
      `text-success` and match a success Alert/Badge/Toast exactly, instead of
@@ -38,17 +49,21 @@
      colour that's actually declared here). */
   --color-success: #166534;
 
-  /* Landing page (/, /privacy, /terms) hero only — the rest of the home page
-     moved to the app theme above in Step 7B+C. Keep the two palettes separate. */
-  --color-landing-navy-900: #0a1a33;
-  --color-landing-navy-800: #12284c;
-  --color-landing-navy-600: #1f3f73;
-  --color-landing-navy-100: #e6ecf5;
-  --color-landing-bg: #f7f9fc;
-  --color-landing-text: #0f172a;
-  --color-landing-muted: #475569;
-  --color-landing-border: #e2e8f0;
-  --color-landing-gold: #c9a227;
+  /* Dark bands (public footer, auth brand panel, portal sidebar). */
+  --color-footer: #0b1424;
+
+  /* Typography: Inter for UI text, Source Serif 4 for editorial headings
+     (font-display). Loaded in index.html. */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Source Serif 4', ui-serif, Georgia, serif;
+
+  --shadow-card: 0 1px 2px rgb(16 28 50 / 0.04), 0 2px 8px -2px rgb(16 28 50 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(16 28 50 / 0.05), 0 14px 28px -12px rgb(16 28 50 / 0.16);
+  --shadow-pop: 0 10px 38px -10px rgb(16 28 50 / 0.28), 0 4px 12px -6px rgb(16 28 50 / 0.12);
+
+  --animate-fade-in: fade-in 160ms ease-out;
+  --animate-pop-in: pop-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  --animate-slide-up: slide-up 220ms ease-out;
 }
 
 html {
@@ -58,7 +73,14 @@ html {
 body {
   background-color: var(--color-background);
   color: var(--color-ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: rgb(89 105 201 / 0.2);
 }
 
 :focus-visible {
@@ -72,6 +94,48 @@ body {
    for — the native up/down spinner just looks like a stray floating control
    crammed into a narrow box. Hidden everywhere; typing and arrow-key
    increment/decrement still work. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 input[type='number'] {
   -moz-appearance: textfield;
 }

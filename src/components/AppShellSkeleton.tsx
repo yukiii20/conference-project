@@ -10,24 +10,25 @@ import { Skeleton } from './ui/Spinner'
  */
 export function AppShellSkeleton() {
   return (
-    <div className="min-h-screen bg-page-bg" aria-busy="true" aria-label="Loading">
-      <div className="h-14 bg-brand" />
-      <div className="mx-auto max-w-[1440px] px-6 py-8 sm:px-8">
-        <Skeleton className="h-7 w-48" />
-        <div className="mt-6 flex flex-col gap-8 md:flex-row">
-          <div className="w-full shrink-0 space-y-2 md:w-56">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full" />
+    <div className="min-h-screen bg-page-bg md:flex" aria-busy="true" aria-label="Loading">
+      <div className="hidden h-screen w-64 shrink-0 flex-col gap-3 bg-brand p-4 md:flex">
+        <div className="h-8 w-36 animate-pulse rounded-md bg-white/10" />
+        <div className="mt-6 h-10 animate-pulse rounded-lg bg-white/10" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-9 animate-pulse rounded-lg bg-white/5" />
+        ))}
+      </div>
+      <div className="flex-1">
+        <div className="h-16 border-b border-border-soft bg-surface" />
+        <div className="mx-auto max-w-[1320px] px-4 py-8 sm:px-6 lg:px-10">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="mt-3 h-4 w-80 max-w-full" />
+          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-xl" />
             ))}
           </div>
-          <div className="flex-1 space-y-4">
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
-            </div>
-            <Skeleton className="h-40 w-full" />
-          </div>
+          <Skeleton className="mt-6 h-56 w-full rounded-xl" />
         </div>
       </div>
     </div>

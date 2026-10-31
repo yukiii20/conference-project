@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { forgotPasswordSchema } from '../lib/validation'
-import { Alert, Button, Card, FormField, Input } from '../components/ui'
+import { Alert, Button, FormField, Input } from '../components/ui'
+import { AuthShell } from '../components/auth/AuthShell'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -30,35 +31,35 @@ export function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-        <Card className="w-full max-w-md text-center">
-          <h1 className="text-xl font-semibold text-text">Check your email</h1>
-          <p className="mt-3 text-sm text-text-muted">
-            If an account exists for this email, we've sent a reset link. Check your inbox and spam folder.
-          </p>
-          <Link to="/login" className="mt-6 inline-block font-medium text-brand underline">
-            Back to sign in
-          </Link>
-        </Card>
-      </div>
+      <AuthShell title="Check your email" centered footer={
+        <Link to="/login" className="font-medium text-brand underline-offset-4 hover:underline">
+          Back to sign in
+        </Link>
+      }>
+        <p className="text-center text-sm text-text-muted">
+          If an account exists for this email, we've sent a reset link. Check your inbox and spam folder.
+        </p>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-      <Card className="w-full max-w-md">
-        <h1 className="text-xl font-semibold text-text">Reset your password</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Enter your email and we'll send you a link to reset it.
-        </p>
-
+    <AuthShell
+      title="Reset your password"
+      subtitle="Enter your email and we'll send you a link to reset it."
+      footer={
+        <Link to="/login" className="font-medium text-brand underline-offset-4 hover:underline">
+          Back to sign in
+        </Link>
+      }
+    >
         {error ? (
-          <div className="mt-4">
+          <div className="mb-4">
             <Alert variant="danger">{error}</Alert>
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <FormField label="Email" htmlFor="email">
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </FormField>
@@ -67,13 +68,6 @@ export function ForgotPasswordPage() {
             {submitting ? 'Sending…' : 'Send reset link'}
           </Button>
         </form>
-
-        <p className="mt-6 text-sm text-text-muted">
-          <Link to="/login" className="font-medium text-brand underline">
-            Back to sign in
-          </Link>
-        </p>
-      </Card>
-    </div>
+    </AuthShell>
   )
 }

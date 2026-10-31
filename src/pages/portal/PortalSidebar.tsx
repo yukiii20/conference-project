@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   Award,
@@ -13,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Icon } from '../../components/ui/Icon'
+import { SidebarGroupLabel, SidebarLinkContent, sidebarLinkClass } from '../../components/AppShell'
 import { useDirtyGuard } from '../convenor/DirtyGuard'
 import type { PortalSectionConfig } from './sidebarConfig'
 
@@ -29,48 +31,62 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   notifications: Bell,
 }
 
+/** Visual grouping only; sections not listed here (e.g. new personal ones) fall under "Personal". */
+const SECTION_GROUP: Record<string, string> = {
+  dashboard: 'Overview',
+  agenda: 'Overview',
+  author: 'My roles',
+  reviewer: 'My roles',
+  'session-chair': 'My roles',
+  staff: 'My roles',
+}
+
 export function PortalSidebar({
   base,
   sections,
   badges = {},
   onNavigate,
+  collapsed = false,
 }: {
   base: string
   sections: PortalSectionConfig[]
   badges?: Record<string, number>
   onNavigate?: () => void
+  collapsed?: boolean
 }) {
   const { confirmLeave } = useDirtyGuard()
 
+  let lastGroup: string | null = null
   return (
-    <nav className="space-y-0.5">
+    <nav className="space-y-0.5" aria-label="Portal">
       {sections.map((s) => {
         const badge = badges[s.id] ?? 0
+        const group = SECTION_GROUP[s.id] ?? 'Personal'
+        const showGroup = group !== lastGroup
+        lastGroup = group
         return (
-          <NavLink
-            key={s.id}
-            to={`${base}/${s.id}`}
-            onClick={(e) => {
-              if (!confirmLeave()) {
-                e.preventDefault()
-                return
-              }
-              onNavigate?.()
-            }}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-md border-l-[3px] px-3 py-2 text-sm ${
-                isActive
-                  ? 'border-brand bg-surface font-medium text-brand'
-                  : 'border-transparent text-text/70 hover:bg-border-soft'
-              }`
-            }
-          >
-            <Icon icon={SECTION_ICONS[s.id]!} className="shrink-0" />
-            <span className="flex-1">{s.label}</span>
-            {badge > 0 ? (
-              <span className="rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-white">{badge}</span>
-            ) : null}
-          </NavLink>
+          <Fragment key={s.id}>
+            {showGroup ? <SidebarGroupLabel collapsed={collapsed}>{group}</SidebarGroupLabel> : null}
+            <NavLink
+              to={`${base}/${s.id}`}
+              title={collapsed ? s.label : undefined}
+              onClick={(e) => {
+                if (!confirmLeave()) {
+                  e.preventDefault()
+                  return
+                }
+                onNavigate?.()
+              }}
+              className={({ isActive }) => sidebarLinkClass(isActive, collapsed)}
+            >
+              <SidebarLinkContent
+                icon={<Icon icon={SECTION_ICONS[s.id] ?? LayoutDashboard} size={18} />}
+                label={s.label}
+                badge={badge}
+                collapsed={collapsed}
+              />
+            </NavLink>
+          </Fragment>
         )
       })}
     </nav>

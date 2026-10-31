@@ -72,6 +72,7 @@ export function ConferencePage() {
   const [error, setError] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<SectionId>('home')
   const [introDone, setIntroDone] = useState(false)
+  const [bannerFailed, setBannerFailed] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
   const agendaStars = useAgendaStars(conference?.id ?? null)
   const abstractBook = usePublicAbstractBook(conference?.id ?? null)
@@ -275,7 +276,7 @@ export function ConferencePage() {
   const accent = conference.primary_color ?? DEFAULT_CONFERENCE_COLOR
   const accentText = getAccessibleTextColor(accent)
   const logoUrl = publicImageUrl(conference.logo_path)
-  const bannerUrl = publicImageUrl(conference.banner_path)
+  const bannerUrl = bannerFailed ? null : publicImageUrl(conference.banner_path)
   // Over a banner image the overlay is dark regardless of the convenor's colour, so white
   // text always reads; without a banner the background IS the raw accent, so pick the text
   // colour the same way the nav does.
@@ -325,14 +326,20 @@ export function ConferencePage() {
       >
         {bannerUrl ? (
           <>
-            <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" onError={() => setBannerFailed(true)} />
             <div className="absolute inset-0" style={{ backgroundColor: hexToRgba(heroOverlayColor, 0.65) }} />
           </>
         ) : (
-          <div className="absolute inset-0" style={{ backgroundColor: accent }} />
+          <>
+            <div className="absolute inset-0" style={{ backgroundImage: `linear-gradient(135deg, ${accent} 0%, ${darken(accent, 0.35)} 100%)` }} />
+            <div
+              className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px] [mask-image:linear-gradient(to_bottom,black,transparent)]"
+              aria-hidden="true"
+            />
+          </>
         )}
         <div
-          className="relative mx-auto flex max-w-5xl flex-col items-center gap-8 px-4 py-14 text-center md:flex-row md:items-center md:gap-10 md:text-left"
+          className="relative mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 py-16 text-center sm:px-6 md:flex-row md:items-center md:gap-12 md:py-20 md:text-left"
           style={{ color: heroTextColor }}
         >
           <div className="flex w-full justify-center md:w-auto md:flex-none">
@@ -348,7 +355,7 @@ export function ConferencePage() {
           </div>
 
           <div className="w-full md:flex-1">
-            <h1 className="text-3xl font-bold sm:text-4xl">{conference.name}</h1>
+            <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">{conference.name}</h1>
             {conference.tagline ? <p className="mt-2 text-lg opacity-90">{conference.tagline}</p> : null}
             {conference.theme ? <p className="mt-1 opacity-80">{conference.theme}</p> : null}
             <p className="mt-4 opacity-90">
@@ -364,7 +371,7 @@ export function ConferencePage() {
               <Link
                 to={signupHref}
                 style={{ backgroundColor: '#ffffff', color: accent }}
-                className="rounded-md px-5 py-2.5 font-medium hover:opacity-90"
+                className="rounded-xl px-5 py-3 font-medium shadow-sm hover:opacity-90"
               >
                 Submit an abstract
               </Link>
@@ -393,26 +400,27 @@ export function ConferencePage() {
           sectionRefs.current.about = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 pt-12 pb-4"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
-            <h2 className="text-2xl font-semibold">About {conference.name}</h2>
+            <h2 className="font-display text-3xl font-semibold tracking-tight">About {conference.name}</h2>
             {conference.tagline ? (
               <p className="mt-2 text-lg font-medium text-ink/70">{conference.tagline}</p>
             ) : null}
             {conference.description ? (
-              <p className="mt-4 whitespace-pre-line text-ink/80">{conference.description}</p>
+              <p className="mt-4 max-w-prose whitespace-pre-line leading-relaxed text-ink/80">{conference.description}</p>
             ) : (
               <p className="mt-4 text-sm text-ink/60">No description yet.</p>
             )}
           </div>
-          {conference.banner_path ? (
+          {conference.banner_path && !bannerFailed ? (
             <img
+              onError={() => setBannerFailed(true)}
               src={publicImageUrl(conference.banner_path) ?? undefined}
               alt={`${conference.name} banner`}
               loading="lazy"
-              className="max-h-80 w-full rounded-xl object-cover"
+              className="max-h-80 w-full rounded-2xl object-cover shadow-card"
             />
           ) : null}
         </div>
@@ -422,7 +430,7 @@ export function ConferencePage() {
             <h3 className="text-sm font-semibold uppercase tracking-wide text-ink/50">Tracks</h3>
             <ul className="mt-3 space-y-2">
               {tracks.map((t) => (
-                <li key={t.id} className="rounded-md border border-line bg-white p-3 text-sm">
+                <li key={t.id} className="rounded-xl border border-border-soft bg-surface shadow-card p-3 text-sm">
                   <p className="font-medium text-ink">{t.name}</p>
                   {t.description ? <p className="mt-1 text-ink/70">{t.description}</p> : null}
                 </li>
@@ -438,15 +446,15 @@ export function ConferencePage() {
           sectionRefs.current.announcements = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-3xl px-4 pt-4 pb-12"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
-        <h2 className="text-2xl font-semibold">Announcements</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Announcements</h2>
         {announcements.length === 0 ? (
-          <p className="mt-4 text-sm text-ink/60">No announcements yet.</p>
+          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">No announcements yet.</p>
         ) : (
           <ul className="mt-6 space-y-4">
             {announcements.map((a) => (
-              <li key={a.id} className="rounded-lg border border-line bg-white p-4">
+              <li key={a.id} className="rounded-xl border border-border-soft bg-surface shadow-card p-4">
                 <p className="font-medium text-ink">{a.title}</p>
                 <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{a.body}</p>
                 <p className="mt-2 text-xs text-ink/50">{formatKathmandu(a.publish_at ?? a.created_at, { dateOnly: true })}</p>
@@ -462,11 +470,11 @@ export function ConferencePage() {
           sectionRefs.current.committees = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-8"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
-        <h2 className="text-2xl font-semibold">Committees</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Committees</h2>
         {committees.length === 0 ? (
-          <p className="mt-4 text-sm text-ink/60">Committees will be announced soon.</p>
+          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Committees will be announced soon.</p>
         ) : (
           <div className="mt-6 space-y-8">
             {committees.map((c) => (
@@ -476,7 +484,7 @@ export function ConferencePage() {
                 {c.members.length > 0 ? (
                   <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {c.members.map((m, i) => (
-                      <li key={i} className="rounded-md border border-line bg-white p-3 text-sm">
+                      <li key={i} className="rounded-xl border border-border-soft bg-surface shadow-card p-3 text-sm">
                         <p className="font-medium text-ink">{m.member_name}</p>
                         <p className="text-xs text-ink/60">
                           {m.member_role.replace('_', '-')}
@@ -498,17 +506,17 @@ export function ConferencePage() {
           sectionRefs.current.speakers = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-8"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
-        <h2 className="text-2xl font-semibold">Speakers</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Speakers</h2>
         {speakers.length === 0 ? (
-          <p className="mt-4 text-sm text-ink/60">Speakers will be announced soon.</p>
+          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Speakers will be announced soon.</p>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {speakers.map((s) => {
               const photoUrl = publicImageUrl(s.photo_path)
               return (
-                <div key={s.id} className="rounded-lg border border-line bg-white p-4 text-center">
+                <div key={s.id} className="rounded-xl border border-border-soft bg-surface shadow-card p-4 text-center">
                   {photoUrl ? (
                     <img src={photoUrl} alt={s.full_name} className="mx-auto h-20 w-20 rounded-full object-cover" />
                   ) : (
@@ -535,11 +543,11 @@ export function ConferencePage() {
           sectionRefs.current.supporters = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-8"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
-        <h2 className="text-2xl font-semibold">Supporters</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Supporters</h2>
         {groupedSupporters.length === 0 ? (
-          <p className="mt-4 text-sm text-ink/60">Supporters will be announced soon.</p>
+          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Supporters will be announced soon.</p>
         ) : (
           <div className="mt-6 space-y-8">
             {groupedSupporters.map((group) => (
@@ -576,10 +584,10 @@ export function ConferencePage() {
           sectionRefs.current.programme = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-8"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-semibold">Programme</h2>
+          <h2 className="font-display text-3xl font-semibold tracking-tight">Programme</h2>
           {groupedSchedule.length > 0 ? (
             <a
               href={`/api/conferences/${conference.id}/sessions/public/programme.pdf`}
@@ -604,7 +612,7 @@ export function ConferencePage() {
           ) : null}
         </div>
         {groupedSchedule.length === 0 ? (
-          <p className="mt-4 text-sm text-ink/60">The programme will be announced soon.</p>
+          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">The programme will be announced soon.</p>
         ) : (
           <div className="mt-6 space-y-8">
             {groupedSchedule.map((day) => (
@@ -612,7 +620,7 @@ export function ConferencePage() {
                 <h3 className="font-semibold text-ink">{day.label}</h3>
                 <div className="mt-3 space-y-3">
                   {day.rows.map((row) => (
-                    <div key={row.id} className="rounded-lg border border-line bg-white p-4">
+                    <div key={row.id} className="rounded-xl border border-border-soft bg-surface shadow-card p-4">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <p className="font-medium text-ink">{row.title}</p>
@@ -676,9 +684,9 @@ export function ConferencePage() {
           sectionRefs.current.registration = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-3xl px-4 py-8"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
-        <h2 className="text-2xl font-semibold">Registration</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Registration</h2>
         <div className="mt-4">
           <RegistrationPanel conferenceId={conference.id} accent={accent} contactEmail={conference.contact_email} />
         </div>
@@ -690,9 +698,9 @@ export function ConferencePage() {
           sectionRefs.current.location = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-8"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
-        <h2 className="text-2xl font-semibold">Location</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Location</h2>
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <div>
             {conference.venue_name ? <p className="font-medium text-ink">{conference.venue_name}</p> : null}
@@ -705,7 +713,7 @@ export function ConferencePage() {
             ) : null}
           </div>
           {conference.location_map_url ? (
-            <iframe src={conference.location_map_url} title="Venue location map" loading="lazy" className="h-72 w-full rounded-lg border border-line" />
+            <iframe src={conference.location_map_url} title="Venue location map" loading="lazy" className="h-72 w-full rounded-2xl border border-border-soft shadow-card" />
           ) : null}
         </div>
       </section>
@@ -716,9 +724,9 @@ export function ConferencePage() {
           sectionRefs.current['key-dates'] = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-5xl px-4 py-8"
+        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
       >
-        <h2 className="text-2xl font-semibold">Key dates</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight">Key dates</h2>
         {nextDeadline && daysUntilNext !== null ? (
           <p className="mt-2 text-sm font-medium" style={{ color: accent }}>
             Next deadline: {DEADLINE_LABELS[nextDeadline.deadline_type] ?? nextDeadline.deadline_type} in{' '}
@@ -726,15 +734,15 @@ export function ConferencePage() {
           </p>
         ) : null}
         {deadlines.length === 0 ? (
-          <p className="mt-4 text-sm text-ink/60">Key dates will be announced soon.</p>
+          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Key dates will be announced soon.</p>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-white">
+          <div className="mt-6 overflow-x-auto rounded-xl border border-border-soft bg-surface shadow-card">
             <table className="w-full min-w-[480px] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-ink/60">
-                  <th className="px-4 py-2 font-medium">Milestone</th>
-                  <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Milestone</th>
+                  <th className="px-4 py-3 font-medium">Date</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -746,9 +754,16 @@ export function ConferencePage() {
                     const isPast = new Date(closes).getTime() < Date.now()
                     return (
                       <tr key={d.deadline_type}>
-                        <td className="px-4 py-2">{DEADLINE_LABELS[d.deadline_type] ?? d.deadline_type}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{formatKathmandu(closes)}</td>
-                        <td className="px-4 py-2">{isPast ? <span className="text-ink/50">Closed</span> : <span className="text-green-700">Open</span>}</td>
+                        <td className="px-4 py-3">{DEADLINE_LABELS[d.deadline_type] ?? d.deadline_type}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{formatKathmandu(closes)}</td>
+                        <td className="px-4 py-3">{isPast ? (
+                          <span className="inline-flex rounded-full bg-surface-muted/60 px-2.5 py-0.5 text-xs font-medium text-ink/60">Closed</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-success">
+                            <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                            Open
+                          </span>
+                        )}</td>
                       </tr>
                     )
                   })}
@@ -758,23 +773,23 @@ export function ConferencePage() {
         )}
       </section>
 
-      <footer className="border-t border-line bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-8 text-sm text-ink/70">
-          <p className="font-medium text-ink">{conference.name}</p>
+      <footer className="mt-12 bg-footer text-white/70">
+        <div className="mx-auto max-w-7xl px-4 py-10 text-sm sm:px-6">
+          <p className="font-medium text-white">{conference.name}</p>
           <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
             {conference.contact_email ? (
-              <a href={`mailto:${conference.contact_email}`} className="hover:text-button">
+              <a href={`mailto:${conference.contact_email}`} className="hover:text-white">
                 {conference.contact_email}
               </a>
             ) : null}
             {conference.contact_phone ? <span>{conference.contact_phone}</span> : null}
             {conference.website_url ? (
-              <a href={conference.website_url} target="_blank" rel="noopener noreferrer" className="hover:text-button">
+              <a href={conference.website_url} target="_blank" rel="noopener noreferrer" className="break-all hover:text-white">
                 {conference.website_url}
               </a>
             ) : null}
           </div>
-          <Link to="/" className="mt-4 inline-block text-ink/60 underline">
+          <Link to="/" className="mt-6 inline-block text-white/60 underline-offset-4 hover:text-white hover:underline">
             ← All conferences
           </Link>
         </div>

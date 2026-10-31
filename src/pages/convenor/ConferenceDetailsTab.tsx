@@ -66,7 +66,7 @@ function PortalTextsSection({ conferenceId, data }: { conferenceId: string; data
   return (
     <div className="mt-10 max-w-2xl border-t border-border pt-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-text">Portal texts</h2>
+        <h2 className="font-display text-xl font-semibold text-brand">Portal texts</h2>
         {data.slug ? (
           <a
             href={`/c/${data.slug}`}

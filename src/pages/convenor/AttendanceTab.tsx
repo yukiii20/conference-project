@@ -102,7 +102,7 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
 
   return (
     <div>
-      <h2 className="text-lg font-medium text-text">Registration categories</h2>
+      <h2 className="font-display text-xl font-semibold text-brand">Registration categories</h2>
       {error ? (
         <div className="mt-2">
           <Alert variant="danger">{error}</Alert>
@@ -177,15 +177,15 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
         <CategoriesSection conferenceId={conferenceId} onChanged={() => setRefreshKey((k) => k + 1)} />
       </div>
       <div className="mt-10">
-        <h2 className="text-lg font-medium text-text">Registrations</h2>
+        <h2 className="font-display text-xl font-semibold text-brand">Registrations</h2>
         <RegistrationsList conferenceId={conferenceId} initialStatus={initialStatus} />
       </div>
       <div className="mt-10" data-testid="print-badges">
-        <h2 className="text-lg font-medium text-text">Print badges</h2>
+        <h2 className="font-display text-xl font-semibold text-brand">Print badges</h2>
         <PrintBadgesPanel conferenceId={conferenceId} />
       </div>
       <div className="mt-10">
-        <h2 className="text-lg font-medium text-text">Check-in</h2>
+        <h2 className="font-display text-xl font-semibold text-brand">Check-in</h2>
         <div className="mt-3 max-w-2xl">
           <Suspense
             fallback={

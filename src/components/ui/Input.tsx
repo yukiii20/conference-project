@@ -4,8 +4,8 @@ import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes 
 // text-base (16px) everywhere so mobile Safari/Chrome never zoom in on focus.
 // Exported so PasswordInput (same field chrome, plus a show/hide button) doesn't duplicate it.
 export const FIELD_CLASSES =
-  'w-full min-h-10 rounded-md border border-border bg-surface px-3 py-2 text-base text-text placeholder:text-text-muted/60 focus:border-button focus:outline-none disabled:bg-page-bg disabled:text-text-muted'
-export const FIELD_ERROR_CLASSES = 'border-danger focus:border-danger'
+  'w-full min-h-10 rounded-lg border border-border-strong/70 bg-surface px-3 py-2 text-base text-text shadow-[0_1px_2px_rgb(16_28_50/0.04)] transition-[border-color,box-shadow] placeholder:text-text-muted/60 hover:border-border-strong focus:border-button focus:outline-none focus:ring-4 focus:ring-button/15 disabled:cursor-not-allowed disabled:bg-page-bg disabled:text-text-muted sm:text-sm'
+export const FIELD_ERROR_CLASSES = 'border-danger hover:border-danger focus:border-danger focus:ring-danger/15'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: boolean
@@ -74,7 +74,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
       ref={ref}
       type="checkbox"
       id={id}
-      className={`h-5 w-5 flex-shrink-0 rounded border-border text-button focus-visible:outline-2 focus-visible:outline-offset-2 ${className}`}
+      className={`h-5 w-5 flex-shrink-0 rounded border-border-strong accent-button focus-visible:outline-2 focus-visible:outline-offset-2 ${className}`}
       {...rest}
     />
   )

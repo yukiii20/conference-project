@@ -6,12 +6,14 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'gh
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-button text-white hover:bg-button-hover active:bg-button-active disabled:opacity-50',
-  secondary: 'border border-border bg-surface text-text hover:bg-surface-muted disabled:opacity-50',
-  outline: 'border border-button text-button hover:bg-outline-hover disabled:opacity-50',
-  danger: 'bg-danger text-white hover:bg-danger-hover disabled:opacity-50',
-  ghost: 'text-text hover:bg-text/5 disabled:opacity-50',
-  link: 'text-button underline-offset-2 hover:underline disabled:opacity-50',
+  primary:
+    'bg-button text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_1px_2px_rgb(16_28_50/0.12)] hover:bg-button-hover active:bg-button-active disabled:opacity-50 disabled:shadow-none',
+  secondary:
+    'border border-border bg-surface text-text shadow-[0_1px_2px_rgb(16_28_50/0.05)] hover:border-border-strong hover:bg-page-bg active:bg-surface-muted disabled:opacity-50',
+  outline: 'border border-button/60 bg-surface text-button hover:border-button hover:bg-outline-hover active:bg-indigo-soft disabled:opacity-50',
+  danger: 'bg-danger text-white shadow-[0_1px_2px_rgb(16_28_50/0.12)] hover:bg-danger-hover disabled:opacity-50',
+  ghost: 'text-text hover:bg-surface-muted active:bg-border-soft disabled:opacity-50',
+  link: 'text-button underline-offset-4 hover:underline disabled:opacity-50',
 }
 
 // All sizes keep a >=40px tap target even where padding alone wouldn't (icon-only sm).
@@ -29,8 +31,8 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
  */
 export function buttonClasses(variant: ButtonVariant = 'primary', size: ButtonSize = 'md', className = ''): string {
   const isLink = variant === 'link'
-  return `inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-button ${
-    isLink ? '' : 'rounded-md'
+  return `inline-flex select-none items-center justify-center font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-button disabled:cursor-not-allowed ${
+    isLink ? '' : 'rounded-lg active:translate-y-px'
   } ${VARIANT_CLASSES[variant]} ${isLink ? '' : SIZE_CLASSES[size]} ${className}`
 }
 

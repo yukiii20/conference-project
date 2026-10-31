@@ -167,7 +167,7 @@ export function SignUpForm({
   if (success) {
     return (
       <div className="text-center">
-        <h2 className="text-lg font-semibold text-text">Account created</h2>
+        <h2 className="font-display text-xl font-semibold text-brand">Account created</h2>
         <p className="mt-3 text-sm text-text-muted">The convenor must approve it before you can sign in.</p>
         {showSignInLink ? (
           <Link to="/login" className="mt-6 inline-block font-medium text-brand underline">

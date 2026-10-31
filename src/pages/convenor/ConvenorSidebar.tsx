@@ -1,6 +1,8 @@
+import { Fragment } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { CalendarRange, FileText, LayoutDashboard, MessageSquare, PartyPopper, Settings, Users, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../components/ui/Icon'
+import { SidebarGroupLabel, SidebarLinkContent, sidebarLinkClass } from '../../components/AppShell'
 import { useDirtyGuard } from './DirtyGuard'
 import { SECTIONS, visibleTabs } from './sidebarConfig'
 
@@ -14,18 +16,27 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   communication: MessageSquare,
 }
 
+/** Group headings shown above these sections (visual grouping only - order still comes from sidebarConfig). */
+const GROUP_BEFORE: Record<string, string> = {
+  setup: 'Set up',
+  papers: 'Run the conference',
+  communication: 'Communicate',
+}
+
 export function ConvenorSidebar({
   base,
   isManager,
   pendingRoleRequests,
   papersAttention,
   onNavigate,
+  collapsed = false,
 }: {
   base: string
   isManager: boolean
   pendingRoleRequests: number
   papersAttention: number
   onNavigate?: () => void
+  collapsed?: boolean
 }) {
   // Managers can't act on role requests (members.manage only) - don't show a
   // badge count for something that would 403 if they clicked through to it.
@@ -39,35 +50,29 @@ export function ConvenorSidebar({
   const { confirmLeave } = useDirtyGuard()
 
   return (
-    <nav className="space-y-0.5">
+    <nav className="space-y-0.5" aria-label="Convenor">
       {items.map((s) => {
         const badge = badges[s.id] ?? 0
         const isCurrentPage = location.pathname.startsWith(`${base}/${s.id}`)
+        const group = GROUP_BEFORE[s.id]
         return (
-          <NavLink
-            key={s.id}
-            to={`${base}/${s.id}`}
-            onClick={(e) => {
-              if (!isCurrentPage && !confirmLeave()) {
-                e.preventDefault()
-                return
-              }
-              onNavigate?.()
-            }}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-md border-l-[3px] px-3 py-2 text-sm ${
-                isActive
-                  ? 'border-brand bg-surface font-medium text-brand'
-                  : 'border-transparent text-text/70 hover:bg-border-soft'
-              }`
-            }
-          >
-            <Icon icon={SECTION_ICONS[s.id]!} className="shrink-0" />
-            <span className="flex-1">{s.label}</span>
-            {badge > 0 ? (
-              <span className="rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-white">{badge}</span>
-            ) : null}
-          </NavLink>
+          <Fragment key={s.id}>
+            {group ? <SidebarGroupLabel collapsed={collapsed}>{group}</SidebarGroupLabel> : null}
+            <NavLink
+              to={`${base}/${s.id}`}
+              title={collapsed ? s.label : undefined}
+              onClick={(e) => {
+                if (!isCurrentPage && !confirmLeave()) {
+                  e.preventDefault()
+                  return
+                }
+                onNavigate?.()
+              }}
+              className={({ isActive }) => sidebarLinkClass(isActive, collapsed)}
+            >
+              <SidebarLinkContent icon={<Icon icon={SECTION_ICONS[s.id]!} size={18} />} label={s.label} badge={badge} collapsed={collapsed} />
+            </NavLink>
+          </Fragment>
         )
       })}
     </nav>

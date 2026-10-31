@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, ApiError } from '../lib/api'
 import { getPasswordChecklist, resetPasswordSchema } from '../lib/validation'
-import { Alert, Badge, Button, Card, FormField, PasswordInput } from '../components/ui'
+import { Alert, Badge, Button, FormField, PasswordInput } from '../components/ui'
+import { AuthShell } from '../components/auth/AuthShell'
 
 /** Landed on from the link in the reset email: /reset-password?token=... */
 export function ResetPasswordPage() {
@@ -42,46 +43,41 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-        <Card className="w-full max-w-md text-center">
-          <h1 className="text-xl font-semibold text-text">Link expired or invalid</h1>
-          <p className="mt-3 text-sm text-text-muted">
-            This password reset link is no longer valid. Request a new one to continue.
-          </p>
-          <Link to="/forgot-password" className="mt-6 inline-block font-medium text-brand underline">
+      <AuthShell title="Link expired or invalid" centered>
+        <p className="text-center text-sm text-text-muted">
+          This password reset link is no longer valid. Request a new one to continue.
+        </p>
+        <div className="mt-6 text-center">
+          <Link to="/forgot-password" className="font-medium text-brand underline-offset-4 hover:underline">
             Request a new link
           </Link>
-        </Card>
-      </div>
+        </div>
+      </AuthShell>
     )
   }
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-        <Card className="w-full max-w-md text-center">
-          <h1 className="text-xl font-semibold text-text">Password updated</h1>
-          <p className="mt-3 text-sm text-text-muted">You can now sign in with your new password.</p>
-          <Link to="/login" className="mt-6 inline-block font-medium text-brand underline">
+      <AuthShell title="Password updated" centered>
+        <p className="text-center text-sm text-text-muted">You can now sign in with your new password.</p>
+        <div className="mt-6 text-center">
+          <Link to="/login" className="font-medium text-brand underline-offset-4 hover:underline">
             Back to sign in
           </Link>
-        </Card>
-      </div>
+        </div>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page-bg px-4">
-      <Card className="w-full max-w-md">
-        <h1 className="text-xl font-semibold text-text">Set a new password</h1>
-
+    <AuthShell title="Set a new password">
         {error ? (
-          <div className="mt-4">
+          <div className="mb-4">
             <Alert variant="danger">{error}</Alert>
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <FormField label="New password" htmlFor="password">
             <PasswordInput
               id="password"
@@ -113,7 +109,6 @@ export function ResetPasswordPage() {
             {submitting ? 'Updating…' : 'Update password'}
           </Button>
         </form>
-      </Card>
-    </div>
+    </AuthShell>
   )
 }

@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/authContext'
 import { getRoleDefinition } from '../lib/roles'
-import { PortalHeader } from '../components/PortalHeader'
-import { PageHeader } from '../components/ui/PageHeader'
-import { Select } from '../components/ui/Input'
+import { AppShell, ShellConferenceContext, type Crumb } from '../components/AppShell'
 import { PortalSidebar } from './portal/PortalSidebar'
 import { DashboardTab } from './portal/DashboardTab'
 import { MyAgendaTab } from './portal/MyAgendaTab'
@@ -17,7 +15,7 @@ import { ReviewerSection } from './portal/sections/ReviewerSection'
 import { SessionChairSection } from './portal/sections/SessionChairSection'
 import { StaffSection } from './portal/sections/StaffSection'
 import { DirtyGuardProvider, useDirtyGuard } from './convenor/DirtyGuard'
-import { visibleSections } from './portal/sidebarConfig'
+import { PORTAL_SECTIONS, visibleSections } from './portal/sidebarConfig'
 
 // Conference-scoped sections only make sense for roles tied to one
 // conference at a time — session chairs see "My sessions" across every
@@ -46,6 +44,7 @@ function PortalPageInner() {
   const { user, roles } = useAuth()
   const { markDirty, clearDirty } = useDirtyGuard()
   const base = '/portal'
+  const location = useLocation()
 
   const myConferences: PortalConference[] = (() => {
     const seen = new Map<string, PortalConference>()
@@ -67,7 +66,6 @@ function PortalPageInner() {
     const preselected = preselectedSlug ? myConferences.find((c) => c.slug === preselectedSlug) : null
     return (preselected ?? myConferences[0])?.id ?? null
   })
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
     const preselected = preselectedSlug ? myConferences.find((c) => c.slug === preselectedSlug) : null
@@ -91,58 +89,25 @@ function PortalPageInner() {
     .filter((code) => code !== 'admin' && code !== 'convenor' && code !== 'manager')
     .map((code) => getRoleDefinition(code)?.label ?? code)
 
+  const activeSectionId = location.pathname.slice(base.length + 1).split('/')[0]
+  const activeSection = PORTAL_SECTIONS.find((s) => s.id === activeSectionId)
+  const crumbs: Crumb[] = [
+    { label: 'My portal', to: `${base}/dashboard` },
+    ...(activeSection && activeSection.id !== 'dashboard' ? [{ label: activeSection.label }] : [{ label: 'Dashboard' }]),
+  ]
+
   return (
-    <div className="flex min-h-screen flex-col bg-background text-ink">
-      <PortalHeader roleLabel={myRoleLabels.length > 0 ? myRoleLabels.join(' · ') : (user?.full_name ?? 'Portal')} />
-
-      <div className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-6 sm:px-8">
-        <PageHeader
-          title="My portal"
-          actions={
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen((v) => !v)}
-              aria-expanded={mobileNavOpen}
-              aria-controls="portal-sidebar"
-              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-muted md:hidden"
-            >
-              {mobileNavOpen ? 'Close menu' : 'Menu'}
-            </button>
-          }
-          className="mb-0"
-        />
-
-        {myConferences.length > 1 ? (
-          <div className="mt-3">
-            <label htmlFor="portal-conference" className="block text-xs font-medium text-text-muted">
-              Conference
-            </label>
-            <Select
-              id="portal-conference"
-              value={conferenceId ?? ''}
-              onChange={(e) => setConferenceId(e.target.value)}
-              className="mt-1 max-w-sm"
-            >
-              {myConferences.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        ) : conference ? (
-          <p className="mt-1 text-text-muted">{conference.name}</p>
-        ) : null}
-
-        <div className="mt-6 flex flex-col gap-8 md:flex-row">
-          <aside
-            id="portal-sidebar"
-            className={`shrink-0 self-start rounded-lg border border-border bg-surface p-2 md:sticky md:top-6 md:block md:w-56 ${mobileNavOpen ? 'block' : 'hidden'}`}
-          >
-            <PortalSidebar base={base} sections={sections} onNavigate={() => setMobileNavOpen(false)} />
-          </aside>
-
-          <main className="min-w-0 flex-1" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
+    <AppShell
+      sidebarId="portal-sidebar"
+      workspaceLabel="My portal"
+      roleLabel={myRoleLabels.length > 0 ? myRoleLabels.join(' · ') : (user?.full_name ?? 'Portal')}
+      context={<ShellConferenceContext id="portal-conference" conferences={myConferences} value={conferenceId} onChange={setConferenceId} />}
+      renderNav={({ collapsed, onNavigate }) => (
+        <PortalSidebar base={base} sections={sections} onNavigate={onNavigate} collapsed={collapsed} />
+      )}
+      crumbs={crumbs}
+    >
+      <main className="min-w-0" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
             <Routes>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route
@@ -198,8 +163,6 @@ function PortalPageInner() {
               <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
           </main>
-        </div>
-      </div>
-    </div>
+    </AppShell>
   )
 }

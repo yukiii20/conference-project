@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { SessionTimerFields, TimerDefaultsSection } from './SessionTimerSettings'
 import {
@@ -116,6 +117,35 @@ const EMPTY_SESSION_FORM = {
 
 const EMPTY_SLOT_FORM = { label: '', starts_at: '', ends_at: '' }
 
+/** Left-rail + chip colours per session type, so the grid reads at a glance. */
+const SESSION_TYPE_STYLES: Record<(typeof SESSION_TYPES)[number], { rail: string; chip: string }> = {
+  paper: { rail: 'border-l-indigo', chip: 'bg-indigo-soft text-button' },
+  keynote: { rail: 'border-l-gold', chip: 'bg-gold-soft text-gold-ink' },
+  panel: { rail: 'border-l-emerald-500', chip: 'bg-emerald-50 text-emerald-800' },
+  workshop: { rail: 'border-l-sky-500', chip: 'bg-sky-50 text-sky-800' },
+  poster: { rail: 'border-l-violet-500', chip: 'bg-violet-50 text-violet-800' },
+  opening: { rail: 'border-l-brand', chip: 'bg-brand/10 text-brand' },
+  closing: { rail: 'border-l-brand', chip: 'bg-brand/10 text-brand' },
+  break: { rail: 'border-l-border-strong', chip: 'bg-surface-muted text-text-muted' },
+}
+
+/** Ids of non-cancelled sessions that overlap another session in the same room. */
+function findClashes(sessions: SessionRow[]): Set<string> {
+  const clashes = new Set<string>()
+  const live = sessions.filter((s) => s.status !== 'cancelled')
+  for (let i = 0; i < live.length; i++) {
+    for (let j = i + 1; j < live.length; j++) {
+      const a = live[i]
+      const b = live[j]
+      if (a.room_id === b.room_id && a.starts_at < b.ends_at && b.starts_at < a.ends_at) {
+        clashes.add(a.id)
+        clashes.add(b.id)
+      }
+    }
+  }
+  return clashes
+}
+
 function WarningsPanel({ conferenceId, refreshKey }: { conferenceId: string; refreshKey: number }) {
   const [warnings, setWarnings] = useState<Warnings | null>(null)
 
@@ -230,7 +260,7 @@ function RoomsSection({ conferenceId, onRoomsChanged }: { conferenceId: string; 
 
   return (
     <div>
-      <h2 className="text-lg font-medium text-text">Rooms</h2>
+      <h2 className="font-display text-xl font-semibold text-brand">Rooms</h2>
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
       {loading ? (
@@ -248,8 +278,8 @@ function RoomsSection({ conferenceId, onRoomsChanged }: { conferenceId: string; 
                 <th className="px-4 py-2 font-medium">Building / floor</th>
                 <th className="px-4 py-2 font-medium">Capacity</th>
                 <th className="px-4 py-2 font-medium">Equipment</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium"></th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -477,7 +507,7 @@ function TimeSlotsSection({ conferenceId, onSlotsChanged }: { conferenceId: stri
 
   return (
     <div className="mt-10">
-      <h2 className="text-lg font-medium text-text">Time slots</h2>
+      <h2 className="font-display text-xl font-semibold text-brand">Time slots</h2>
       <p className="mt-1 text-sm text-text-muted">
         Optional helpers (e.g. "Morning 1, 09:00–10:30") — pick one when creating a session to fill its start/end
         automatically.
@@ -1058,15 +1088,31 @@ function SessionsSection({
   const roomName = (id: string) => rooms.find((r) => r.id === id)?.name ?? '—'
   const trackName = (id: string | null) => (id ? tracks.find((t) => t.id === id)?.name ?? '—' : '—')
   const manageSession = sessions.find((s) => s.id === manageSessionId) ?? null
+  const clashes = useMemo(() => findClashes(visibleSessions), [visibleSessions])
+  const gridRows = useMemo(() => {
+    const byStart = new Map<string, SessionRow[]>()
+    for (const s of [...visibleSessions].sort((a, b) => a.starts_at.localeCompare(b.starts_at))) {
+      byStart.set(s.starts_at, [...(byStart.get(s.starts_at) ?? []), s])
+    }
+    return [...byStart.entries()]
+  }, [visibleSessions])
 
   return (
     <div className="mt-10">
       <WarningsPanel conferenceId={conferenceId} refreshKey={warningsKey} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-medium text-text">Sessions</h2>
+        <div>
+          <h2 className="font-display text-xl font-semibold text-brand">Sessions</h2>
+          {clashes.size > 0 ? (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-danger">
+              <span className="h-2 w-2 rounded-full bg-danger" aria-hidden="true" />
+              {clashes.size} sessions overlap in the same room
+            </p>
+          ) : null}
+        </div>
         {/* Grid collapses to the list on narrow screens regardless of the toggle. */}
-        <div className="hidden gap-1 rounded-md border border-border bg-surface p-0.5 sm:flex">
+        <div className="hidden gap-1 rounded-lg border border-border-soft bg-surface p-1 shadow-card sm:flex">
           <Button type="button" variant={view === 'list' ? 'primary' : 'ghost'} size="sm" onClick={() => setView('list')}>
             List
           </Button>
@@ -1089,91 +1135,135 @@ function SessionsSection({
       {loading ? (
         <SkeletonText lines={4} className="mt-3" />
       ) : visibleSessions.length === 0 ? (
-        <div className="mt-3 rounded-lg border border-dashed border-border bg-surface">
-          <EmptyState title="No sessions yet." />
+        <div className="mt-4 rounded-xl border border-dashed border-border bg-surface">
+          <EmptyState title="No sessions yet." message="Add rooms and a first session below to start building the programme." />
         </div>
       ) : view === 'grid' ? (
-        <div className="mt-3 hidden overflow-x-auto rounded-lg border border-border bg-surface sm:block">
-          <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="mt-4 hidden overflow-x-auto rounded-xl border border-border-soft bg-surface shadow-card sm:block">
+          <table className="w-full min-w-[640px] table-fixed text-left text-sm">
             <thead>
-              <tr className="border-b border-border bg-surface-muted text-text-muted">
-                <th className="px-3 py-2 font-medium">Time</th>
+              <tr className="border-b border-border-soft bg-surface-muted/60">
+                <th className="w-24 px-3 py-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Time</th>
                 {rooms.map((r) => (
-                  <th key={r.id} className="px-3 py-2 font-medium">
+                  <th key={r.id} className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
                     {r.name}
+                    {r.capacity ? <span className="ml-1 font-normal normal-case tracking-normal">· {r.capacity}</span> : null}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {[...visibleSessions]
-                .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-                .map((s) => (
-                  <tr key={s.id}>
-                    <td className="whitespace-nowrap px-3 py-2 text-text-muted">{formatKathmanduTime(s.starts_at)}</td>
-                    {rooms.map((r) => (
-                      <td key={r.id} className="px-3 py-2">
-                        {r.id === s.room_id ? (
-                          <button
-                            type="button"
-                            onClick={() => setManageSessionId(s.id)}
-                            style={{ backgroundColor: trackColor(s.track_id, tracks) }}
-                            className="w-full rounded-md px-2 py-1 text-left text-xs font-medium text-text/80 hover:opacity-80"
-                          >
-                            {s.title}
-                          </button>
-                        ) : null}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+            <tbody className="divide-y divide-border-soft">
+              {gridRows.map(([startsAt, rowSessions]) => (
+                <tr key={startsAt} className="align-top">
+                  <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums text-text">{formatKathmanduTime(startsAt)}</td>
+                  {rooms.map((r) => (
+                    <td key={r.id} className="space-y-2 px-2 py-2">
+                      {rowSessions
+                        .filter((s) => s.room_id === r.id)
+                        .map((s) => {
+                          const style = SESSION_TYPE_STYLES[s.session_type] ?? SESSION_TYPE_STYLES.paper
+                          const clash = clashes.has(s.id)
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => setManageSessionId(s.id)}
+                              className={`block w-full rounded-lg border border-l-4 bg-surface px-3 py-2 text-left shadow-card transition hover:-translate-y-px hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-button ${style.rail} ${clash ? 'border-danger/60 ring-1 ring-danger/30' : 'border-border-soft'} ${s.status === 'cancelled' ? 'opacity-60' : ''}`}
+                            >
+                              <span className="flex items-center justify-between gap-2">
+                                <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold capitalize ${style.chip}`}>{s.session_type}</span>
+                                {s.status !== 'published' ? <span className="text-[11px] capitalize text-text-muted">{s.status}</span> : null}
+                              </span>
+                              <span className={`mt-1.5 block text-sm font-medium leading-snug text-text ${s.status === 'cancelled' ? 'line-through' : ''}`}>{s.title}</span>
+                              <span className="mt-1 flex items-center gap-1.5 text-xs text-text-muted">
+                                {s.track_id ? (
+                                  <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10" style={{ backgroundColor: trackColor(s.track_id, tracks) }} aria-hidden="true" />
+                                ) : null}
+                                <span className="tabular-nums">
+                                  {formatKathmanduTime(s.starts_at)}–{formatKathmanduTime(s.ends_at)}
+                                </span>
+                              </span>
+                              {clash ? <span className="mt-1 block text-xs font-semibold text-danger">Room clash</span> : null}
+                            </button>
+                          )
+                        })}
+                    </td>
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       ) : null}
       {visibleSessions.length > 0 ? (
-        <div className={`mt-3 overflow-x-auto rounded-lg border border-border bg-surface ${view === 'grid' ? 'sm:hidden' : ''}`}>
-          <table className="w-full min-w-[800px] text-left text-sm">
+        <div className={`mt-4 overflow-x-auto rounded-xl border border-border-soft bg-surface shadow-card ${view === 'grid' ? 'sm:hidden' : ''}`}>
+          <table className="w-full min-w-[880px] text-left text-sm">
               <thead>
-                <tr className="border-b border-border bg-surface-muted text-text-muted">
-                  <th className="px-4 py-2 font-medium">Title</th>
-                  <th className="px-4 py-2 font-medium">Type</th>
-                  <th className="px-4 py-2 font-medium">Track</th>
-                  <th className="px-4 py-2 font-medium">Room</th>
-                  <th className="px-4 py-2 font-medium">When</th>
+                <tr className="border-b border-border-soft bg-surface-muted/60 text-xs uppercase tracking-wide text-text-muted">
+                  <th className="px-3 py-3 font-semibold">Title</th>
+                  <th className="px-3 py-3 font-semibold">Type</th>
+                  <th className="px-3 py-3 font-semibold">Track</th>
+                  <th className="px-3 py-3 font-semibold">Room</th>
+                  <th className="px-3 py-3 font-semibold">When</th>
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2 font-medium"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border-soft">
                 {visibleSessions.map((s) => (
-                  <tr key={s.id} style={{ backgroundColor: s.track_id ? trackColor(s.track_id, tracks) : undefined }}>
-                    <td className="px-4 py-2">{s.title}</td>
-                    <td className="px-4 py-2 capitalize">{s.session_type}</td>
-                    <td className="px-4 py-2">{trackName(s.track_id)}</td>
-                    <td className="px-4 py-2">{roomName(s.room_id)}</td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
+                  <tr key={s.id} className="transition-colors hover:bg-page-bg/60">
+                    <td className="min-w-[10rem] px-3 py-3 font-medium text-text">{s.title}</td>
+                    <td className="px-3 py-3">
+                      <span className={`rounded px-1.5 py-0.5 text-xs font-semibold capitalize ${(SESSION_TYPE_STYLES[s.session_type] ?? SESSION_TYPE_STYLES.paper).chip}`}>
+                        {s.session_type}
+                      </span>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-3">
+                      <span className="inline-flex items-center gap-2">
+                        {s.track_id ? (
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10" style={{ backgroundColor: trackColor(s.track_id, tracks) }} aria-hidden="true" />
+                        ) : null}
+                        {trackName(s.track_id)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">{roomName(s.room_id)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      {kathmanduDateKey(s.starts_at) === kathmanduDateKey(s.ends_at) ? (
+                        <>
+                          <span className="tabular-nums">
+                            {formatKathmanduTime(s.starts_at)} – {formatKathmanduTime(s.ends_at)}
+                          </span>
+                          <span className="block text-xs text-text-muted">{formatKathmandu(s.starts_at, { dateOnly: true })}</span>
+                        </>
+                      ) : (
+                        <>
+                          {formatKathmandu(s.starts_at)} – {formatKathmandu(s.ends_at)}
+                        </>
+                      )}
+                      {clashes.has(s.id) ? <span className="mt-0.5 block text-xs font-semibold text-danger">Room clash</span> : null}
+                    </td>
+                    <td className="px-3 py-3">
                       <StatusChip status={s.status} />
                     </td>
-                    <td className="px-4 py-2">
-                      <div className="flex flex-wrap gap-2">
+                    <td className="px-3 py-3">
+                      <div className="flex justify-end gap-2">
                         <Button type="button" variant="secondary" size="sm" onClick={() => setManageSessionId(s.id)}>
                           Manage
                         </Button>
-                        <Button type="button" variant="secondary" size="sm" onClick={() => startEdit(s)}>
-                          Edit
+                        <Button type="button" variant="ghost" size="sm" aria-label="Edit" title="Edit" onClick={() => startEdit(s)}>
+                          <Pencil size={16} aria-hidden="true" />
                         </Button>
                         <Button
                           type="button"
-                          variant="danger"
+                          variant="ghost"
                           size="sm"
+                          aria-label="Delete"
+                          title="Delete"
+                          className="text-danger hover:bg-danger/10"
                           onClick={() => setConfirmingDeleteSession(s)}
                           disabled={busyId === s.id}
                         >
-                          Delete
+                          <Trash2 size={16} aria-hidden="true" />
                         </Button>
                       </div>
                     </td>
@@ -1184,8 +1274,8 @@ function SessionsSection({
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-dashed border-border bg-surface p-4">
-        <p className="font-medium text-text">{editingId ? 'Edit session' : 'Add a session'}</p>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-3 rounded-xl border border-border-soft bg-surface p-5 shadow-card">
+        <p className="font-semibold text-text">{editingId ? 'Edit session' : 'Add a session'}</p>
         {formError ? <Alert variant="danger">{formError}</Alert> : null}
 
         <Input
@@ -1319,7 +1409,7 @@ export function ProgrammeTab({ conferenceId }: { conferenceId: string }) {
   const [roomsVersion, setRoomsVersion] = useState(0)
   const [slotsVersion, setSlotsVersion] = useState(0)
   return (
-    <div className="mt-6 max-w-5xl">
+    <div className="mt-6 max-w-6xl">
       <RoomsSection conferenceId={conferenceId} onRoomsChanged={() => setRoomsVersion((v) => v + 1)} />
       <TimeSlotsSection conferenceId={conferenceId} onSlotsChanged={() => setSlotsVersion((v) => v + 1)} />
       <SessionsSection conferenceId={conferenceId} roomsVersion={roomsVersion} slotsVersion={slotsVersion} />

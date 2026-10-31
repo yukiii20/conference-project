@@ -43,7 +43,7 @@ export function TimerDefaultsSection({ conferenceId }: { conferenceId: string })
 
   return (
     <div className="mt-10">
-      <h2 className="text-lg font-medium text-text">Session timer</h2>
+      <h2 className="font-display text-xl font-semibold text-brand">Session timer</h2>
       <p className="mt-1 text-sm text-text-muted">
         Talk and Q&amp;A time for every talk on the session chairs' full-screen timer. Override it for one session from
         that session's <strong>Manage</strong> panel.

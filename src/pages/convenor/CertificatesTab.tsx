@@ -523,7 +523,7 @@ function IssuedListSection({ conferenceId, refreshKey }: { conferenceId: string;
     <div className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-medium text-text">Issued certificates</h2>
+          <h2 className="font-display text-xl font-semibold text-brand">Issued certificates</h2>
           <p className="text-sm text-text-muted">
             Issuing a certificate doesn't send it — "Release now" makes every issued-but-unreleased certificate downloadable and
             emails the recipient.

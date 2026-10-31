@@ -352,7 +352,7 @@ function NavItem({
           id={`conf-panel-${id}`}
           role="region"
           aria-label={`${label} preview`}
-          className={`conf-panel-enter absolute top-full z-20 mt-2 w-[320px] max-w-[360px] rounded-lg border-t-4 border-line bg-white p-4 shadow-lg ${
+          className={`conf-panel-enter absolute top-full z-20 mt-2 w-[320px] max-w-[360px] rounded-xl border-t-4 border-line bg-surface p-4 shadow-card-hover ${
             alignRight ? 'right-0' : 'left-0'
           }`}
           style={{ borderTopColor: accent }}
@@ -370,6 +370,7 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
 ) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [logoFailed, setLogoFailed] = useState(false)
   const supportsHover = useSupportsHover()
   const triggerRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const navElRef = useRef<HTMLElement | null>(null)
@@ -436,18 +437,19 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
   }
 
   return (
-    <nav ref={setNavRef} className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+    <nav ref={setNavRef} className="sticky top-0 z-30 border-b border-border-soft bg-surface/90 shadow-[0_1px_12px_rgb(43_36_32/0.05)] backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <a
           href="#home"
           onClick={(e) => {
             e.preventDefault()
             jump('home')
           }}
-          className="flex items-center gap-2 font-semibold"
+          className="flex min-w-0 items-center gap-2.5 font-semibold"
+          title={conference.name}
         >
-          {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 object-contain" />
+          {logoUrl && !logoFailed ? (
+            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 object-contain" onError={() => setLogoFailed(true)} />
           ) : (
             <span
               style={{ backgroundColor: accent, color: accentText }}
@@ -456,14 +458,15 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
               {conference.code}
             </span>
           )}
-          {conference.name}
+          {/* At xl the full section row needs the room, so the name (already the hero's h1) hides until 2xl. */}
+          <span className="truncate xl:hidden 2xl:inline 2xl:max-w-[15rem]">{conference.name}</span>
         </a>
 
         {/* 10 fixed section links plus Sign in/Register need ~1066px to lay out
             in one row without wrapping — that doesn't fit until the xl
             breakpoint, so the mobile drawer below has to cover md/lg too,
             not just small screens, or this row overflows at 768-1024px. */}
-        <div className="hidden items-center gap-x-4 gap-y-2 text-sm xl:flex">
+        <div className="hidden shrink-0 items-center gap-x-4 whitespace-nowrap text-sm xl:flex">
           {SECTIONS.map((s) => (
             <NavItem
               key={s.id}
@@ -479,13 +482,13 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
               registerTrigger={registerTrigger}
             />
           ))}
-          <Link to="/login" className="rounded-md border border-line px-3 py-1.5 hover:bg-background">
+          <Link to="/login" className="rounded-lg border border-border-soft px-3 py-1.5 hover:bg-page-bg">
             Sign in
           </Link>
           <Link
             to={signupHref}
             style={{ backgroundColor: accent, color: accentText }}
-            className="rounded-md px-3 py-1.5 font-medium hover:opacity-90"
+            className="rounded-lg px-3 py-1.5 font-medium shadow-sm hover:opacity-90"
           >
             Register
           </Link>

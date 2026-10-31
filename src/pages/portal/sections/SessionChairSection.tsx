@@ -95,7 +95,7 @@ function MarkAttendancePanel({
         <SkeletonText lines={3} className="mt-6" />
       ) : (
         <div className="mt-4 rounded-lg border border-border bg-surface p-5">
-          <h2 className="text-lg font-semibold text-text">{detail.title}</h2>
+          <h2 className="font-display text-xl font-semibold text-brand">{detail.title}</h2>
           <p className="mt-1 text-sm text-text-muted">
             {formatKathmandu(detail.starts_at)} – {formatKathmandu(detail.ends_at)}
             {detail.room ? ` · ${detail.room.name}` : ''}
