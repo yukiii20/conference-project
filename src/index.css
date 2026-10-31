@@ -421,3 +421,9 @@ input[type='number']::-webkit-inner-spin-button {
     opacity: 1;
   }
 }
+
+/* Thin, low-contrast scrollbar for the navy sidebar's nav list. */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+}

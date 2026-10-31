@@ -233,7 +233,7 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
               <AdminViewAsProvider value={Boolean(viewAs)}>
               <Routes>
                 <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<DashboardTab conferenceId={conferenceId} base={base} isManager={isManagerPortal} />} />
+                <Route path="dashboard" element={<DashboardTab conferenceId={conferenceId} base={base} isManager={isManagerPortal} conferenceName={conferenceName} />} />
                 <Route path="setup/*" element={<SetupSection conferenceId={conferenceId} basePath={`${base}/setup`} />} />
                 <Route
                   path="schedule-basics/*"

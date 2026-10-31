@@ -113,10 +113,10 @@ export function AppShell({
       onClick={() => setMobileOpen((v) => !v)}
       aria-expanded={mobileOpen}
       aria-controls={sidebarId}
-      className="-ml-1.5 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-text hover:bg-surface-muted md:hidden"
+      className="-ml-1.5 inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium text-text hover:bg-surface-muted md:hidden"
     >
       {mobileOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
-      {mobileOpen ? 'Close menu' : 'Menu'}
+      <span className="max-sm:sr-only">{mobileOpen ? 'Close menu' : 'Menu'}</span>
     </button>
   )
 
@@ -159,7 +159,7 @@ export function AppShell({
           {context ? <div className="mt-2.5">{context}</div> : null}
         </div>
 
-        <div className={`min-h-0 flex-1 overflow-y-auto pb-4 ${collapsed ? 'md:px-2.5 md:pt-4' : ''} px-3 pt-2`}>
+        <div className={`sidebar-scroll min-h-0 flex-1 overflow-y-auto pb-4 ${collapsed ? 'md:px-2.5 md:pt-4' : ''} px-3 pt-2`}>
           {renderNav({ collapsed, onNavigate: () => setMobileOpen(false) })}
         </div>
 
@@ -210,11 +210,11 @@ function SearchButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="Search pages and sections"
       aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
-      className="flex h-10 items-center gap-2 rounded-lg text-sm text-text-muted transition-colors hover:bg-surface-muted hover:text-text max-lg:w-10 max-lg:justify-center lg:w-56 lg:border lg:border-border-soft lg:bg-page-bg lg:px-3 lg:hover:border-border"
+      className="flex h-10 items-center gap-2 rounded-lg text-sm text-text-muted transition-colors hover:bg-surface-muted hover:text-text max-xl:w-10 max-xl:justify-center xl:w-56 xl:border xl:border-border-soft xl:bg-page-bg xl:px-3 xl:hover:border-border"
     >
       <Search size={17} aria-hidden="true" className="shrink-0" />
-      <span className="flex-1 text-left max-lg:hidden">Search…</span>
-      <kbd className="rounded border border-border bg-surface px-1.5 font-sans text-[11px] leading-5 max-lg:hidden">{isMac ? '⌘ K' : 'Ctrl K'}</kbd>
+      <span className="flex-1 text-left max-xl:hidden">Search…</span>
+      <kbd className="rounded border border-border bg-surface px-1.5 font-sans text-[11px] leading-5 max-xl:hidden">{isMac ? '⌘ K' : 'Ctrl K'}</kbd>
     </button>
   )
 }
@@ -288,13 +288,17 @@ export function SidebarNavButton({
 function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
   if (crumbs.length === 0) return null
   return (
-    <nav aria-label="Breadcrumb" className="min-w-0">
+    <nav aria-label="Breadcrumb" className="min-w-0 overflow-hidden">
       <ol className="flex min-w-0 items-center gap-1.5 text-sm">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1
           return (
-            <li key={`${c.label}-${i}`} className={`flex min-w-0 items-center gap-1.5 ${last ? '' : 'max-sm:hidden'}`}>
-              {i > 0 ? <ChevronRight size={14} aria-hidden="true" className="shrink-0 text-text-muted/60 max-sm:hidden" /> : null}
+            <li
+              key={`${c.label}-${i}`}
+              // Only the first crumb (the long conference name, also in the sidebar) gives way; the page you're on never truncates first.
+              className={`flex items-center gap-1.5 ${last ? 'min-w-0' : i === 0 ? 'min-w-0 max-w-[14rem] max-lg:hidden xl:max-w-[22rem]' : 'shrink-0 max-lg:hidden'}`}
+            >
+              {i > 0 ? <ChevronRight size={14} aria-hidden="true" className="shrink-0 text-text-muted/60 max-lg:hidden" /> : null}
               {c.to && !last ? (
                 <Link to={c.to} className="truncate text-text-muted transition-colors hover:text-text">
                   {c.label}

@@ -72,7 +72,7 @@ export function PortalHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-        <span className="hidden max-w-[16rem] truncate rounded-full border border-gold/60 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold-ink sm:inline">
+        <span className="hidden max-w-[16rem] truncate rounded-full border border-gold/60 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold-ink xl:inline">
           {roleLabel}
         </span>
         {tools}

@@ -131,7 +131,7 @@ export function CommandPalette({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Jump to a page or section…"
-            className="min-h-14 flex-1 bg-transparent text-base text-text placeholder:text-text-muted/70 focus:outline-none"
+            className="min-h-14 flex-1 bg-transparent text-base text-text placeholder:text-text-muted/70 focus:outline-none focus-visible:outline-none"
           />
           <kbd className="hidden rounded border border-border bg-page-bg px-1.5 py-0.5 font-sans text-[11px] text-text-muted sm:block">Esc</kbd>
         </div>

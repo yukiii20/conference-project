@@ -1,18 +1,24 @@
 /**
  * Chart colour tokens for the Analytics tabs — the dataviz skill's palette
- * parameters, filled in with its validated default instance (re-validated
- * against this app's actual chart surface, #fffdf9 — see docs/progress.md
- * for the validator run). This app has no dark mode, so these are the only
+ * parameters, filled in with its validated default instance, re-validated
+ * against the white card surface (#ffffff): the categorical set passes every
+ * check; green/amber are under 3:1 contrast, so charts using them need a
+ * legend and a table view (ChartCard always offers one). This app has no dark mode, so these are the only
  * values needed; swap them here (not per-chart) if the brand palette ever
  * changes.
  */
 
-/** Single hue, light -> dark — the default for any magnitude/trend chart (one series). */
+/**
+ * Single hue, light -> dark — the default for any magnitude/trend chart (one
+ * series). Built on the design system's indigo (#5969c9 / action #4f5fc0) and
+ * midnight navy, so charts read as part of the product. The name is kept so
+ * existing charts pick it up unchanged. 500 is the mark colour (5.2:1 on white).
+ */
 export const SEQUENTIAL_BLUE = {
-  100: '#cde2fb',
-  300: '#6da7ec',
-  500: '#256abf',
-  700: '#0d366b',
+  100: '#e3e6f8',
+  300: '#9ca6e2',
+  500: '#4f5fc0',
+  700: '#26336f',
 }
 
 /** Fixed-order categorical slots — never cycle past what's validated; fold extra series into "Other". */
@@ -37,11 +43,12 @@ export const STATUS = {
 export const EMAIL_SENT = CATEGORICAL[0]
 export const EMAIL_FAILED = STATUS.critical
 
+/** Chart text/axis/grid ink — the app's slate text tokens and border colours on the white card surface. */
 export const CHART_INK = {
-  primary: '#2b2420',
-  secondary: '#6b5e52',
-  muted: '#8a7f73',
-  grid: '#e3d9c9',
-  baseline: '#b7a89a',
-  surface: '#fffdf9',
+  primary: '#1e293b',
+  secondary: '#475063',
+  muted: '#5e6676',
+  grid: '#ece9e2',
+  baseline: '#a3a9b5',
+  surface: '#ffffff',
 }
