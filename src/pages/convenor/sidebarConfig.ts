@@ -6,7 +6,8 @@
 // TabbedSection (filters its own tab row) read from this list, so they can
 // never drift apart.
 
-export type TabConfig = { id: string; label: string; hideForManager?: boolean }
+/** `keywords` only feed the Ctrl/⌘ K search, so a convenor typing "qr" or "venue" lands on the right tab. */
+export type TabConfig = { id: string; label: string; hideForManager?: boolean; keywords?: string[] }
 export type SectionConfig = { id: string; label: string; tabs: TabConfig[] }
 
 export const SECTIONS: SectionConfig[] = [
@@ -15,63 +16,63 @@ export const SECTIONS: SectionConfig[] = [
     id: 'setup',
     label: 'Conference setup',
     tabs: [
-      { id: 'details', label: 'Details' },
-      { id: 'branding', label: 'Logo and branding' },
-      { id: 'location', label: 'Location' },
-      { id: 'supporters', label: 'Supporters' },
+      { id: 'details', label: 'Details', keywords: ['welcome text', 'submission guidelines', 'description', 'contact'] },
+      { id: 'branding', label: 'Logo and branding', keywords: ['logo', 'banner', 'colour', 'color'] },
+      { id: 'location', label: 'Location', keywords: ['venue', 'map', 'address'] },
+      { id: 'supporters', label: 'Supporters', keywords: ['sponsors', 'partners'] },
     ],
   },
   {
     id: 'schedule-basics',
     label: 'Dates and tracks',
     tabs: [
-      { id: 'dates', label: 'Key dates' },
-      { id: 'tracks', label: 'Tracks' },
+      { id: 'dates', label: 'Key dates', keywords: ['deadlines', 'submission window'] },
+      { id: 'tracks', label: 'Tracks', keywords: ['topics', 'themes'] },
     ],
   },
   {
     id: 'people',
     label: 'People',
     tabs: [
-      { id: 'requests', label: 'Role requests', hideForManager: true },
-      { id: 'members', label: 'Members and roles', hideForManager: true },
-      { id: 'committees', label: 'Committees' },
-      { id: 'speakers', label: 'Speakers' },
+      { id: 'requests', label: 'Role requests', hideForManager: true, keywords: ['approve', 'pending'] },
+      { id: 'members', label: 'Members and roles', hideForManager: true, keywords: ['roles', 'staff', 'invite', 'session chairs', 'managers'] },
+      { id: 'committees', label: 'Committees', keywords: ['organising committee', 'scientific committee'] },
+      { id: 'speakers', label: 'Speakers', keywords: ['keynote', 'invited'] },
     ],
   },
   {
     id: 'papers',
     label: 'Papers',
     tabs: [
-      { id: 'submissions', label: 'Submissions' },
-      { id: 'reviews', label: 'Reviews and decisions' },
-      { id: 'auto-assign', label: 'Auto-assign' },
-      { id: 'reviewers', label: 'Reviewers' },
-      { id: 'settings', label: 'Review settings' },
+      { id: 'submissions', label: 'Submissions', keywords: ['abstracts', 'papers', 'authors'] },
+      { id: 'reviews', label: 'Reviews and decisions', keywords: ['decisions', 'accept', 'reject', 'review management'] },
+      { id: 'auto-assign', label: 'Auto-assign', keywords: ['reviewer assignments', 'assign reviewers'] },
+      { id: 'reviewers', label: 'Reviewers', keywords: ['bids', 'bidding', 'workload'] },
+      { id: 'settings', label: 'Review settings', keywords: ['review form', 'scoring', 'blind review'] },
     ],
   },
   {
     id: 'event',
     label: 'Event',
     tabs: [
-      { id: 'programme', label: 'Programme' },
-      { id: 'attendance', label: 'Attendance' },
-      { id: 'certificates', label: 'Certificates' },
-      { id: 'abstracts', label: 'Book of abstracts' },
-      { id: 'feedback', label: 'Feedback survey' },
+      { id: 'programme', label: 'Programme', keywords: ['schedule', 'sessions', 'rooms', 'time slots', 'timer', 'agenda'] },
+      { id: 'attendance', label: 'Attendance', keywords: ['registrations', 'qr', 'check-in', 'name badges', 'print badges'] },
+      { id: 'certificates', label: 'Certificates', keywords: ['templates', 'issue'] },
+      { id: 'abstracts', label: 'Book of abstracts', keywords: ['abstract book', 'pdf'] },
+      { id: 'feedback', label: 'Feedback survey', keywords: ['survey', 'questions'] },
     ],
   },
   {
     id: 'communication',
     label: 'Communication',
     tabs: [
-      { id: 'announcements', label: 'Announcements' },
-      { id: 'bulk-email', label: 'Bulk email' },
-      { id: 'templates', label: 'Email templates' },
-      { id: 'emails', label: 'Email log' },
-      { id: 'reports', label: 'Reports' },
-      { id: 'analytics', label: 'Analytics' },
-      { id: 'activity', label: 'Activity log', hideForManager: true },
+      { id: 'announcements', label: 'Announcements', keywords: ['news', 'publish'] },
+      { id: 'bulk-email', label: 'Bulk email', keywords: ['send email', 'mailing'] },
+      { id: 'templates', label: 'Email templates', keywords: ['email templates'] },
+      { id: 'emails', label: 'Email log', keywords: ['sent', 'failed', 'delivery'] },
+      { id: 'reports', label: 'Reports', keywords: ['export', 'csv', 'download'] },
+      { id: 'analytics', label: 'Analytics', keywords: ['charts', 'statistics', 'kpi'] },
+      { id: 'activity', label: 'Activity log', hideForManager: true, keywords: ['audit', 'history'] },
     ],
   },
 ]

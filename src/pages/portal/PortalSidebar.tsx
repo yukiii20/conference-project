@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Icon } from '../../components/ui/Icon'
-import { SidebarGroupLabel, SidebarLinkContent, sidebarLinkClass } from '../../components/AppShell'
+import { SidebarGroupLabel, SidebarNavItem } from '../../components/AppShell'
 import { useDirtyGuard } from '../convenor/DirtyGuard'
 import type { PortalSectionConfig } from './sidebarConfig'
 
@@ -67,9 +67,12 @@ export function PortalSidebar({
         return (
           <Fragment key={s.id}>
             {showGroup ? <SidebarGroupLabel collapsed={collapsed}>{group}</SidebarGroupLabel> : null}
-            <NavLink
+            <SidebarNavItem
               to={`${base}/${s.id}`}
-              title={collapsed ? s.label : undefined}
+              icon={<Icon icon={SECTION_ICONS[s.id] ?? LayoutDashboard} size={18} />}
+              label={s.label}
+              badge={badge}
+              collapsed={collapsed}
               onClick={(e) => {
                 if (!confirmLeave()) {
                   e.preventDefault()
@@ -77,15 +80,7 @@ export function PortalSidebar({
                 }
                 onNavigate?.()
               }}
-              className={({ isActive }) => sidebarLinkClass(isActive, collapsed)}
-            >
-              <SidebarLinkContent
-                icon={<Icon icon={SECTION_ICONS[s.id] ?? LayoutDashboard} size={18} />}
-                label={s.label}
-                badge={badge}
-                collapsed={collapsed}
-              />
-            </NavLink>
+            />
           </Fragment>
         )
       })}

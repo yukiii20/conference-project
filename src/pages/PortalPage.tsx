@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/authContext'
 import { getRoleDefinition } from '../lib/roles'
-import { AppShell, ShellConferenceContext, type Crumb } from '../components/AppShell'
+import { AppShell, ShellConferenceContext, type Crumb, type SearchItem } from '../components/AppShell'
 import { PortalSidebar } from './portal/PortalSidebar'
 import { DashboardTab } from './portal/DashboardTab'
 import { MyAgendaTab } from './portal/MyAgendaTab'
@@ -21,6 +21,18 @@ import { PORTAL_SECTIONS, visibleSections } from './portal/sidebarConfig'
 // conference at a time — session chairs see "My sessions" across every
 // conference they chair regardless of which one is selected here.
 const CONFERENCE_SWITCHER_ROLES = ['author', 'reviewer', 'session_chair', 'staff']
+
+const PORTAL_SEARCH_KEYWORDS: Record<string, string[]> = {
+  agenda: ['starred', 'calendar', 'schedule', 'clash'],
+  author: ['abstract', 'paper', 'submit', 'camera-ready', 'revision'],
+  reviewer: ['assigned papers', 'bidding', 'score'],
+  'session-chair': ['timer', 'sessions', 'chair'],
+  staff: ['qr', 'scan', 'check-in', 'attendees'],
+  ticket: ['registration', 'qr code', 'badge'],
+  certificates: ['download', 'certificate'],
+  feedback: ['survey'],
+  notifications: ['alerts', 'messages'],
+}
 
 type PortalConference = { id: string; name: string; slug: string }
 
@@ -42,7 +54,7 @@ function PortalPageInner() {
   const [searchParams] = useSearchParams()
   const preselectedSlug = searchParams.get('conference')?.trim() || null
   const { user, roles } = useAuth()
-  const { markDirty, clearDirty } = useDirtyGuard()
+  const { markDirty, clearDirty, confirmLeave } = useDirtyGuard()
   const base = '/portal'
   const location = useLocation()
 
@@ -96,6 +108,13 @@ function PortalPageInner() {
     ...(activeSection && activeSection.id !== 'dashboard' ? [{ label: activeSection.label }] : [{ label: 'Dashboard' }]),
   ]
 
+  const sectionKey = sections.map((s) => s.id).join(',')
+  const searchItems = useMemo<SearchItem[]>(
+    () => sections.map((s) => ({ id: `portal-${s.id}`, label: s.label, group: 'My portal', keywords: PORTAL_SEARCH_KEYWORDS[s.id], to: `${base}/${s.id}` })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sectionKey],
+  )
+
   return (
     <AppShell
       sidebarId="portal-sidebar"
@@ -106,6 +125,8 @@ function PortalPageInner() {
         <PortalSidebar base={base} sections={sections} onNavigate={onNavigate} collapsed={collapsed} />
       )}
       crumbs={crumbs}
+      search={searchItems}
+      beforeNavigate={confirmLeave}
     >
       <main className="min-w-0" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
             <Routes>

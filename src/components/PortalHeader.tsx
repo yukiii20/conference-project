@@ -18,7 +18,18 @@ import { Icon } from './ui/Icon'
  * Inside <AppShell> it's the top bar (`leading` = the mobile menu button,
  * `children` = breadcrumbs). On its own it shows the platform logo instead.
  */
-export function PortalHeader({ roleLabel, leading, children }: { roleLabel: string; leading?: ReactNode; children?: ReactNode }) {
+export function PortalHeader({
+  roleLabel,
+  leading,
+  tools,
+  children,
+}: {
+  roleLabel: string
+  leading?: ReactNode
+  /** Extra top-bar controls (global search, help) shown before the notification bell. */
+  tools?: ReactNode
+  children?: ReactNode
+}) {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -64,6 +75,7 @@ export function PortalHeader({ roleLabel, leading, children }: { roleLabel: stri
         <span className="hidden max-w-[16rem] truncate rounded-full border border-gold/60 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold-ink sm:inline">
           {roleLabel}
         </span>
+        {tools}
         <NotificationBell />
 
         <div ref={menuRef} className="relative">

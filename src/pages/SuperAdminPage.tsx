@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertOctagon,
@@ -37,7 +37,7 @@ import { SuggestionsAdminTab } from '../components/SuggestionsAdminTab'
 
 // Lazy so recharts is its own chunk, never part of the main bundle.
 const PlatformAnalyticsTab = lazy(() => import('../components/PlatformAnalyticsTab'))
-import { AppShell, SidebarGroupLabel, SidebarLinkContent, sidebarLinkClass } from '../components/AppShell'
+import { AppShell, SidebarGroupLabel, SidebarNavButton, type SearchItem } from '../components/AppShell'
 import {
   Alert,
   Badge,
@@ -250,6 +250,10 @@ export function SuperAdminPage() {
 
   const tabsWithCounts = TABS.map((t) => (t.id === 'suggestions' ? { ...t, count: newSuggestionsCount } : t))
   const activeTab = TABS.find((t) => t.id === tab)
+  const searchItems = useMemo<SearchItem[]>(
+    () => TABS.map((t) => ({ id: `admin-${t.id}`, label: t.label, group: 'Administration', keywords: ADMIN_SEARCH_KEYWORDS[t.id], onSelect: () => setTab(t.id) })),
+    [],
+  )
 
   return (
     <AppShell
@@ -264,30 +268,25 @@ export function SuperAdminPage() {
             return (
               <Fragment key={t.id}>
                 {group ? <SidebarGroupLabel collapsed={collapsed}>{group}</SidebarGroupLabel> : null}
-                <button
-                  type="button"
+                <SidebarNavButton
                   role="tab"
-                  aria-selected={isActive}
-                  title={collapsed ? t.label : undefined}
+                  active={isActive}
+                  icon={<AdminTabIcon id={t.id} />}
+                  label={t.label}
+                  badge={'count' in t ? (t.count ?? 0) : 0}
+                  collapsed={collapsed}
                   onClick={() => {
                     setTab(t.id)
                     onNavigate()
                   }}
-                  className={`w-full text-left ${sidebarLinkClass(isActive, collapsed)}`}
-                >
-                  <SidebarLinkContent
-                    icon={<AdminTabIcon id={t.id} />}
-                    label={t.label}
-                    badge={'count' in t ? (t.count ?? 0) : 0}
-                    collapsed={collapsed}
-                  />
-                </button>
+                />
               </Fragment>
             )
           })}
         </div>
       )}
       crumbs={[{ label: 'Administration', to: undefined }, { label: activeTab?.label ?? 'Dashboard' }]}
+      search={searchItems}
     >
       <main>
         <PageHeader title="Administrator" subtitle="Manage conferences, convenors, user accounts, and platform-wide settings." />
@@ -338,6 +337,18 @@ export function SuperAdminPage() {
       </main>
     </AppShell>
   )
+}
+
+const ADMIN_SEARCH_KEYWORDS: Partial<Record<AdminTab, string[]>> = {
+  dashboard: ['system health', 'overview', 'statistics'],
+  conferences: ['archive', 'restore', 'view as'],
+  'create-convenor': ['new convenor', 'invite'],
+  'appoint-convenor': ['assign convenor'],
+  users: ['accounts', 'suspend', 'deactivate', 'people'],
+  admins: ['platform administrators'],
+  settings: ['configuration'],
+  'email-log': ['emails', 'failed', 'delivery'],
+  analytics: ['charts', 'platform statistics'],
 }
 
 const ADMIN_GROUP_BEFORE: Partial<Record<AdminTab, string>> = {

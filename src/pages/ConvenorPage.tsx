@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import { api, setAdminViewAs } from '../lib/api'
 import { useAuth } from '../lib/authContext'
 import { AdminViewAsProvider } from '../lib/adminViewAsContext'
-import { AppShell, ShellConferenceContext, type Crumb } from '../components/AppShell'
+import { AppShell, ShellConferenceContext, type Crumb, type SearchItem } from '../components/AppShell'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Alert } from '../components/ui/Alert'
 import { Spinner } from '../components/ui/Spinner'
@@ -16,7 +16,7 @@ import { PapersSection } from './convenor/sections/PapersSection'
 import { EventSection } from './convenor/sections/EventSection'
 import { CommunicationSection } from './convenor/sections/CommunicationSection'
 import { DirtyGuardProvider, useDirtyGuard } from './convenor/DirtyGuard'
-import { OLD_PATH_REDIRECTS, SECTIONS } from './convenor/sidebarConfig'
+import { OLD_PATH_REDIRECTS, SECTIONS, visibleTabs } from './convenor/sidebarConfig'
 
 type ConvenorConference = { id: string; name: string; slug: string; roleCode: string }
 
@@ -44,7 +44,7 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
   const [searchParams] = useSearchParams()
   const preselectedSlug = searchParams.get('conference')?.trim() || null
   const { roles } = useAuth()
-  const { markDirty, clearDirty } = useDirtyGuard()
+  const { markDirty, clearDirty, confirmLeave } = useDirtyGuard()
   const isManagerPortal = !viewAs && location.pathname.startsWith('/manager')
   const base = viewAs ? `/super-admin/view-as/${viewAs.conferenceId}` : isManagerPortal ? '/manager' : '/convenor'
 
@@ -139,6 +139,22 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
     ...(activeSection ? [{ label: activeSection.label }] : []),
     ...(activeTab ? [{ label: activeTab.label }] : []),
   ]
+  // Every page and tab this person can open, for the Ctrl/⌘ K search.
+  const searchItems = useMemo<SearchItem[]>(
+    () =>
+      SECTIONS.flatMap((s) =>
+        s.tabs.length === 0
+          ? [{ id: s.id, label: s.label, group: 'Pages', to: `${base}/${s.id}` }]
+          : visibleTabs(s, isManagerPortal).map((tab) => ({
+              id: `${s.id}/${tab.id}`,
+              label: tab.label,
+              group: s.label,
+              keywords: [s.label, ...(tab.keywords ?? [])],
+              to: `${base}/${s.id}/${tab.id}`,
+            })),
+      ),
+    [base, isManagerPortal],
+  )
   const conferenceContext = viewAs ? (
     <ShellConferenceContext id="convenor-conference" conferences={[{ id: viewAs.conferenceId, name: viewAs.conferenceName }]} value={viewAs.conferenceId} onChange={() => {}} />
   ) : (
@@ -185,6 +201,8 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
         />
       )}
       crumbs={crumbs}
+      search={searchItems}
+      beforeNavigate={confirmLeave}
     >
         {viewAs ? (
           <div role="status" className="mb-6">

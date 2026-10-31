@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { CalendarRange, FileText, LayoutDashboard, MessageSquare, PartyPopper, Settings, Users, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../components/ui/Icon'
-import { SidebarGroupLabel, SidebarLinkContent, sidebarLinkClass } from '../../components/AppShell'
+import { SidebarGroupLabel, SidebarNavItem } from '../../components/AppShell'
 import { useDirtyGuard } from './DirtyGuard'
 import { SECTIONS, visibleTabs } from './sidebarConfig'
 
@@ -58,9 +58,12 @@ export function ConvenorSidebar({
         return (
           <Fragment key={s.id}>
             {group ? <SidebarGroupLabel collapsed={collapsed}>{group}</SidebarGroupLabel> : null}
-            <NavLink
+            <SidebarNavItem
               to={`${base}/${s.id}`}
-              title={collapsed ? s.label : undefined}
+              icon={<Icon icon={SECTION_ICONS[s.id]!} size={18} />}
+              label={s.label}
+              badge={badge}
+              collapsed={collapsed}
               onClick={(e) => {
                 if (!isCurrentPage && !confirmLeave()) {
                   e.preventDefault()
@@ -68,10 +71,7 @@ export function ConvenorSidebar({
                 }
                 onNavigate?.()
               }}
-              className={({ isActive }) => sidebarLinkClass(isActive, collapsed)}
-            >
-              <SidebarLinkContent icon={<Icon icon={SECTION_ICONS[s.id]!} size={18} />} label={s.label} badge={badge} collapsed={collapsed} />
-            </NavLink>
+            />
           </Fragment>
         )
       })}
