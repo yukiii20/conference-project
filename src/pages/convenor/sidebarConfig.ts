@@ -57,6 +57,7 @@ export const SECTIONS: SectionConfig[] = [
       { id: 'programme', label: 'Programme' },
       { id: 'attendance', label: 'Attendance' },
       { id: 'certificates', label: 'Certificates' },
+      { id: 'abstracts', label: 'Book of abstracts' },
     ],
   },
   {

@@ -38,6 +38,8 @@ import { certificatesRouter, certificatesPublicRouter } from './modules/certific
 import { suggestionsAdminRouter, suggestionsPublicRouter } from './modules/suggestions/routes.js'
 import { agendaFeedRouter, agendaRouter } from './modules/agenda/routes.js'
 import { sessionTimerRouter } from './modules/sessionTimer/routes.js'
+import { sessionTimerRouter } from './modules/sessionTimer/routes.js'
+import { abstractBookRouter } from './modules/abstractBook/routes.js'
 import { PUBLIC_DIR } from './storage/paths.js'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -171,6 +173,8 @@ export function createApp() {
   app.use('/api/conferences', supportersRouter)
   app.use('/api/conferences', scheduleRouter)
   app.use('/api/conferences', sessionTimerRouter)
+  app.use('/api/conferences', sessionTimerRouter)
+  app.use('/api/conferences', abstractBookRouter)
   app.use('/api/conferences', settingsRouter)
   app.use('/api/conferences', submissionsConferenceRouter)
   app.use('/api/conferences', reviewsConferenceRouter)

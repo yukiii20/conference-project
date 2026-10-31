@@ -1108,3 +1108,37 @@ ordered talks, 401/403 for a chair of another session, convenor opens any + defa
 resolve + audit rows, chair can't change timings + validation 400, mark presented from the timer),
 routeGuards covers the new routes, `e2e/sessionTimer.spec.ts` (opens the timer, colour, start,
 Space pause, Q&A 5:00, mark presented, N to next talk, last-talk message, no console errors, 390px).
+
+## Features batch 3, feature 9 - Book of abstracts - DONE (code; DB tests pending SQL)
+
+`database/batch-3-sql/04_abstract_books.sql`: `abstract_books`, one row per conference - stored
+PDF path (private storage, `abstract-books/<conferenceId>/...`), the options it was generated
+with, abstract/page counts, and the `is_published` toggle. No new permission: generate/publish/
+download reuse `schedule.manage`.
+
+Backend `server/src/modules/abstractBook/`: `export.ts` builds the PDF with pdfkit (bufferPages):
+cover (logo normalised to PNG with sharp, name, dates, venue), contents pages reserved up front
+and filled in once page numbers are known, one abstract per page (title, code, authors with
+numbered affiliations, presenting author bold + "*", keywords, justified abstract; long ones
+flow onto the next page), author index ("Surname, Given ... pages"), page numbers on every page
+but the cover. `service.ts`: `collectBookGroups` - only accepted (accepted onwards in the
+lifecycle) or all still-in-the-running submissions (never draft/rejected/withdrawn), grouped by
+track, by session (only sessions on the published programme, in time order, talks in programme
+order, unscheduled papers last) or one A-Z list; presenting author = scheduled presenter, else
+corresponding author. Generating replaces the stored file (old file deleted after the DB row is
+updated) and keeps the publish toggle; audit `abstract_book.generate`/`publish`/`unpublish`.
+Routes: `GET /api/conferences/:id/abstract-book`, `POST .../generate`, `PATCH .../publish`,
+`GET .../download` (schedule.manage), and public `GET .../abstract-book/public` +
+`.../public.pdf` (404 unless published; in routeGuards' PUBLIC_ROUTES with that reason).
+
+Frontend: Event -> **Book of abstracts** tab (`src/pages/convenor/AbstractBookTab.tsx`; options,
+current-book card, download, confirm dialogs for re-generate and publish/unpublish), and a
+**Book of abstracts (PDF)** link beside "Download programme (PDF)" on the public conference page
+when published (`usePublicAbstractBook`, small additive hunk in `ConferencePage.tsx`).
+
+Tests: `server/tests/abstractBookPdf.test.ts` (4, pure: cover+contents+1 page per abstract+index
+page count, long abstract flows, extra contents pages for 50 abstracts, empty book),
+`server/tests/abstractBook.test.ts` (5, DB: only accepted / never rejected, generate -> 5 pages
+for the seeded data + stored file + audit, session order with unscheduled last, publish toggle
+gates the public download and survives re-generate which replaces the file, 401/403),
+`e2e/abstractBook.spec.ts`, and the convenor portal spec's Event tab list.

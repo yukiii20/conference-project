@@ -258,6 +258,17 @@ everything lives under `/convenor`, in a left sidebar grouped by area.
     the recipients (you'll see a confirmation naming how many went out).
     **Revoke** one if it was issued by mistake — you'll be asked for a
     reason, kept in the activity log.
+  - *Book of abstracts* — choose **Only accepted papers** (on by default;
+    rejected and withdrawn papers are never included) and an order (**by
+    track**, **by session** once the programme is published — unscheduled
+    papers go last — or **by title**), then **Generate book**. The PDF has a
+    cover (logo, name, dates, venue), contents with page numbers, one
+    abstract per page (title, authors with affiliations, presenting author
+    marked \*, keywords, abstract) and an author index. **Download PDF** any
+    time; **Re-generate** after late changes (it replaces the old file).
+    Tick **Publish on conference page** to add a **Book of abstracts (PDF)**
+    link next to the programme download on the public page; untick to
+    remove it.
 - **Communication**: announcements, **bulk email**, email templates, the
   email log, exportable reports (CSV/XLSX), **analytics**, and the activity
   log (who did what).

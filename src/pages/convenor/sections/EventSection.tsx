@@ -1,13 +1,17 @@
 import { ProgrammeTab } from '../ProgrammeTab'
 import { AttendanceTab } from '../AttendanceTab'
 import { CertificatesTab } from '../CertificatesTab'
+import { AbstractBookTab } from '../AbstractBookTab'
 import { SECTIONS } from '../sidebarConfig'
 import { TabbedSection } from './TabbedSection'
 
-const ELEMENTS: Record<string, (conferenceId: string) => React.ReactNode> = {
+const ELEMENTS: Record<string, (conferenceId: string, basePath: string) => React.ReactNode> = {
   programme: (conferenceId) => <ProgrammeTab conferenceId={conferenceId} />,
   attendance: (conferenceId) => <AttendanceTab conferenceId={conferenceId} />,
   certificates: (conferenceId) => <CertificatesTab conferenceId={conferenceId} />,
+  abstracts: (conferenceId, basePath) => (
+    <AbstractBookTab conferenceId={conferenceId} submissionsPath={`${basePath.replace(/\/event$/, '')}/papers/submissions`} />
+  ),
 }
 
 export function EventSection({ conferenceId, basePath }: { conferenceId: string; basePath: string }) {
@@ -17,7 +21,7 @@ export function EventSection({ conferenceId, basePath }: { conferenceId: string;
       basePath={basePath}
       tabs={section.tabs.map((t) => ({
         ...t,
-        element: ELEMENTS[t.id]?.(conferenceId) ?? null,
+        element: ELEMENTS[t.id]?.(conferenceId, basePath) ?? null,
       }))}
     />
   )

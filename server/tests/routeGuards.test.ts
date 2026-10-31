@@ -31,6 +31,8 @@ import { certificatesRouter, certificatesPublicRouter } from '../src/modules/cer
 import { suggestionsAdminRouter, suggestionsPublicRouter } from '../src/modules/suggestions/routes.js'
 import { agendaFeedRouter, agendaRouter } from '../src/modules/agenda/routes.js'
 import { sessionTimerRouter } from '../src/modules/sessionTimer/routes.js'
+import { sessionTimerRouter } from '../src/modules/sessionTimer/routes.js'
+import { abstractBookRouter } from '../src/modules/abstractBook/routes.js'
 
 const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
 
@@ -60,6 +62,9 @@ const PUBLIC_ROUTES = new Set([
   'suggestionsPublicRouter POST /suggestions',
   // The secret token in the URL is the credential (calendar apps can't send a session cookie).
   'agendaFeedRouter GET /calendar/:token.ics',
+  // Only ever serves a book the convenor switched on "Publish on conference page" for.
+  'abstractBookRouter GET /:id/abstract-book/public',
+  'abstractBookRouter GET /:id/abstract-book/public.pdf',
 ])
 
 type NamedRouter = { name: string; router: import('express').Router }
@@ -107,6 +112,8 @@ const ROUTERS: NamedRouter[] = [
   { name: 'agendaRouter', router: agendaRouter },
   { name: 'agendaFeedRouter', router: agendaFeedRouter },
   { name: 'sessionTimerRouter', router: sessionTimerRouter },
+  { name: 'sessionTimerRouter', router: sessionTimerRouter },
+  { name: 'abstractBookRouter', router: abstractBookRouter },
 ]
 
 type RouteEntry = { key: string; middlewareNames: string[] }

@@ -10,6 +10,7 @@ import { RegistrationPanel } from './conference/RegistrationPanel'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
 import { StarButton } from '../components/agenda/StarButton'
 import { useAgendaStars } from '../components/agenda/useAgendaStars'
+import { usePublicAbstractBook } from '../components/abstractBook/usePublicAbstractBook'
 import {
   DEADLINE_LABELS,
   type Committee,
@@ -73,6 +74,7 @@ export function ConferencePage() {
   const [introDone, setIntroDone] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
   const agendaStars = useAgendaStars(conference?.id ?? null)
+  const abstractBook = usePublicAbstractBook(conference?.id ?? null)
 
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const headerRef = useRef<HTMLElement | null>(null)
@@ -587,6 +589,17 @@ export function ConferencePage() {
               className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-background"
             >
               Download programme (PDF)
+            </a>
+          ) : null}
+          {abstractBook.url ? (
+            <a
+              href={abstractBook.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: accent }}
+              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-background"
+            >
+              Book of abstracts (PDF)
             </a>
           ) : null}
         </div>
