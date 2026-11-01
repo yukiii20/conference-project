@@ -17,6 +17,11 @@ On Windows, install "MySQL Community Server 8.x" with MySQL Installer (includes 
     mysql -u root -p < 05_knowledge_partner.sql
     mysql -u root -p conference_cms < 06_session_conference.sql
 
+Then the features batch 3 tables (My agenda, session timer, book of abstracts,
+feedback survey). Those files live in `batch-3-sql/` and the dated folder
+`2026-11-01/`, both kept out of git. **Existing databases:** just follow
+`2026-11-01/README.md`, which brings local, test and Aiven up to date in one file each.
+
 (MySQL Workbench: File > Open SQL Script, open each file, click the lightning icon.)
 
 Creates database `conference_cms` with 50 tables, 10 roles, 22 permissions,

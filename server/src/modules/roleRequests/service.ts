@@ -11,16 +11,16 @@ import { conferenceSignInPath, conferenceSignInUrl } from '../../utils/conferenc
 async function loadRoleRequestTarget(
   conn: PoolConnection,
   requestId: string,
-): Promise<{ userId: string; fullName: string; email: string; roleCode: string; conferenceName: string; conferenceSlug: string }> {
+): Promise<{ userId: string; fullName: string; email: string; roleCode: string; conferenceName: string; conferenceCode: string; conferenceSlug: string }> {
   const [rows] = await conn.query(
-    `SELECT u.id AS user_id, u.full_name, u.email, rr.role_code, c.name AS conference_name, c.slug AS conference_slug
+    `SELECT u.id AS user_id, u.full_name, u.email, rr.role_code, c.name AS conference_name, c.code AS conference_code, c.slug AS conference_slug
      FROM role_requests rr
      JOIN users u ON u.id = rr.user_id
      JOIN conferences c ON c.id = rr.conference_id
      WHERE rr.id = ? LIMIT 1`,
     [requestId],
   )
-  const row = (rows as Array<{ user_id: string; full_name: string; email: string; role_code: string; conference_name: string; conference_slug: string }>)[0]
+  const row = (rows as Array<{ user_id: string; full_name: string; email: string; role_code: string; conference_name: string; conference_code: string | null; conference_slug: string }>)[0]
   if (!row) throw new NotFoundError('This role request no longer exists.')
   return {
     userId: row.user_id,
@@ -28,6 +28,8 @@ async function loadRoleRequestTarget(
     email: row.email,
     roleCode: row.role_code,
     conferenceName: row.conference_name,
+    // Subjects read "[{{conference_code}}] ..."; fall back to the name if a conference has no code.
+    conferenceCode: row.conference_code || row.conference_name,
     conferenceSlug: row.conference_slug,
   }
 }
@@ -130,6 +132,7 @@ export async function approveRoleRequest(actorUserId: string, requestId: string)
       full_name: target.fullName,
       role_name: target.roleCode,
       conference_name: target.conferenceName,
+      conference_code: target.conferenceCode,
       sign_in_url: conferenceSignInUrl(target.conferenceSlug),
     }
     const subject = template ? renderTemplate(template.subject, data) : `Your ${target.roleCode} request was approved`
@@ -187,7 +190,7 @@ export async function rejectRoleRequest(actorUserId: string, requestId: string, 
       `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'role_request_rejected' LIMIT 1`,
     )
     const template = (templateRows as Array<{ subject: string }>)[0]
-    const data = { full_name: target.fullName, role_name: target.roleCode, conference_name: target.conferenceName, reason }
+    const data = { full_name: target.fullName, role_name: target.roleCode, conference_name: target.conferenceName, conference_code: target.conferenceCode, reason }
     const subject = template ? renderTemplate(template.subject, data) : `Your ${target.roleCode} request`
     await queueEmail(conn, {
       userId: target.userId,

@@ -1177,3 +1177,39 @@ one response per person + validation, closed survey, anonymity in results + Exce
 invitations once each skipping responders, not before the last day), routeGuards entries,
 `e2e/feedback.spec.ts`, convenor portal spec Event tab list. Also fixed a duplicated
 `sessionTimerRouter` import/mount in `app.ts` and `routeGuards.test.ts` left by feature 8's wiring.
+
+## Commits after batch 3 (not logged at the time)
+- `26bf7dd` UI/UX redesign: academic editorial design system across the app.
+- `3fab61a` Welcome text and submission guidelines rendered as Markdown.
+- `08fe1e8` / `7f2c627` Admin UI phases 1-3: app shell search/help, shared overlay components,
+  convenor dashboard redesign.
+- `53af871` Per-conference sign-in: `/c/:slug/login` etc., sessions bound to one conference
+  (`database/06_session_conference.sql`), "My conferences" switcher.
+
+## 1 November 2026 - UI fixes, certificate redesign, pending-issue cleanup
+- `b6d81c5` Conference page section gaps halved, compact home conference cards (4 per row on
+  xl), global slim scrollbars without the Windows arrow buttons.
+- `79e1704` Certificate PDF redesigned (`server/src/modules/certificates/export.ts`): no
+  overlapping seal/footer/QR, conference-colour frame, auto-shrinking names. Checked by
+  rendering sample PDFs; DB-backed certificate tests not run (no database on this machine).
+- **Pending SQL in one place:** `database/2026-11-01/` (gitignored, like `batch-3-sql/`) has
+  `1-LOCAL-run-this.sql` (conference_cms + conference_cms_test), `2-AIVEN-run-this.sql`,
+  `3-CHECK.sql` and a README. Covers all of batch 3 plus `06_session_conference.sql`.
+  `test-setup.sql` now also contains the batch-3 tables for fresh test databases.
+- **Email placeholders:** `queueEmail` now fills `conference_code`/`conference_name` from
+  `conferenceId` when a caller didn't pass them, so subjects never show a raw
+  `[{{conference_code}}]` (role approved/rejected and decision emails did). The role-request
+  emails also pass it explicitly.
+- **E2E:** `notifications.spec.ts` asserts the humanised "Role request approved" and that no
+  raw `{{conference_code}}` is shown. Playwright now uses 45s timeout + 1 retry so the
+  load-only `registration.spec.ts` timeout is reported as flaky instead of failing the run.
+- **Portal speed:** `prefetchForCurrentPath` (`src/lib/prefetch.ts`, called from `main.tsx`)
+  starts downloading the portal/convenor/admin chunk on a direct page load, in parallel with
+  `/api/auth/me`. Not re-measured with Lighthouse yet.
+- **npm audit:** `npm audit fix` (no major bumps) in root and server - root 0 issues; server
+  went from 16 (3 high) to 9 moderate, all inside `exceljs` (only "fix" is a downgrade to
+  exceljs 3) - accepted risk.
+- Removed stray `finish-all.zip`, `server.zip`, `src.zip` from git; `test.mp3` untracked.
+- Verified: tsc root + server, frontend unit tests 75/75, Vite build. Server tests: 308 passed;
+  the other 45 files only failed with "connect ECONNREFUSED" (no database here) - must be
+  re-run after the SQL is applied.

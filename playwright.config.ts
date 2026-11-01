@@ -19,10 +19,12 @@ function chromiumExecutablePathOverride(): string | undefined {
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 30_000,
+  timeout: 45_000,
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // One retry: a test that only fails under load in the long full-suite run is reported as
+  // "flaky" instead of failing the run; a real bug still fails both attempts.
+  retries: 1,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   outputDir: 'test-results',
   use: {
