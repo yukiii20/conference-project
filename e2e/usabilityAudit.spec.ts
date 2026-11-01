@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
+
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
   convenorEmail: 'e2e-convenor@example.com',
@@ -45,7 +49,7 @@ function trackConsoleErrors(page: Page): string[] {
 // bug. Same reasoning as EXPECTED_AUTH_PROBE_NOISE above, applied to actual
 // network responses rather than the console-logged echo of one.
 function isExpectedAuthProbe(url: string, status: number): boolean {
-  return url.includes('/api/auth/me') && (status === 401 || status === 403)
+  return (url.includes('/api/auth/me') || url.includes('/api/auth/session')) && (status === 401 || status === 403)
 }
 
 function trackFailedRequests(page: Page): string[] {
@@ -85,7 +89,7 @@ async function signIn(page: Page, email: string, role: string) {
 
 /** Every link inside the one <nav> on the page — convenor/manager and the shared portal sidebar both wrap their items this way. */
 async function sidebarLabels(page: Page): Promise<string[]> {
-  const links = page.locator('nav').getByRole('link')
+  const links = page.locator(SIDEBAR).getByRole('link')
   const count = await links.count()
   const labels: string[] = []
   for (let i = 0; i < count; i++) labels.push((await links.nth(i).innerText()).trim())
@@ -95,7 +99,7 @@ async function sidebarLabels(page: Page): Promise<string[]> {
 /** Visits every page this role's sidebar links to, plus every sub-tab (role="tab") each page shows, running all four checks on each. */
 async function auditSidebar(page: Page, errors: string[], failedRequests: string[], roleLabel: string) {
   for (const label of await sidebarLabels(page)) {
-    await page.locator('nav').getByRole('link', { name: label, exact: true }).click()
+    await page.locator(SIDEBAR).getByRole('link', { name: label, exact: true }).click()
     await page.waitForLoadState('networkidle').catch(() => {})
     await assertCleanPage(page, `${roleLabel} / ${label}`)
 
@@ -138,7 +142,7 @@ for (const r of PORTAL_ROLES) {
     await expect(page).toHaveURL(/\/portal/)
     for (const label of await sidebarLabels(page)) {
       await page.getByRole('button', { name: 'Menu' }).click()
-      await page.locator('nav').getByRole('link', { name: label, exact: true }).click()
+      await page.locator(SIDEBAR).getByRole('link', { name: label, exact: true }).click()
       await page.waitForLoadState('networkidle').catch(() => {})
       await assertNoHorizontalScroll(page, `${r.label} / ${label}`)
     }

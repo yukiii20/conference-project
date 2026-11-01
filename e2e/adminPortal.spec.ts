@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
+
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
   conferenceSlug: 'e2e-conf',
@@ -75,7 +79,7 @@ test('admin creates a conference and invites a convenor for it', async ({ page }
   const today = new Date().toISOString().slice(0, 10)
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
 
-  await page.getByRole('button', { name: 'New conference' }).click()
+  await page.getByRole('button', { name: 'New conference', exact: true }).click()
   await page.locator('#new-name').fill(name)
   await page.locator('#new-short-name').fill(`E2ENew${stamp}`)
   await page.locator('#new-code').fill(code)
@@ -103,7 +107,7 @@ test('view a conference as admin is read-only', async ({ page }) => {
   await row.getByRole('link', { name: 'View as admin' }).click()
 
   await expect(page.getByText(/Viewing .* as admin — read-only\./)).toBeVisible()
-  await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Conference setup' }).click()
   await expect(page.getByRole('button', { name: 'Save' }).first()).toBeDisabled()
 
   await page.getByRole('link', { name: 'Exit' }).click()

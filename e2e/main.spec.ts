@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { nepalMidnight } from './nepalTime'
+
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
 
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
@@ -29,8 +34,8 @@ function trackConsoleErrors(page: Page): string[] {
 }
 
 async function expectNotBlank(page: Page) {
-  const text = await page.locator('body').innerText()
-  expect(text.trim().length).toBeGreaterThan(0)
+  // Polls: right after goto() a lazily loaded route may still be showing its loading spinner.
+  await expect.poll(async () => (await page.locator('body').innerText()).trim().length).toBeGreaterThan(0)
 }
 
 async function signIn(page: Page, email: string, password: string, role: string) {
@@ -55,7 +60,7 @@ test.describe('public pages', () => {
     const errors = trackConsoleErrors(page)
     const res = await page.goto(`/c/${FIXTURE.conferenceSlug}`)
     expect(res?.status()).toBeLessThan(400)
-    await expect(page.getByText(FIXTURE.conferenceName, { exact: false }).first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: FIXTURE.conferenceName, level: 1 })).toBeVisible()
     await expectNotBlank(page)
     expect(errors, `console errors on /c/${FIXTURE.conferenceSlug}:\n${errors.join('\n')}`).toEqual([])
   })
@@ -106,7 +111,7 @@ test.describe('author sign-up -> convenor approval -> author login', () => {
     await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
     await expect(page).toHaveURL(/\/convenor/)
 
-    await page.locator('nav').getByRole('link', { name: 'People' }).click()
+    await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
     const row = page.locator('li', { hasText: authorEmail })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'Approve' }).click()
@@ -127,11 +132,11 @@ test.describe('convenor edits the conference', () => {
   })
 
   test('edits conference details', async ({ page }) => {
-    await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
+    await page.locator(SIDEBAR).getByRole('link', { name: 'Conference setup' }).click()
     await page.getByRole('link', { name: 'Logo and branding', exact: true }).click()
     await expect(page.getByRole('link', { name: 'Logo and branding', exact: true })).toHaveAttribute(
       'aria-current',
-      'true',
+      'page',
     )
     await page.locator('#tagline').fill('Updated by Playwright')
     await page.getByRole('button', { name: 'Save' }).first().click()
@@ -139,7 +144,7 @@ test.describe('convenor edits the conference', () => {
   })
 
   test('uploads a logo', async ({ page }) => {
-    await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
+    await page.locator(SIDEBAR).getByRole('link', { name: 'Conference setup' }).click()
     await page.getByRole('link', { name: 'Logo and branding', exact: true }).click()
     const fileInput = page.locator('input[type="file"]').first()
     await fileInput.setInputFiles({
@@ -155,16 +160,14 @@ test.describe('convenor edits the conference', () => {
   })
 
   test('saves key dates and they appear on the public home page', async ({ page }) => {
-    await page.locator('nav').getByRole('link', { name: 'Dates and tracks' }).click()
-    const row = page.locator('div.rounded-lg', { hasText: 'Abstract submission' })
+    await page.locator(SIDEBAR).getByRole('link', { name: 'Dates and tracks' }).click()
+    const row = page.getByRole('group', { name: 'Abstract submission' })
     await expect(row).toBeVisible()
 
-    const opens = row.locator('input[type="datetime-local"]').nth(0)
-    const closes = row.locator('input[type="datetime-local"]').nth(1)
-    const today = new Date()
-    const nextYear = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate())
-    const opensLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}T00:00`
-    const closesLocal = `${nextYear.getFullYear()}-${String(nextYear.getMonth() + 1).padStart(2, '0')}-${String(nextYear.getDate()).padStart(2, '0')}T00:00`
+    const opens = row.getByLabel('Opens')
+    const closes = row.getByLabel('Closes')
+    const opensLocal = nepalMidnight(0)
+    const closesLocal = nepalMidnight(365)
 
     await opens.fill(opensLocal)
     await closes.fill(closesLocal)

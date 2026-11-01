@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
+
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
   conferenceSlug: 'e2e-conf',
@@ -160,7 +164,7 @@ for (const width of WIDTHS) {
         // onNavigate), so it has to be reopened before every subsequent click.
         for (const sectionLabel of [r.section, 'My ticket', 'My certificates']) {
           await openMobileNavIfPresent(page)
-          await page.locator('nav').getByRole('link', { name: sectionLabel }).click()
+          await page.locator(SIDEBAR).getByRole('link', { name: sectionLabel }).click()
           await expectNoHorizontalOverflow(page, `${r.role} / ${sectionLabel}`)
         }
       }

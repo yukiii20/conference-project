@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { nepalInput } from './nepalTime'
+
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
 
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
@@ -17,10 +22,7 @@ async function signIn(page: Page, email: string, role: string) {
   await page.getByRole('button', { name: 'Sign in' }).click()
 }
 
-function toLocalInputValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+const toLocalInputValue = nepalInput
 
 test('convenor builds a session, publishes it, it appears on the public programme; the chair marks it presented', async ({
   page,
@@ -31,8 +33,8 @@ test('convenor builds a session, publishes it, it appears on the public programm
 
   await signIn(page, FIXTURE.convenorEmail, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'Event' }).click()
-  await page.getByRole('link', { name: 'Programme', exact: true }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Event' }).click()
+  await page.getByRole('navigation', { name: 'Section tabs' }).getByRole('link', { name: 'Programme', exact: true }).click()
 
   // 1. Create a room — its create form is the one with the "Add room" submit button.
   const roomForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Add room' }) })
@@ -79,7 +81,7 @@ test('convenor builds a session, publishes it, it appears on the public programm
   // 5. The session chair signs in, finds the session, and marks it presented.
   await signIn(page, FIXTURE.chairEmail, 'session_chair')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My sessions' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My sessions' }).click()
   await expect(page.getByText(sessionTitle)).toBeVisible()
   const sessionCard = page.locator('li', { hasText: sessionTitle })
   await sessionCard.getByRole('button', { name: 'Mark attendance' }).click()

@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
+
 // Mirrors server/tests/e2eSeed.ts.
 const FIXTURE = {
   conferenceSlug: 'e2e-conf',
@@ -36,7 +40,7 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
   // 2. Convenor approves them — this queues an email AND an in-app notification.
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   const row = page.locator('li', { hasText: authorEmail })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Approve' }).click()
@@ -44,7 +48,7 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
   await expect(row).toHaveCount(0)
 
   // 3. Convenor's own "Email log" tab lists queued/sent email activity.
-  await page.locator('nav').getByRole('link', { name: 'Communication', exact: true }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Communication', exact: true }).click()
   await page.getByRole('link', { name: 'Email log', exact: true }).click()
   // The log shows the humanised template name, and the subject has its conference code filled in.
   await expect(page.getByText('Role request approved').first()).toBeVisible()

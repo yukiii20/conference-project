@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { registerOrReuseTicket } from './registrationHelpers'
+
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
 
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
@@ -24,14 +29,13 @@ test('staff prints a badge from the check-in result, convenor prints a badge she
   // 1. The author registers to attend.
   await signIn(page, FIXTURE.authorEmail, 'author')
   await page.goto(`/c/${FIXTURE.conferenceSlug}`)
-  await page.locator('select').filter({ hasText: 'Choose a category' }).selectOption({ label: 'General' })
-  await page.getByRole('button', { name: 'Register to attend' }).click()
+  await registerOrReuseTicket(page)
   await expect(page.getByText(/^E2ECONF-R\d+$/)).toBeVisible()
 
   // 2. Staff checks the author in, then prints a badge straight from the result panel.
   await signIn(page, FIXTURE.staffEmail, 'staff')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'Check-in desk' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Check-in desk' }).click()
   await page.getByRole('tab', { name: 'Enter ticket code' }).click()
   await page.getByPlaceholder('Ticket code (e.g. A112-R0001), name or email').fill('E2E Author')
   const resultRow = page.locator('li', { hasText: 'E2E Author' })
@@ -51,7 +55,7 @@ test('staff prints a badge from the check-in result, convenor prints a badge she
   // 3. Convenor prints a badge sheet for every author from Attendance -> Print badges.
   await signIn(page, FIXTURE.convenorEmail, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'Event' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Event' }).click()
   await page.getByRole('link', { name: 'Attendance', exact: true }).click()
   const printBadges = page.getByTestId('print-badges')
   await printBadges.locator('select').filter({ hasText: 'Any role' }).selectOption({ label: 'Author' })

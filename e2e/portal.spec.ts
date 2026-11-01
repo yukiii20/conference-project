@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { registerOrReuseTicket } from './registrationHelpers'
+
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
 
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
@@ -53,21 +58,22 @@ async function signIn(page: Page, email: string, role: string) {
   ])
 }
 
-/** Every link inside the one <nav> on the page — the convenor/manager sidebar and the shared portal sidebar both wrap their items this way. */
+/** Every link in the app-shell sidebar (convenor/manager and the shared portal use the same shell). */
 async function sidebarLabels(page: Page, mobile: boolean): Promise<string[]> {
   if (mobile) await page.getByRole('button', { name: 'Menu' }).click()
-  const links = page.locator('nav').getByRole('link')
+  // Only the navigation list: the sidebar's brand link goes back to the public home page.
+  const links = page.locator(SIDEBAR).locator('nav').getByRole('link')
   const count = await links.count()
   const labels: string[] = []
   for (let i = 0; i < count; i++) labels.push((await links.nth(i).innerText()).trim())
-  if (mobile) await page.getByRole('button', { name: 'Close menu' }).click()
+  if (mobile) await page.locator(SIDEBAR).getByRole('button', { name: 'Close menu' }).click()
   return labels
 }
 
 async function visitEverySidebarPage(page: Page, mobile: boolean) {
   for (const label of await sidebarLabels(page, mobile)) {
     if (mobile) await page.getByRole('button', { name: 'Menu' }).click()
-    await page.locator('nav').getByRole('link', { name: label, exact: true }).click()
+    await page.locator(SIDEBAR).locator('nav').getByRole('link', { name: label, exact: true }).click()
     await expectNotBlank(page)
     if (mobile) {
       const hasHorizontalScroll = await page.evaluate(
@@ -158,7 +164,7 @@ test('author registers to attend from My ticket, staff checks them in, convenor 
   // Convenor approves the role request — login isn't allowed before that.
   await signIn(page, FIXTURE.convenorEmail, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   const requestRow = page.locator('li', { hasText: email })
   await expect(requestRow).toBeVisible()
   await requestRow.getByRole('button', { name: 'Approve' }).click()
@@ -168,16 +174,15 @@ test('author registers to attend from My ticket, staff checks them in, convenor 
   // 1. The author registers to attend from the portal's own "My ticket" page.
   await signIn(page, email, 'author')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My ticket' }).click()
-  await page.locator('select').filter({ hasText: 'Choose a category' }).selectOption({ label: 'General' })
-  await page.getByRole('button', { name: 'Register to attend' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My ticket' }).click()
+  await registerOrReuseTicket(page)
   await expect(page.getByAltText('Your check-in QR code')).toBeVisible()
 
   // 2. Staff checks them in from the shared Check-in desk section, via the
   // "Enter ticket code" tab's name search.
   await signIn(page, FIXTURE.staffEmail, 'staff')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'Check-in desk' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Check-in desk' }).click()
   await page.getByRole('tab', { name: 'Enter ticket code' }).click()
   await page.getByPlaceholder('Ticket code (e.g. A112-R0001), name or email').fill(fullName)
   const resultRow = page.locator('li', { hasText: fullName })
@@ -189,7 +194,7 @@ test('author registers to attend from My ticket, staff checks them in, convenor 
 
   // 3. The convenor (re-)generates participation certificates and releases them.
   await signIn(page, FIXTURE.convenorEmail, 'convenor')
-  await page.locator('nav').getByRole('link', { name: 'Event' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Event' }).click()
   await page.getByRole('link', { name: 'Certificates', exact: true }).click()
   await page.getByRole('button', { name: 'Generate certificates' }).click()
   await expect(page.getByText(/Issued \d+, already had one: \d+\./)).toBeVisible()
@@ -198,7 +203,7 @@ test('author registers to attend from My ticket, staff checks them in, convenor 
 
   // 4. The author downloads their certificate from the shared My certificates section.
   await signIn(page, email, 'author')
-  await page.locator('nav').getByRole('link', { name: 'My certificates' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My certificates' }).click()
   const downloadLink = page.getByRole('link', { name: 'Download PDF' })
   await expect(downloadLink).toBeVisible()
   const href = await downloadLink.getAttribute('href')

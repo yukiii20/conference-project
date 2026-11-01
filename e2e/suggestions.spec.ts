@@ -39,12 +39,16 @@ test('visitor sends a suggestion from the home page, admin sees it and resolves 
 
   await page.getByRole('button', { name: 'Bug' }).click()
   await page.locator('#suggestion-message').fill(message)
-  await page.getByRole('button', { name: 'Send' }).click()
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByText('Thanks — your suggestion has been sent.')).toBeVisible()
 
   await signInAsAdmin(page)
   const suggestionsTab = page.getByRole('tab', { name: /^Suggestions/ })
-  await expect(suggestionsTab).toContainText('(1)')
+  // The tab shows the number of new suggestions as a badge ("Suggestions2"); none when zero.
+  // Other runs may have left some behind, so check it goes down by one rather than an exact value.
+  const newCount = async () => Number((await suggestionsTab.innerText()).replace(/\D/g, '') || '0')
+  await expect.poll(newCount).toBeGreaterThanOrEqual(1)
+  const before = await newCount()
   await suggestionsTab.click()
 
   const row = page.locator('tr', { hasText: message.slice(0, 40) })
@@ -58,7 +62,7 @@ test('visitor sends a suggestion from the home page, admin sees it and resolves 
 
   await row.locator('select').first().selectOption({ label: 'Resolved' })
   await expect(row.locator('span', { hasText: 'Resolved' })).toBeVisible()
-  await expect(suggestionsTab).toContainText('(0)')
+  await expect.poll(newCount).toBe(before - 1)
 })
 
 test('home page suggestion box has no horizontal overflow at 390px', async ({ page }) => {

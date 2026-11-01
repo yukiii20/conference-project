@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { nepalMidnight } from './nepalTime'
+
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
 
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
@@ -42,7 +47,7 @@ async function signUp(page: Page, role: 'Author' | 'Reviewer', fullName: string,
 async function approveRoleRequest(page: Page, email: string) {
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   const row = page.locator('li', { hasText: email })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Approve' }).click()
@@ -51,15 +56,12 @@ async function approveRoleRequest(page: Page, email: string) {
 }
 
 async function setDeadlineWindow(page: Page, rowLabel: string) {
-  const row = page.locator('div.rounded-lg', { hasText: rowLabel })
+  const row = page.getByRole('group', { name: rowLabel })
   await expect(row).toBeVisible()
   const opens = row.locator('input[type="datetime-local"]').nth(0)
   const closes = row.locator('input[type="datetime-local"]').nth(1)
-  const today = new Date()
-  const nextYear = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate())
-  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T00:00`
-  await opens.fill(fmt(today))
-  await closes.fill(fmt(nextYear))
+  await opens.fill(nepalMidnight(0))
+  await closes.fill(nepalMidnight(365))
 }
 
 test('author submits -> convenor assigns reviewer -> reviewer reviews -> convenor accepts -> author uploads full paper', async ({
@@ -84,7 +86,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   // 2. Convenor creates a track and opens the abstract + full paper windows.
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'Dates and tracks' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Dates and tracks' }).click()
   await page.getByRole('link', { name: 'Tracks', exact: true }).click()
   await page.getByPlaceholder('Track name').fill(trackName)
   await page.getByRole('button', { name: 'Add track' }).click()
@@ -99,7 +101,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   // 3. Author creates a draft and submits it.
   await signIn(page, authorEmail, FIXTURE.password, 'author')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My submissions' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My submissions' }).click()
   await page.getByRole('tab', { name: 'New abstract' }).click()
   await page.locator('select').first().selectOption({ label: trackName })
   await page.locator('form').getByRole('textbox').nth(0).fill(title)
@@ -114,7 +116,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
 
   // 4. Convenor assigns the reviewer.
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
-  await page.locator('nav').getByRole('link', { name: 'Papers' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Papers' }).click()
   await page.getByText(title).click()
   const assignBox = page.locator('form', { has: page.getByRole('button', { name: 'Assign reviewer' }) })
   await assignBox.locator('select').selectOption({ label: reviewerName })
@@ -124,7 +126,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   // 5. Reviewer accepts the assignment and submits a review.
   await signIn(page, reviewerEmail, FIXTURE.password, 'reviewer')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My reviews' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My reviews' }).click()
   await page.getByRole('button', { name: 'Accept' }).click()
   await page.getByRole('button', { name: 'Write review' }).click()
   await page.locator('textarea').first().fill('Solid work overall, recommend accepting with minor edits.')
@@ -134,7 +136,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
 
   // 6. Convenor accepts the abstract.
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
-  await page.locator('nav').getByRole('link', { name: 'Papers' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Papers' }).click()
   await page.getByText(title).click()
   const decisionBox = page.locator('form', { has: page.getByRole('button', { name: 'Save decision' }) })
   await decisionBox.locator('textarea').fill('Nice abstract — accepted.')
@@ -145,7 +147,7 @@ test('author submits -> convenor assigns reviewer -> reviewer reviews -> conveno
   // 7. Author uploads the full paper now that the submission is accepted.
   await signIn(page, authorEmail, FIXTURE.password, 'author')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My submissions' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My submissions' }).click()
   await page.getByText(title).click()
   // File input order on the page: abstract (0), full paper (1), slides (2).
   await page.locator('input[type="file"]').nth(1).setInputFiles({

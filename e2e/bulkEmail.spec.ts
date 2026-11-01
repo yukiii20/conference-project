@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
 
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
+
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
   convenorEmail: 'e2e-convenor@example.com',
@@ -15,7 +19,7 @@ test('convenor composes a bulk email, previews it, sends a test, and sends it fo
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL(/\/convenor/)
 
-  await page.locator('nav').getByRole('link', { name: 'Communication' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Communication' }).click()
   await page.getByRole('link', { name: 'Bulk email', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Bulk email' })).toBeVisible()
 

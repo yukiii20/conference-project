@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { registerOrReuseTicket } from './registrationHelpers'
+
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
 
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
@@ -40,7 +45,7 @@ async function signUpAndRegister(page: Page, fullName: string): Promise<{ email:
   // Convenor approves the role request — login isn't allowed before that.
   await signIn(page, 'e2e-convenor@example.com', 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   const requestRow = page.locator('li', { hasText: email })
   await expect(requestRow).toBeVisible()
   await requestRow.getByRole('button', { name: 'Approve' }).click()
@@ -49,9 +54,8 @@ async function signUpAndRegister(page: Page, fullName: string): Promise<{ email:
 
   await signIn(page, email, 'author')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My ticket' }).click()
-  await page.locator('select').filter({ hasText: 'Choose a category' }).selectOption({ label: 'General' })
-  await page.getByRole('button', { name: 'Register to attend' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My ticket' }).click()
+  await registerOrReuseTicket(page)
   const codeLocator = page.getByText(/^E2ECONF-R\d+$/)
   await expect(codeLocator).toBeVisible()
   const registrationNumber = (await codeLocator.textContent())!.trim()
@@ -72,7 +76,7 @@ test('upload QR image check-in: the downloaded ticket QR PNG checks the attendee
 
   await signIn(page, FIXTURE.staffEmail, 'staff')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'Check-in desk' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Check-in desk' }).click()
   await page.getByRole('tab', { name: 'Upload QR image' }).click()
 
   await page.locator('input[type="file"]').setInputFiles({ name: 'ticket-qr.png', mimeType: 'image/png', buffer })
@@ -88,7 +92,7 @@ test('enter ticket code check-in: typing the exact code checks the attendee in',
 
   await signIn(page, FIXTURE.staffEmail, 'staff')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'Check-in desk' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Check-in desk' }).click()
   await page.getByRole('tab', { name: 'Enter ticket code' }).click()
 
   // Lowercase and padded with spaces — case-insensitive, trimmed, per spec.
@@ -113,7 +117,7 @@ test('verify only: uploading a QR image shows the result without checking the at
 
   await signIn(page, FIXTURE.staffEmail, 'staff')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'Check-in desk' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Check-in desk' }).click()
 
   const verifyOnlyCheckbox = page.getByRole('checkbox', { name: /Verify only/ })
   await verifyOnlyCheckbox.check()

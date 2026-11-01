@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { nepalInput, nepalMidnight } from './nepalTime'
+
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
 
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
@@ -37,7 +42,7 @@ async function signUp(page: Page, role: 'Author' | 'Reviewer', fullName: string,
 async function approveRoleRequest(page: Page, email: string) {
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   const row = page.locator('li', { hasText: email })
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: 'Approve' }).click()
@@ -45,10 +50,7 @@ async function approveRoleRequest(page: Page, email: string) {
   await expect(row).toHaveCount(0)
 }
 
-function fmtLocal(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+const fmtLocal = nepalInput
 
 test('reviewer bidding -> auto-assign -> manual reminder', async ({ page }) => {
   const stamp = Date.now()
@@ -68,27 +70,23 @@ test('reviewer bidding -> auto-assign -> manual reminder', async ({ page }) => {
   // bidding + review reminders in Review settings.
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'Dates and tracks' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Dates and tracks' }).click()
   await page.getByRole('link', { name: 'Tracks', exact: true }).click()
   await page.getByPlaceholder('Track name').fill(trackName)
   await page.getByRole('button', { name: 'Add track' }).click()
   await expect(page.getByText('No tracks yet.')).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Key dates', exact: true }).click()
-  const abstractRow = page.locator('div.rounded-lg', { hasText: 'Abstract submission' })
-  const today = new Date()
-  const nextYear = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate())
-  const fmtDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T00:00`
-  await abstractRow.locator('input[type="datetime-local"]').nth(0).fill(fmtDate(today))
-  await abstractRow.locator('input[type="datetime-local"]').nth(1).fill(fmtDate(nextYear))
+  const abstractRow = page.getByRole('group', { name: 'Abstract submission' })
+  await abstractRow.locator('input[type="datetime-local"]').nth(0).fill(nepalMidnight(0))
+  await abstractRow.locator('input[type="datetime-local"]').nth(1).fill(nepalMidnight(365))
   await page.getByRole('button', { name: 'Save key dates' }).click()
   await expect(page.getByText('Saved.').first()).toBeVisible()
 
-  // The Key dates form can still read as "dirty" right after a save (its own
-  // known DirtyGuard quirk - see e2e/convenorPortal.spec.ts), which pops a
-  // native "Discard changes?" confirm before leaving the page.
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.locator('nav').getByRole('link', { name: 'Papers' }).click()
+  // A successful save clears the unsaved-changes flag, so leaving now must not ask
+  // "Discard changes?" (it used to, because Key dates saves with a button, not a form).
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Papers' }).click()
+  await expect(page.getByRole('dialog', { name: 'Discard changes?' })).toHaveCount(0)
   await page.getByRole('link', { name: 'Review settings', exact: true }).click()
   await page.getByRole('checkbox', { name: 'Enable a bidding period' }).check()
   const biddingStart = new Date(Date.now() - 60_000)
@@ -102,7 +100,7 @@ test('reviewer bidding -> auto-assign -> manual reminder', async ({ page }) => {
   // 3. Author submits a paper.
   await signIn(page, authorEmail, FIXTURE.password, 'author')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My submissions' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My submissions' }).click()
   await page.getByRole('tab', { name: 'New abstract' }).click()
   await page.locator('select').first().selectOption({ label: trackName })
   await page.locator('form').getByRole('textbox').nth(0).fill(title)
@@ -118,9 +116,9 @@ test('reviewer bidding -> auto-assign -> manual reminder', async ({ page }) => {
   // 4. Reviewer bids "Want to review" on the paper - no author details shown.
   await signIn(page, reviewerEmail, FIXTURE.password, 'reviewer')
   await expect(page).toHaveURL(/\/portal/)
-  await page.locator('nav').getByRole('link', { name: 'My reviews' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'My reviews' }).click()
   await page.getByRole('button', { name: 'Bid on papers' }).click()
-  const paperCard = page.locator('div.rounded-lg', { hasText: title })
+  const paperCard = page.getByRole('group', { name: title })
   await expect(paperCard).toBeVisible()
   await paperCard.getByRole('button', { name: 'Want to review' }).click()
   await expect(page.getByText('Bid saved.')).toBeVisible()
@@ -128,7 +126,7 @@ test('reviewer bidding -> auto-assign -> manual reminder', async ({ page }) => {
 
   // 5. Convenor runs the auto-assign wizard - the reviewer's "want" bid wins.
   await signIn(page, FIXTURE.convenorEmail, FIXTURE.password, 'convenor')
-  await page.locator('nav').getByRole('link', { name: 'Papers' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Papers' }).click()
   await page.getByRole('link', { name: 'Auto-assign', exact: true }).click()
   await page.getByRole('button', { name: 'Preview' }).click()
   const assignmentRow = page.locator('tr', { hasText: reviewerName }).first()

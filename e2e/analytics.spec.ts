@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
+
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
   conferenceSlug: 'e2e-conf',
@@ -22,7 +26,7 @@ async function signIn(page: Page, email: string, role: string) {
 test('convenor sees the analytics dashboard and downloads both report formats', async ({ page }) => {
   await signIn(page, FIXTURE.convenorEmail, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
-  await page.locator('nav').getByRole('link', { name: 'Communication' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Communication' }).click()
   await page.getByRole('link', { name: 'Analytics', exact: true }).click()
 
   await expect(page.getByRole('heading', { name: 'Analytics' })).toBeVisible()

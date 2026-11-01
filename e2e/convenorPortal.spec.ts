@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// The app shell's sidebar (#portal-sidebar, #convenor-sidebar, #admin-sidebar). A bare 'nav' also matches
+// the dashboard's Quick links and the breadcrumb.
+const SIDEBAR = '[id$="-sidebar"]'
+
 // Mirrors server/tests/e2eSeed.ts — keep in sync if that fixture changes.
 const FIXTURE = {
   conferenceSlug: 'e2e-conf',
@@ -21,8 +25,7 @@ function trackConsoleErrors(page: Page): string[] {
 }
 
 async function expectNotBlank(page: Page) {
-  const text = await page.locator('main').innerText()
-  expect(text.trim().length).toBeGreaterThan(0)
+  await expect.poll(async () => (await page.locator('main').innerText()).trim().length).toBeGreaterThan(0)
 }
 
 async function signInAsConvenor(page: Page) {
@@ -50,7 +53,7 @@ test('convenor opens every sidebar page and tab without console errors (desktop)
   await signInAsConvenor(page)
 
   for (const sidebarPage of PAGES) {
-    await page.locator('nav').getByRole('link', { name: sidebarPage.label }).click()
+    await page.locator(SIDEBAR).getByRole('link', { name: sidebarPage.label }).click()
     await expectNotBlank(page)
     for (const tab of sidebarPage.tabs) {
       await page.getByRole('link', { name: tab, exact: true }).click()
@@ -73,7 +76,7 @@ test('convenor opens every sidebar page and tab without console errors (390px mo
 
   for (const sidebarPage of PAGES) {
     await page.getByRole('button', { name: 'Menu' }).click()
-    await page.locator('nav').getByRole('link', { name: sidebarPage.label }).click()
+    await page.locator(SIDEBAR).getByRole('link', { name: sidebarPage.label }).click()
     await expectNotBlank(page)
     await checkNoPageScroll(sidebarPage.label)
     for (const tab of sidebarPage.tabs) {
@@ -89,9 +92,9 @@ test('convenor opens every sidebar page and tab without console errors (390px mo
 test('convenor sidebar shows People/Papers badges and hides manager-only tabs are visible for convenor', async ({ page }) => {
   await signInAsConvenor(page)
   // The convenor (unlike a manager) sees every tab, including the manager-hidden ones.
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   await expect(page.getByRole('link', { name: 'Members and roles', exact: true })).toBeVisible()
-  await page.locator('nav').getByRole('link', { name: 'Communication', exact: true }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Communication', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Activity log', exact: true })).toBeVisible()
 })
 
@@ -107,27 +110,27 @@ test('old flat convenor URLs redirect to the new tab URLs', async ({ page }) => 
 
 test('switching tabs with unsaved changes asks to discard them', async ({ page }) => {
   await signInAsConvenor(page)
-  await page.locator('nav').getByRole('link', { name: 'Conference setup' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'Conference setup' }).click()
   await expect(page).toHaveURL(/\/convenor\/setup\/details$/)
   await page.locator('#short_name').fill('An unsaved edit for the discard-changes prompt')
 
-  let dialogMessage = ''
-  page.once('dialog', (dialog) => {
-    dialogMessage = dialog.message()
-    dialog.dismiss()
-  })
+  // The app's own dialog (never a browser-native confirm): "Keep editing" stays put...
   await page.getByRole('link', { name: 'Location', exact: true }).click()
+  const discard = page.getByRole('dialog', { name: 'Discard changes?' })
+  await expect(discard).toBeVisible()
+  await discard.getByRole('button', { name: 'Keep editing' }).click()
   await expect(page).toHaveURL(/\/convenor\/setup\/details$/)
-  expect(dialogMessage).toContain('Discard changes?')
+  await expect(page.locator('#short_name')).toHaveValue('An unsaved edit for the discard-changes prompt')
 
-  page.once('dialog', (dialog) => dialog.accept())
+  // ...and "Discard changes" finishes the navigation that was held back.
   await page.getByRole('link', { name: 'Location', exact: true }).click()
+  await discard.getByRole('button', { name: 'Discard changes' }).click()
   await expect(page).toHaveURL(/\/convenor\/setup\/location$/)
 })
 
 test('convenor invites a reviewer by email', async ({ page }) => {
   await signInAsConvenor(page)
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   await page.getByRole('link', { name: 'Members and roles', exact: true }).click()
 
   const stamp = Date.now()
@@ -144,7 +147,7 @@ test('convenor invites a reviewer by email', async ({ page }) => {
 
 test('convenor adds a committee member and it shows on the public page', async ({ page }) => {
   await signInAsConvenor(page)
-  await page.locator('nav').getByRole('link', { name: 'People' }).click()
+  await page.locator(SIDEBAR).getByRole('link', { name: 'People' }).click()
   await page.getByRole('link', { name: 'Committees', exact: true }).click()
 
   const stamp = Date.now()
@@ -160,7 +163,11 @@ test('convenor adds a committee member and it shows on the public page', async (
   await committeeCard.getByRole('button', { name: 'Add member' }).click()
   await expect(page.getByText(memberName, { exact: false }).first()).toBeVisible()
 
-  await page.goto(`/c/${FIXTURE.conferenceSlug}#committees`)
-  await expect(page.getByText(committeeName, { exact: true })).toBeVisible()
-  await expect(page.getByText(memberName, { exact: false }).first()).toBeVisible()
+  // Checked as a fresh visitor: the public conference response is browser-cacheable for 60 s
+  // (Cache-Control in conferences/routes.ts), so the convenor's own tab may show it a minute late.
+  const visitor = await page.context().browser()!.newPage()
+  await visitor.goto(`${new URL(page.url()).origin}/c/${FIXTURE.conferenceSlug}#committees`)
+  await expect(visitor.getByText(committeeName, { exact: true })).toBeVisible()
+  await expect(visitor.getByText(memberName, { exact: false }).first()).toBeVisible()
+  await visitor.close()
 })
