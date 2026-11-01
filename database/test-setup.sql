@@ -2039,3 +2039,8 @@ INSERT IGNORE INTO email_templates (conference_id, template_key, subject, body_h
 -- =====================================================================
 GRANT SELECT, INSERT, UPDATE, DELETE ON conference_cms_test.* TO 'cms_app'@'localhost';
 FLUSH PRIVILEGES;
+
+-- ---------- 07_super_admin.sql (conference_cms_test) ----------
+INSERT IGNORE INTO roles (code, name, scope, description) VALUES
+  ('super_admin', 'Super Administrator', 'platform',
+   'Platform admin who can also manage administrators and platform settings');

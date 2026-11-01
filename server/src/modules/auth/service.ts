@@ -131,6 +131,28 @@ export async function isPlatformAdmin(userId: string): Promise<boolean> {
   return hasPlatformAdminRole(userId)
 }
 
+/** True once at least one account holds the super_admin platform role. */
+export async function superAdminsExist(): Promise<boolean> {
+  const [rows] = await pool.query(`SELECT 1 FROM platform_user_roles WHERE role_code = 'super_admin' LIMIT 1`)
+  return (rows as unknown[]).length > 0
+}
+
+/**
+ * A super administrator is a platform admin who may also manage other admins and platform
+ * settings. Transitional rule: until anyone holds super_admin (e.g. before
+ * database/07_super_admin.sql has run), every admin counts as one - exactly today's behaviour,
+ * so deploying this code never locks anyone out.
+ */
+export async function isSuperAdmin(userId: string): Promise<boolean> {
+  if (!(await isPlatformAdmin(userId))) return false
+  const [rows] = await pool.query(
+    `SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'super_admin' LIMIT 1`,
+    [userId],
+  )
+  if ((rows as unknown[]).length > 0) return true
+  return !(await superAdminsExist())
+}
+
 /** Permission codes the user holds in one conference, via their conference_members role. Admins should bypass this and not call it. */
 export async function getConferencePermissions(userId: string, conferenceId: string): Promise<Set<string>> {
   // A session bound to one conference holds no permissions anywhere else,

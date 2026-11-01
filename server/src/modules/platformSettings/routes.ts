@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAdmin } from '../../middleware/auth.js'
+import { requireAdmin, requireSuperAdmin } from '../../middleware/auth.js'
 import { validateBody } from '../../middleware/validate.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { getPlatformSettings, updatePlatformSettings } from './service.js'
@@ -33,7 +33,7 @@ platformSettingsAdminRouter.get('/platform-settings', requireAdmin, async (_req,
 
 platformSettingsAdminRouter.patch(
   '/platform-settings',
-  requireAdmin,
+  requireSuperAdmin,
   validateBody(platformSettingsSchema),
   async (req, res, next) => {
     try {

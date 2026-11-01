@@ -6,6 +6,8 @@ export type MeResponse = {
   user: MeUser
   roles: MyRoleRow[]
   isAdmin: boolean
+  /** May manage other admins and platform settings (older backends omit it: treat as isAdmin). */
+  isSuperAdmin?: boolean
   /** The conference this session is bound to; null for a platform-admin session. */
   conference: SessionConference | null
 }
@@ -20,6 +22,7 @@ type AuthState = {
   user: MeUser | null
   roles: MyRoleRow[]
   isAdmin: boolean
+  isSuperAdmin: boolean
   /** The conference the current session is bound to (null when signed out or signed in as platform admin). */
   conference: SessionConference | null
   /** True only while the very first check is in flight. Callers that need a fresh check on their own mount (route guards) should call refresh() themselves and await its result, rather than relying on this. */
@@ -51,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MeUser | null>(null)
   const [roles, setRoles] = useState<MyRoleRow[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [conference, setConference] = useState<SessionConference | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -58,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setRoles([])
     setIsAdmin(false)
+    setIsSuperAdmin(false)
     setConference(null)
   }, [])
 
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user)
       setRoles(data.roles)
       setIsAdmin(data.isAdmin)
+      setIsSuperAdmin(data.isSuperAdmin ?? data.isAdmin)
       setConference(data.conference ?? null)
       return data
     } catch {
@@ -88,12 +94,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
     setRoles(data.roles)
     setIsAdmin(false)
+    setIsSuperAdmin(false)
     setConference(data.conference)
     return data
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, roles, isAdmin, conference, loading, refresh, signOut, switchConference }}>
+    <AuthContext.Provider value={{ user, roles, isAdmin, isSuperAdmin, conference, loading, refresh, signOut, switchConference }}>
       {children}
     </AuthContext.Provider>
   )

@@ -33,8 +33,10 @@ import { agendaFeedRouter, agendaRouter } from '../src/modules/agenda/routes.js'
 import { sessionTimerRouter } from '../src/modules/sessionTimer/routes.js'
 import { abstractBookRouter } from '../src/modules/abstractBook/routes.js'
 import { feedbackMeRouter, feedbackRouter } from '../src/modules/feedback/routes.js'
+import { createBrevoWebhookRouter } from '../src/modules/emailWebhooks/routes.js'
+import { createTickRouter } from '../src/jobs/tick.js'
 
-const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
+const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'requireSuperAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
 
 // Every route genuinely meant to work with no session at all — sign-up/sign-in
 // itself, the forgot/reset-password flow (the whole point is the caller
@@ -42,6 +44,11 @@ const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'conferen
 // expired), and the handful of read-only public pages (conference listing,
 // announcements, public deadline/track counts for the homepage).
 const PUBLIC_ROUTES = new Set([
+  // Machine-to-machine endpoints with no session: each checks its own shared-secret bearer
+  // token in the handler (constant-time) and answers 404 while its secret is unset. Covered by
+  // tests/brevoWebhook.test.ts and tests/tick.test.ts (401 on a missing/wrong token).
+  'brevoWebhookRouter POST /brevo',
+  'tickRouter POST /tick',
   'authRouter POST /register',
   // Proven with the existing account's password; only ever creates a pending role request.
   'authRouter POST /join-conference',
@@ -117,6 +124,8 @@ const ROUTERS: NamedRouter[] = [
   { name: 'abstractBookRouter', router: abstractBookRouter },
   { name: 'feedbackRouter', router: feedbackRouter },
   { name: 'feedbackMeRouter', router: feedbackMeRouter },
+  { name: 'brevoWebhookRouter', router: createBrevoWebhookRouter() },
+  { name: 'tickRouter', router: createTickRouter() },
 ]
 
 type RouteEntry = { key: string; middlewareNames: string[] }

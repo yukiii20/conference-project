@@ -1,11 +1,11 @@
 import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
-import { issuePasswordReset } from '../auth/service.js'
+import { issuePasswordReset, isSuperAdmin, superAdminsExist } from '../auth/service.js'
 import { insertAuditLog, type AuditContext } from '../../utils/audit.js'
 import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
-import { BadRequestError, NotFoundError } from '../../utils/errors.js'
+import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
 import { setPasswordUrl } from '../../utils/conferenceLinks.js'
 import { pingDatabase, getStorageDiskSpace, getEmailQueueCounts } from '../../utils/health.js'
@@ -504,6 +504,21 @@ async function countOtherActiveAdmins(conn: PoolConnection, excludeUserId: strin
   return Number((rows as Array<{ count: number }>)[0]?.count ?? 0)
 }
 
+async function isSuperAdminRow(conn: PoolConnection, userId: string): Promise<boolean> {
+  const [rows] = await conn.query(`SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'super_admin' LIMIT 1`, [userId])
+  return (rows as unknown[]).length > 0
+}
+
+async function countOtherActiveSuperAdmins(conn: PoolConnection, excludeUserId: string): Promise<number> {
+  const [rows] = await conn.query(
+    `SELECT COUNT(*) AS count FROM platform_user_roles pur
+     JOIN users u ON u.id = pur.user_id
+     WHERE pur.role_code = 'super_admin' AND u.status = 'active' AND u.id <> ?`,
+    [excludeUserId],
+  )
+  return Number((rows as Array<{ count: number }>)[0]?.count ?? 0)
+}
+
 const LOCK_VERBS: Record<'suspended' | 'deactivated', string> = { suspended: 'suspend', deactivated: 'deactivate' }
 
 /** Shared by suspend (temporary block) and deactivate (the account holder/admin has fully deactivated this account) — same last-admin protection and session revocation, different target status + audit action. */
@@ -528,6 +543,12 @@ async function lockUserAccount(
       [targetUserId],
     )
     const isAdmin = (adminRows as unknown[]).length > 0
+    if (isAdmin && !(await isSuperAdmin(actorUserId))) {
+      throw new ForbiddenError('Only a super administrator can lock another administrator account.')
+    }
+    if (isAdmin && (await isSuperAdminRow(conn, targetUserId)) && (await countOtherActiveSuperAdmins(conn, targetUserId)) === 0) {
+      throw new BadRequestError('This is the last active super administrator — make someone else a super administrator first.')
+    }
     if (isAdmin && (await countOtherActiveAdmins(conn, targetUserId)) === 0) {
       throw new BadRequestError('This is the last active administrator — appoint another admin first.')
     }
@@ -642,17 +663,21 @@ export async function adminResetUserPassword(
   })
 }
 
-export type PlatformAdminRow = { id: string; full_name: string; email: string; status: string; granted_at: string }
+export type PlatformAdminRow = { id: string; full_name: string; email: string; status: string; granted_at: string; is_super_admin: boolean }
 
 export async function listPlatformAdmins(): Promise<PlatformAdminRow[]> {
   const [rows] = await pool.query(
-    `SELECT u.id, u.full_name, u.email, u.status, pur.granted_at
+    `SELECT u.id, u.full_name, u.email, u.status, pur.granted_at,
+            EXISTS (SELECT 1 FROM platform_user_roles s WHERE s.user_id = u.id AND s.role_code = 'super_admin') AS is_super_admin
      FROM platform_user_roles pur
      JOIN users u ON u.id = pur.user_id
      WHERE pur.role_code = 'admin'
      ORDER BY u.full_name`,
   )
-  return rows as PlatformAdminRow[]
+  return (rows as Array<Omit<PlatformAdminRow, 'is_super_admin'> & { is_super_admin: number | boolean }>).map((r) => ({
+    ...r,
+    is_super_admin: Boolean(r.is_super_admin),
+  }))
 }
 
 export async function grantAdmin(
@@ -706,11 +731,75 @@ export async function revokeAdmin(
     if ((await countOtherActiveAdmins(conn, targetUserId)) === 0) {
       throw new BadRequestError('This is the last active administrator — appoint another admin first.')
     }
+    if ((await isSuperAdminRow(conn, targetUserId)) && (await countOtherActiveSuperAdmins(conn, targetUserId)) === 0) {
+      throw new BadRequestError('This is the last active super administrator — make someone else a super administrator first.')
+    }
 
-    await conn.query(`DELETE FROM platform_user_roles WHERE user_id = ? AND role_code = 'admin'`, [targetUserId])
+    await conn.query(`DELETE FROM platform_user_roles WHERE user_id = ? AND role_code IN ('admin', 'super_admin')`, [targetUserId])
     await insertAuditLog(conn, {
       actorUserId,
       action: 'admin.revoke',
+      entityType: 'platform_user_roles',
+      entityId: targetUserId,
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+}
+
+function isMissingRoleError(err: unknown): boolean {
+  return Boolean(err && typeof err === 'object' && (err as { code?: string }).code === 'ER_NO_REFERENCED_ROW_2')
+}
+
+/**
+ * Makes an existing platform admin a super administrator. The very first grant also makes the
+ * acting admin one (until then every admin counts as super - see isSuperAdmin - so without this
+ * the person doing the grant would lock themselves out of admin management).
+ */
+export async function grantSuperAdmin(actorUserId: string, targetUserId: string, ctx: AuditContext = {}): Promise<void> {
+  await withTransaction(actorUserId, async (conn) => {
+    const [adminRows] = await conn.query(`SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'admin' LIMIT 1`, [targetUserId])
+    if ((adminRows as unknown[]).length === 0) throw new BadRequestError('Make this person an administrator first.')
+
+    const first = !(await superAdminsExist())
+    const grantees = first && targetUserId !== actorUserId ? [targetUserId, actorUserId] : [targetUserId]
+    try {
+      for (const userId of grantees) {
+        await conn.query(`INSERT IGNORE INTO platform_user_roles (user_id, role_code, granted_by) VALUES (?, 'super_admin', ?)`, [userId, actorUserId])
+      }
+    } catch (err) {
+      if (isMissingRoleError(err)) {
+        throw new BadRequestError('The super administrator role is not set up in the database yet (run database/07_super_admin.sql).')
+      }
+      throw err
+    }
+    await insertAuditLog(conn, {
+      actorUserId,
+      action: 'super_admin.grant',
+      entityType: 'platform_user_roles',
+      entityId: targetUserId,
+      newValues: { granted_to: grantees },
+      ipAddress: ctx.ipAddress ?? null,
+      userAgent: ctx.userAgent ?? null,
+    })
+  })
+}
+
+export async function revokeSuperAdmin(actorUserId: string, targetUserId: string, ctx: AuditContext = {}): Promise<void> {
+  if (targetUserId === actorUserId) throw new BadRequestError('You cannot remove your own super administrator access.')
+  await withTransaction(actorUserId, async (conn) => {
+    const [rows] = await conn.query(
+      `SELECT 1 FROM platform_user_roles WHERE user_id = ? AND role_code = 'super_admin' LIMIT 1 FOR UPDATE`,
+      [targetUserId],
+    )
+    if ((rows as unknown[]).length === 0) throw new NotFoundError('This person is not a super administrator.')
+    if ((await countOtherActiveSuperAdmins(conn, targetUserId)) === 0) {
+      throw new BadRequestError('This is the last active super administrator.')
+    }
+    await conn.query(`DELETE FROM platform_user_roles WHERE user_id = ? AND role_code = 'super_admin'`, [targetUserId])
+    await insertAuditLog(conn, {
+      actorUserId,
+      action: 'super_admin.revoke',
       entityType: 'platform_user_roles',
       entityId: targetUserId,
       ipAddress: ctx.ipAddress ?? null,

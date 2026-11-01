@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { LOGIN_ROLE_CODES, SIGNUP_ROLE_CODES } from './roles'
+import { kathmanduToday } from './datetime'
 
 export const nameSchema = z
   .string()
@@ -464,9 +465,9 @@ export function slugify(value: string) {
 }
 
 /** Today's date as a local YYYY-MM-DD string, matching <input type="date"> values. */
+/** Today's date in Nepal (YYYY-MM-DD), whatever timezone the browser is in. */
 export function todayDateString() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  return kathmanduToday()
 }
 
 export const newConferenceSchema = z

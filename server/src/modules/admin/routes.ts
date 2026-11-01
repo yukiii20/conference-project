@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAdmin } from '../../middleware/auth.js'
+import { requireAdmin, requireSuperAdmin } from '../../middleware/auth.js'
 import { validateBody, validateQuery } from '../../middleware/validate.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import {
@@ -12,6 +12,8 @@ import {
   listUsersQuerySchema,
 } from './validation.js'
 import {
+  grantSuperAdmin,
+  revokeSuperAdmin,
   adminResetUserPassword,
   anonymizeUser,
   appointConvenor,
@@ -199,7 +201,7 @@ adminRouter.get('/admins', requireAdmin, async (_req, res, next) => {
   }
 })
 
-adminRouter.post('/admins', requireAdmin, validateBody(grantAdminSchema), async (req, res, next) => {
+adminRouter.post('/admins', requireSuperAdmin, validateBody(grantAdminSchema), async (req, res, next) => {
   try {
     await grantAdmin(req.user!.id, req.body, auditContextFrom(req))
     res.json({ message: 'Administrator access granted.' })
@@ -208,10 +210,28 @@ adminRouter.post('/admins', requireAdmin, validateBody(grantAdminSchema), async 
   }
 })
 
-adminRouter.delete('/admins/:id', requireAdmin, async (req, res, next) => {
+adminRouter.delete('/admins/:id', requireSuperAdmin, async (req, res, next) => {
   try {
     await revokeAdmin(req.user!.id, req.params.id!, auditContextFrom(req))
     res.json({ message: 'Administrator access removed.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+adminRouter.post('/admins/:id/super', requireSuperAdmin, async (req, res, next) => {
+  try {
+    await grantSuperAdmin(req.user!.id, req.params.id!, auditContextFrom(req))
+    res.json({ message: 'Super administrator access granted.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+adminRouter.delete('/admins/:id/super', requireSuperAdmin, async (req, res, next) => {
+  try {
+    await revokeSuperAdmin(req.user!.id, req.params.id!, auditContextFrom(req))
+    res.json({ message: 'Super administrator access removed.' })
   } catch (err) {
     next(err)
   }

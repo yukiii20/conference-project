@@ -317,3 +317,46 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
 - Lint, `tsc` and build clean.
 - **Not done:** an online payment gateway (D2b, which needs a merchant account) and a visual
   check against a running backend.
+
+## D4 / M7: super administrator role · 1 November 2026 · status: CODE DONE, owner runs one SQL file
+
+**What changed**
+- New platform role `super_admin`, held on top of `admin`.
+- **Only a super admin can:**
+  - add or remove administrators
+  - change platform settings
+  - suspend or deactivate another admin account
+  - grant or remove super admin
+- Ordinary admins keep everything else (conferences, users, audit log, email log…).
+- **Fallback:** until anyone holds `super_admin`, every admin counts as one (the old behaviour).
+  The code is therefore safe to auto-deploy before the SQL runs.
+- **First grant:** it also makes the granting admin a super admin, so nobody locks themselves
+  out.
+- **Protections:**
+  - The last active super admin can't be removed, suspended or deactivated.
+  - Nobody can remove their own super access.
+  - Removing admin access also removes super access.
+- **UI:**
+  - `/api/auth/me` returns `isSuperAdmin`.
+  - Super admin → Admins shows a "Super admin" badge and Make/Remove super admin buttons, and
+    hides the add/remove controls for ordinary admins.
+  - Platform settings are read-only for ordinary admins.
+- **Also:** the new-conference date picker's "today" now uses Nepal time (`todayDateString`).
+
+**SQL (new files only):**
+- `database/07_super_admin.sql`: one `roles` row, no table changes, idempotent.
+- Run folder `database/2026-11-01-part-2/` (LOCAL, AIVEN, CHECK, README).
+- Appended to the generated `test-setup.sql`.
+- Nobody is granted the role by SQL; the owner picks super admins in the app.
+
+**Tests**
+- `tests/superAdmin.test.ts`: 6 API tests (fallback, first grant, 403s for ordinary admins,
+  last-super protection, cascade on revoke, admin-only targets). **Not run yet: no MySQL here.**
+- `routeGuards.test.ts`:
+  - It caught the new guard name; `requireSuperAdmin` was added to the recognised guards.
+  - It now also covers the webhook and tick routers, listed as public because they check their
+    own token.
+  - Result: 291/291.
+- Server: 371 pass, 389 need MySQL, 0 failures from other causes.
+- Frontend 80/80.
+- Lint, `tsc` and build clean.

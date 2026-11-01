@@ -27,6 +27,7 @@ import {
   getUserProfile,
   invitationSessionConference,
   isPlatformAdmin,
+  isSuperAdmin,
   joinConferenceWithExistingAccount,
   listMyConferences,
   registerUser,
@@ -155,14 +156,15 @@ authRouter.get('/me', requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id
     const boundConferenceId = req.user!.conferenceId
-    const [profile, roles, isAdmin, conference] = await Promise.all([
+    const [profile, roles, isAdmin, isSuper, conference] = await Promise.all([
       getUserProfile(userId),
       getMyRoles(userId, boundConferenceId),
       // false inside a conference-bound session (see isPlatformAdmin)
       isPlatformAdmin(userId),
+      isSuperAdmin(userId),
       boundConferenceId ? findConference(boundConferenceId, { publishedOnly: false }) : Promise.resolve(null),
     ])
-    res.json({ user: profile, roles, isAdmin, conference: sessionConferenceDto(conference) })
+    res.json({ user: profile, roles, isAdmin, isSuperAdmin: isSuper, conference: sessionConferenceDto(conference) })
   } catch (err) {
     next(err)
   }

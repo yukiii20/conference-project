@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import { pool } from '../db/pool.js'
 import { resolveSessionUser } from '../modules/auth/session.js'
-import { getConferencePermissions, isPlatformAdmin } from '../modules/auth/service.js'
+import { getConferencePermissions, isPlatformAdmin, isSuperAdmin } from '../modules/auth/service.js'
 import { ForbiddenError, UnauthorizedError } from '../utils/errors.js'
 import {
   assertConferenceInSession,
@@ -62,6 +62,25 @@ export function requireAdmin(req: Request, _res: Response, next: NextFunction): 
       const admin = await hasAdminPowers(req.user!.id)
       if (!admin) {
         next(new ForbiddenError('Administrator access required.'))
+        return
+      }
+      next()
+    } catch (e) {
+      next(e)
+    }
+  })
+}
+
+/** requireAdmin, plus: only a super administrator (see isSuperAdmin) may continue. */
+export function requireSuperAdmin(req: Request, res: Response, next: NextFunction): void {
+  requireAdmin(req, res, async (err?: unknown) => {
+    if (err) {
+      next(err)
+      return
+    }
+    try {
+      if (!(await isSuperAdmin(req.user!.id))) {
+        next(new ForbiddenError('Only a super administrator can do this.'))
         return
       }
       next()

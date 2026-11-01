@@ -22,6 +22,7 @@ import {
   Settings,
   ShieldCheck,
   Ticket,
+  Trash2,
   UserCheck,
   UserPlus,
   Users,
@@ -32,6 +33,7 @@ import { api, ApiError } from '../lib/api'
 import { humanizeAuditAction } from '../lib/humanize'
 import { inviteConvenorSchema, newConferenceSchema, slugify, todayDateString } from '../lib/validation'
 import { useNoIndex } from '../lib/noindex'
+import { useAuth } from '../lib/authContext'
 import { EmailLogTab } from '../components/EmailLogTab'
 import { SuggestionsAdminTab } from '../components/SuggestionsAdminTab'
 
@@ -114,7 +116,7 @@ type ProfileRow = {
   created_at: string
 }
 
-type PlatformAdminRow = { id: string; full_name: string; email: string; status: string; granted_at: string }
+type PlatformAdminRow = { id: string; full_name: string; email: string; status: string; granted_at: string; is_super_admin?: boolean }
 
 type DashboardData = {
   conferences_by_status: Array<{ status: string; count: number }>
@@ -393,6 +395,24 @@ function ConferencesTab({
   const [createNote, setCreateNote] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<ConferenceRow | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  async function handleDelete(conference: ConferenceRow) {
+    setDeleteBusy(true)
+    setPublishError(null)
+    try {
+      await api.post(`/admin/conferences/${conference.id}/archive`)
+      setPendingDelete(null)
+      setCreateNote(`"${conference.name}" was deleted.`)
+      await onReload()
+    } catch (err) {
+      setPendingDelete(null)
+      setPublishError(err instanceof ApiError ? err.message : 'Could not delete this conference.')
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
 
   async function handlePublish(id: string) {
     setPublishBusyId(id)
@@ -479,7 +499,12 @@ function ConferencesTab({
       header: '',
       className: 'text-right',
       render: (c) => (
-        <ConferenceRowActions conference={c} publishBusy={publishBusyId === c.id} onPublish={() => handlePublish(c.id)} />
+        <ConferenceRowActions
+          conference={c}
+          publishBusy={publishBusyId === c.id}
+          onPublish={() => handlePublish(c.id)}
+          onDelete={() => setPendingDelete(c)}
+        />
       ),
     },
   ]
@@ -542,6 +567,24 @@ function ConferencesTab({
           minWidth={820}
         />
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this conference?"
+        message={
+          pendingDelete
+            ? `"${pendingDelete.name}" will be removed from the public site and this list${
+                pendingDelete.submission_count + pendingDelete.registration_count > 0
+                  ? ` (it has ${pendingDelete.submission_count} submission(s) and ${pendingDelete.registration_count} registration(s))`
+                  : ''
+              }. Its data is kept and can be restored from the database if needed.`
+            : ''
+        }
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onConfirm={() => pendingDelete && handleDelete(pendingDelete)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   )
 }
@@ -556,10 +599,12 @@ function ConferenceRowActions({
   conference,
   publishBusy,
   onPublish,
+  onDelete,
 }: {
   conference: ConferenceRow
   publishBusy: boolean
   onPublish: () => void
+  onDelete: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -615,6 +660,17 @@ function ConferenceRowActions({
           <Icon icon={Eye} size={14} />
           View as admin
         </Link>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onDelete}
+          aria-label={`Delete ${conference.name}`}
+          title="Delete conference"
+          className="whitespace-nowrap !text-danger"
+          iconLeft={<Icon icon={Trash2} size={14} />}
+        >
+          Delete
+        </Button>
       </div>
 
       {/* Narrow screens: one "..." menu instead of the buttons wrapping. */}
@@ -657,6 +713,18 @@ function ConferenceRowActions({
               <Icon icon={Eye} size={16} />
               View as admin
             </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false)
+                onDelete()
+              }}
+              className="flex min-h-10 w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-danger hover:bg-surface-muted"
+            >
+              <Icon icon={Trash2} size={16} />
+              Delete
+            </button>
           </div>
         ) : null}
       </div>
@@ -1571,6 +1639,7 @@ function DashboardTab({
 }
 
 function AdminsTab() {
+  const { isSuperAdmin, user } = useAuth()
   const [admins, setAdmins] = useState<PlatformAdminRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1614,6 +1683,24 @@ function AdminsTab() {
     }
   }
 
+  async function setSuper(admin: PlatformAdminRow, makeSuper: boolean) {
+    setBusyId(admin.id)
+    setError(null)
+    setNotice(null)
+    try {
+      if (makeSuper) await api.post(`/admin/admins/${admin.id}/super`)
+      else await api.del(`/admin/admins/${admin.id}/super`)
+      setNotice(makeSuper ? `${admin.full_name} is now a super administrator.` : `${admin.full_name} is now an ordinary administrator.`)
+      await reload()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not change super administrator access.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const anySuper = admins.some((a) => a.is_super_admin)
+
   async function handleRevoke(admin: PlatformAdminRow) {
     setConfirmingRevoke(null)
     setBusyId(admin.id)
@@ -1635,6 +1722,14 @@ function AdminsTab() {
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {notice ? <Alert variant="success">{notice}</Alert> : null}
 
+      <p className="text-sm text-text-muted">
+        Super administrators can also add or remove administrators, change platform settings and lock other admin accounts.
+        {anySuper ? '' : ' Nobody is a super administrator yet, so every administrator can do this for now — the first person you make a super administrator (and you) will be the only ones.'}
+      </p>
+
+      {!isSuperAdmin ? (
+        <Alert variant="info">Only a super administrator can add or remove administrators.</Alert>
+      ) : (
       <Card>
         <form onSubmit={handleGrant} className="flex flex-wrap items-end gap-2">
           <div className="flex-1">
@@ -1654,6 +1749,7 @@ function AdminsTab() {
           </Button>
         </form>
       </Card>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-text-muted">
@@ -1668,12 +1764,32 @@ function AdminsTab() {
           {admins.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
-                <p className="font-medium text-text">{a.full_name}</p>
+                <p className="font-medium text-text">
+                  {a.full_name}
+                  {a.is_super_admin ? (
+                    <span className="ml-2 rounded-full bg-gold-soft px-2 py-0.5 align-middle text-xs font-medium text-gold-ink">Super admin</span>
+                  ) : null}
+                </p>
                 <p className="text-sm text-text-muted">{a.email}</p>
               </div>
-              <Button variant="danger" size="sm" onClick={() => setConfirmingRevoke(a)} disabled={busyId === a.id}>
-                Remove
-              </Button>
+              {isSuperAdmin ? (
+                <div className="flex flex-wrap gap-2">
+                  {a.is_super_admin ? (
+                    a.id !== user?.id ? (
+                      <Button variant="secondary" size="sm" onClick={() => setSuper(a, false)} disabled={busyId === a.id}>
+                        Remove super admin
+                      </Button>
+                    ) : null
+                  ) : (
+                    <Button variant="secondary" size="sm" onClick={() => setSuper(a, true)} disabled={busyId === a.id}>
+                      Make super admin
+                    </Button>
+                  )}
+                  <Button variant="danger" size="sm" onClick={() => setConfirmingRevoke(a)} disabled={busyId === a.id}>
+                    Remove
+                  </Button>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -1693,6 +1809,7 @@ function AdminsTab() {
 }
 
 function PlatformSettingsTab() {
+  const { isSuperAdmin } = useAuth()
   const [settings, setSettings] = useState<PlatformSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1777,6 +1894,7 @@ function PlatformSettingsTab() {
 
   return (
     <form onSubmit={handleSave} className="mt-6 max-w-2xl space-y-5">
+      {!isSuperAdmin ? <Alert variant="info">Only a super administrator can change platform settings.</Alert> : null}
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {saved ? <Alert variant="success">Saved.</Alert> : null}
 
@@ -1867,7 +1985,7 @@ function PlatformSettingsTab() {
         </div>
       </div>
 
-      <Button type="submit" loading={saving} iconLeft={<Icon icon={Save} size={16} />}>
+      <Button type="submit" loading={saving} disabled={!isSuperAdmin} iconLeft={<Icon icon={Save} size={16} />}>
         Save settings
       </Button>
     </form>
