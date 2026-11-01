@@ -5,11 +5,11 @@ reuses the same screens minus a couple of items) is a left sidebar with its
 own URL per item — refresh and the back button work. Pair this with
 `npm run build`, `npm test` (both `server/` and the repo root) and
 `npx playwright test`, which already cover this ground automatically — see
-`docs/final-test-report.md` for the automated results.
+`docs/archive/final-test-report.md` for the automated results.
 
 ## Before you start
 
-Same prerequisites as `docs/phase3-test-steps.md` / `docs/phase4-test-steps.md`:
+Same prerequisites as `docs/archive/phase3-test-steps.md` / `docs/archive/phase4-test-steps.md`:
 MySQL loaded, backend on `http://localhost:4000` (`cd server && npm run dev`),
 frontend on `http://localhost:5173` (`npm run dev`). You'll want:
 
@@ -30,7 +30,7 @@ frontend on `http://localhost:5173` (`npm run dev`). You'll want:
 | A3 | Reload the page on a non-dashboard item (e.g. `/convenor/committees`) | Same panel reloads directly — no redirect to a blank or error page. |
 | A4 | Click the browser **back** button after a couple of sidebar clicks | Returns to the previous sidebar item, not out of the app. |
 | A5 | Narrow the browser to 390px wide | The sidebar disappears behind a **Menu** button at the top; tapping it shows the same grouped list; tapping an item opens it and closes the drawer. No horizontal scrollbar on any item. |
-| A6 | Click **Attendance** or **Certificates** | The real Part C screens — see `docs/attendance-certificates-test-steps.md`. |
+| A6 | Click **Attendance** or **Certificates** | The real Part C screens — see `docs/archive/attendance-certificates-test-steps.md`. |
 | A7 | If you also have a manager account: sign in as manager → `/manager` | Same sidebar, same URLs (`/manager/...`), but **Members and roles** and **Activity log** are missing — managers hold every permission except `members.manage` and `audit.read`. |
 
 ## Part B — Dashboard
@@ -142,5 +142,5 @@ frontend on `http://localhost:5173` (`npm run dev`). You'll want:
   (server + root) and `npx playwright test` all pass.
 - `grep -r "supabase" src` from the repo root is still empty.
 - `cd server && npm audit` shows only the two known moderate advisories
-  documented in `docs/final-test-report.md` (transitive to `exceljs`, not
+  documented in `docs/archive/final-test-report.md` (transitive to `exceljs`, not
   exploitable in how this app uses it).

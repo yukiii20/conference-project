@@ -31,7 +31,7 @@ export function DirtyGuardProvider({ children }: { children: ReactNode }) {
     // caller (sidebar nav links, tab switches) needs a synchronous true/false
     // to decide whether to go ahead with navigation right now - a React modal
     // can't do that without restructuring every call site to defer the
-    // navigation until the user answers. See docs/ui-audit.md.
+    // navigation until the user answers. See docs/archive/ui-audit.md.
     const ok = window.confirm('Discard changes?')
     if (ok) dirtyRef.current = false
     return ok

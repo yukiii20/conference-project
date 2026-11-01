@@ -22,7 +22,7 @@ RULES (same as before, all still in force)
 1. UI AUDIT (write it down first)
 - Go through every page: home, conference page, login/signup/forgot/reset, /portal (all
   sections), convenor portal (all 7 pages and tabs), super admin pages, /verify, staff check-in.
-- Write docs/ui-audit.md: a table Page | Problem | Fix. Look for:
+- Write docs/archive/ui-audit.md: a table Page | Problem | Fix. Look for:
   buttons with different sizes/colours/radius/font for the same action, mixed icon styles,
   different input heights, different card styles, uneven spacing, tables that look different,
   different status chip colours for the same status, text too small, low contrast, horizontal

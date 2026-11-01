@@ -2,7 +2,7 @@
 
 Cheap/free tooling only — no paid APM for a system this size. Revisit if
 usage grows past a few hundred concurrent users (see
-`docs/production-readiness.md` for the capacity reasoning).
+`docs/archive/production-readiness.md` for the capacity reasoning).
 
 ## What to watch
 
@@ -44,7 +44,7 @@ usage grows past a few hundred concurrent users (see
 A dedicated APM (Datadog, New Relic, etc.), a log aggregator (ELK,
 Loki), or a metrics time-series database (Prometheus/Grafana) — all of
 these cost money or meaningful setup time, and at the traffic this app is
-sized for (see the capacity estimate in `docs/production-readiness.md`)
+sized for (see the capacity estimate in `docs/archive/production-readiness.md`)
 `pm2 monit` + UptimeRobot + the slow query log catch the failure modes
 that actually matter. Revisit once there's a reason to (sustained growth,
 a recurring issue the above tools can't pin down).

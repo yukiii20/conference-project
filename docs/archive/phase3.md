@@ -370,7 +370,7 @@ B6. Tests
 
 \- Show me: grep -r "supabase" src  (should be empty).
 
-\- Write docs/phase3-test-steps.md: step-by-step manual test, which user does what.
+\- Write docs/archive/phase3-test-steps.md: step-by-step manual test, which user does what.
 
 \- Make sure the backend is running on port 4000 when you finish, and give me a short list
 

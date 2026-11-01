@@ -1,7 +1,7 @@
 # UI consistency audit (Step 7, section 1)
 
-Date: 2026-10-17. Scope: every page/role per `docs/finish-7-ui-roles.md` section 1.
-`docs/responsive-ui-audit.md` (2026-10-16) already covered horizontal-scroll/overflow
+Date: 2026-10-17. Scope: every page/role per `docs/archive/finish-7-ui-roles.md` section 1.
+`docs/archive/responsive-ui-audit.md` (2026-10-16) already covered horizontal-scroll/overflow
 and form-grid breakpoint bugs — those are NOT repeated here; this audit only covers
 non-responsive consistency (shared components, colours, states).
 
@@ -99,7 +99,7 @@ confirm dialog, no feedback, wrong touch size) over a cosmetic-only refactor of 
 
 ## Step 7B+C — colour theme (Cosmic Latte / Mocha Cream / Deep Burgundy) + the remaining migration
 
-Date: 2026-10-18. Scope: `docs/finish-7bc-theme-and-ui.md`. Finishes exactly the "Not done" item
+Date: 2026-10-18. Scope: `docs/archive/finish-7bc-theme-and-ui.md`. Finishes exactly the "Not done" item
 above (the full `<button>`/`<input>`/card migration) and rolls out the new brand palette.
 
 ### A. Tokens

@@ -30,7 +30,7 @@ Override the ramp with environment variables, e.g. a quick smoke run:
 k6 run -e VUS_LIST=5,10 -e STAGE_SECONDS=15 load/scenario.js
 ```
 
-Default ramp (per `docs/finish-8-production-ready.md` Phase 7): 10 → 50 →
+Default ramp (per `docs/archive/finish-8-production-ready.md` Phase 7): 10 → 50 →
 100 → 200 virtual users, 30s per step, each sustained for 1 minute.
 
 ## What it does

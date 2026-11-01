@@ -13,7 +13,7 @@ const FIXTURE = {
   password: 'Str0ng!Pass1',
 }
 
-// Per docs/responsive-ui-audit.md — the widths the task explicitly calls out
+// Per docs/archive/responsive-ui-audit.md — the widths the task explicitly calls out
 // for automated coverage. (320/375/390/430 mobile, 768/1024 tablet-ish, 1440 desktop.)
 const WIDTHS = [320, 375, 390, 430, 768, 1024, 1440] as const
 

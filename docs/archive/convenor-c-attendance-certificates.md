@@ -77,5 +77,5 @@ GROUND RULES (same as before)
 - Playwright: user registers, opens ticket with QR; staff checks them in by manual search;
   convenor generates participation certificates; user downloads the PDF; /verify works.
 - npx tsc --noEmit, npm run build, npm test, npx playwright test pass.
-- Update docs/final-test-report.md and write docs/attendance-certificates-test-steps.md.
+- Update docs/archive/final-test-report.md and write docs/archive/attendance-certificates-test-steps.md.
 - Keep the backend running on port 4000 when you finish.

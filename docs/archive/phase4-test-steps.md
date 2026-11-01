@@ -7,7 +7,7 @@ which already cover this ground automatically.
 
 ## Before you start
 
-Same prerequisites as `docs/phase3-test-steps.md` (MySQL loaded, an approved
+Same prerequisites as `docs/archive/phase3-test-steps.md` (MySQL loaded, an approved
 convenor/author/reviewer in one conference), plus:
 
 1. Backend `.env` has `EMAIL_MODE=console` for local testing (the default) —
@@ -135,7 +135,7 @@ your real dev servers on 4000/5173, and never your real database.
    (`playwright.config.ts` already points `baseURL` at `http://localhost:5273`.)
 
 All 17 tests (`e2e/main.spec.ts`, `e2e/notifications.spec.ts`,
-`e2e/submissions.spec.ts`) pass — see `docs/final-test-report.md`.
+`e2e/submissions.spec.ts`) pass — see `docs/archive/final-test-report.md`.
 
 ---
 

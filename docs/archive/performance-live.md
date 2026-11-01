@@ -94,7 +94,7 @@ endpoint, including the one right after, was ~0.17s).
 ## Local measurement and backend/frontend fixes (this step)
 
 Measured against the local throwaway test server (`conference_cms_test`,
-same machine — see `docs/phase4-test-steps.md`). Every page's main API
+same machine — see `docs/archive/phase4-test-steps.md`). Every page's main API
 call(s) were timed per role; the slowest ones found, and what was actually
 fixed:
 

@@ -196,3 +196,15 @@ the browser's own timezone, and certificates printed the UTC issue date.
 - **Known and accepted:** `npm audit` now also lists `minimatch` < 11.0.1 (a moderate ReDoS in
   glob parsing) inside ESLint's own dependencies. This is dev-only and never shipped. No ESLint 9
   release avoids it, and npm's only suggested "fix" is a downgrade to ESLint 4.
+
+## Phase 1, item L-docs: documentation tidy-up · 1 November 2026 · status: DONE
+
+- Moved 31 historical docs (build prompts, phase specs, one-off audits, test reports) to
+  `docs/archive/`.
+- Rewrote all 21 references to them in code comments, READMEs and docs. The diff changes paths
+  only.
+- New `docs/README.md` index.
+- Deploy guides:
+  - `deploy-guide.md` is the canonical guide for the live Vercel/Render/Aiven setup.
+  - `deploy.md` stays as the VPS alternative (a different target, so it isn't merged).
+  - The third file was only a prompt spec, so it was archived.

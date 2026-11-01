@@ -1,4 +1,4 @@
-// Polish + export pipeline (Part 3 of docs/product-video.md). Turns the raw
+// Polish + export pipeline (Part 3 of docs/archive/product-video.md). Turns the raw
 // Playwright recordings in work/raw/ + the edge-tts narration in work/vo/
 // into the final files in output/.
 //

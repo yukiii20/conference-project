@@ -60,7 +60,7 @@ describe('convenor dashboard', () => {
   })
 
   it('counts reviews pending (assigned/in_progress) separately from reviews done (completed) - not a shared bucket', async () => {
-    // Regression guard for the "Reviews pending" stat card (Step 7B+C, docs/finish-7bc-theme-and-ui.md
+    // Regression guard for the "Reviews pending" stat card (Step 7B+C, docs/archive/finish-7bc-theme-and-ui.md
     // B3): pending must be assigned-but-not-yet-submitted, done must be submitted (completed), and the
     // two counts must come out different when the underlying rows differ - not just both read as 0.
     const conferenceId = await createConference()

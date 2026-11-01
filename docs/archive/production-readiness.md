@@ -3,7 +3,7 @@
 Date: 2026-10-17 to 2026-10-18 (Phases 1-6 and 8's first pass on 10-17; Phase 7's load test,
 Phase 8's final verification, and the Lighthouse-driven logo fix on 10-18). Run after Step 7
 (consistent UI + role check) was confirmed DONE.
-See docs/production-audit.md for the full Phase 1 audit this report is based on.
+See docs/archive/production-audit.md for the full Phase 1 audit this report is based on.
 
 ## 1. Problems found
 
@@ -31,7 +31,7 @@ Ranked roughly by how much they'd matter in production:
    a real Lighthouse run (section 3/5 below): under standard mobile throttling, the conference,
    login, and portal pages' LCP came in at 9.0-9.6s — 3.6-3.8x the doc's 2.5s target — almost
    entirely because of this one oversized static asset.
-8. Nothing else rose above these — see docs/production-audit.md's "headline finding" for the long
+8. Nothing else rose above these — see docs/archive/production-audit.md's "headline finding" for the long
    list of security/reliability items that were already correctly implemented going into this step
    (helmet/CSP, CORS, CSRF via Origin check, cookie flags, rate limiting, body size limits, error
    handling with no stack-trace leakage, input validation coverage, env validation, upload
@@ -107,7 +107,7 @@ and new dashboard tests passing.
 no longer silently undersized.
 
 **Confirmed already correct** (not new work, verified by reading the code — see
-docs/production-audit.md for the full list with file:line citations): CSP via helmet, CORS locked
+docs/archive/production-audit.md for the full list with file:line citations): CSP via helmet, CORS locked
 to `CLIENT_ORIGIN`, CSRF protection via an Origin-header check on every state-changing request,
 httpOnly/Secure(production)/SameSite=Lax cookies, rate limits on login/signup/forgot-password/
 uploads, a 100 KB request body cap, zod validation on every mutating route, no stack traces ever

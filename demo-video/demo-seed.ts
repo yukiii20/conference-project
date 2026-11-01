@@ -1,9 +1,9 @@
-// Seeds fixture data for the product video (docs/product-video.md) into
+// Seeds fixture data for the product video (docs/archive/product-video.md) into
 // conference_cms_test. Run with: npx tsx demo-video/demo-seed.ts   (from the repo root)
 //
 // Self-contained: demo-video/ has its own package.json + node_modules (mysql2,
 // bcryptjs, sharp, dotenv) so this script never imports anything from
-// server/src or src/ - per docs/product-video.md's SAFETY RULES ("Only
+// server/src or src/ - per docs/archive/product-video.md's SAFETY RULES ("Only
 // create files in demo-video/..."). DB credentials are read from
 // server/.env (same local MySQL instance as every other test script), with
 // DB_NAME forced to conference_cms_test - never conference_cms.
@@ -32,7 +32,7 @@ dotenv.config({ path: path.join(__dirname, '.env.demo') })
 const BCRYPT_COST = 12 // matches server/src/modules/auth/service.ts
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'Dem0!Conference2026'
 
-// Theme colours from docs/product-video.md, reused for the generated demo
+// Theme colours from docs/archive/product-video.md, reused for the generated demo
 // images so they match what the ANIMATED scenes and callouts will use.
 const COLOR = {
   burgundy: '#722F37',
@@ -262,7 +262,7 @@ async function main() {
   // (server/src/storage/fileStore.ts's `${folder}/${uuid}.${ext}` convention).
   // Written under server/storage-test-e2e/ (STORAGE_ROOT override below) -
   // the SAME throwaway storage directory the :4100 recording backend uses
-  // (see docs/phase4-test-steps.md's e2e setup) - never server/storage,
+  // (see docs/archive/phase4-test-steps.md's e2e setup) - never server/storage,
   // which is the real local dev server's storage.
   const storagePublicDir = path.join(__dirname, '../server', process.env.STORAGE_ROOT ?? 'storage-test-e2e', 'public')
   const logoFolder = `conferences/${conferenceId}`

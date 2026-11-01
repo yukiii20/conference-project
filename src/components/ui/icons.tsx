@@ -1,6 +1,6 @@
 /**
  * Thin Lucide wrappers behind the same names every page already imports, so
- * swapping the hand-drawn icon set for Lucide (see docs/ui-audit.md) didn't
+ * swapping the hand-drawn icon set for Lucide (see docs/archive/ui-audit.md) didn't
  * require touching every call site - sizing stays controlled by the
  * Tailwind classes callers already pass via `className` (h-4 w-4, etc.),
  * same as the old hand-drawn set.

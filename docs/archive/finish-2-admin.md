@@ -27,4 +27,4 @@ ON DELETE SET NULL) ENGINE=InnoDB;   (and make test DB setup include it).
    Never for an admin account.
 7. Audit: pass req.ip and user-agent into insertAuditLog for all admin and auth actions.
 Tests for every new route (routeGuards.test.ts must still pass); tsc, build, npm test,
-Playwright; update docs/final-test-report.md.
+Playwright; update docs/archive/final-test-report.md.

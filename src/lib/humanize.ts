@@ -3,7 +3,7 @@
  * log actions) into plain English for display — these are stored as stable
  * machine keys (template_key, audit_logs.action) and must stay that way in
  * the database/API, but a user should never see `convenor_invitation` or
- * `role_request.approve` on screen. See docs/usability-audit.md.
+ * `role_request.approve` on screen. See docs/archive/usability-audit.md.
  */
 
 const TEMPLATE_KEY_LABELS: Record<string, string> = {

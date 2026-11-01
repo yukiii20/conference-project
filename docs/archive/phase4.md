@@ -125,6 +125,6 @@ GROUND RULES (same as before)
 - npx tsc --noEmit, npm run build, npm test (server) and npx playwright test all pass,
   including everything from Phases 1-3.
 - grep -ri supabase src server/src -> empty.
-- Write docs/phase4-test-steps.md and docs/final-test-report.md (table: area, test, result).
+- Write docs/archive/phase4-test-steps.md and docs/archive/final-test-report.md (table: area, test, result).
 - Make sure the backend is running on port 4000 when you finish, and give me a short list
   of what to click to test.

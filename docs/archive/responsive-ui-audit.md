@@ -121,7 +121,7 @@ horizontal scroll) across:
 
 42 tests × clean pass across all 7 widths, run against the existing
 throwaway backend (`:4100`)/frontend (`:5273`) instances and
-`conference_cms_test` database, the same setup `docs/phase4-test-steps.md`
+`conference_cms_test` database, the same setup `docs/archive/phase4-test-steps.md`
 already documents — no new test infrastructure, no real email, no
 production data.
 
@@ -157,7 +157,7 @@ the current design direction, don't redesign the homepage."
 | `npm run build` (root → `dist/`) | ✅ Pass — main bundle 788 KB / 196 KB gzip, `CheckInPanel` chunk stays split at 481 KB (zxing lazy-loaded, unaffected by this audit) |
 | `cd server && npm run build` | ✅ Pass |
 | `npm test` (root, Vitest) | ✅ 21/21 passed |
-| `cd server && npm test` (Vitest) | ✅ 441/445 passed, 1 pre-existing Windows worker-pool crash (exit code `3221226505`, documented in `docs/final-test-report.md`) in `roleRequests.test.ts`, unrelated to this audit — re-ran that file alone immediately after and it passed 4/4. Not caused by, or related to, any change in this pass. |
+| `cd server && npm test` (Vitest) | ✅ 441/445 passed, 1 pre-existing Windows worker-pool crash (exit code `3221226505`, documented in `docs/archive/final-test-report.md`) in `roleRequests.test.ts`, unrelated to this audit — re-ran that file alone immediately after and it passed 4/4. Not caused by, or related to, any change in this pass. |
 | `npx playwright test` (full suite incl. new `responsive.spec.ts`) | ✅ 88/88 passed |
 
 The two genuine bugs this audit found (`ConferenceNav` breakpoint,
@@ -188,7 +188,7 @@ Tests:
 - **Real-device testing** (actual phones/tablets, real camera hardware for
   the staff QR scanner, real touch input) was not performed — this is a
   CLI/headless-Chromium environment, same limitation already noted in
-  `docs/final-test-report.md` for the camera scanner and real SMTP.
+  `docs/archive/final-test-report.md` for the camera scanner and real SMTP.
   `CheckInPanel`'s "Camera scanning is not supported in this browser"
   fallback path exists and was read/confirmed in code, not exercised against
   a real denied-permission or no-camera device.
@@ -208,5 +208,5 @@ Tests:
   exhaustively screenshotted per width.
 - `/verify/:token`'s **valid-token** rendering was checked for overflow only
   with an invalid token (same reachability limitation already documented in
-  `docs/final-test-report.md` — a real token lives inside a downloaded PDF's
+  `docs/archive/final-test-report.md` — a real token lives inside a downloaded PDF's
   QR code, not practical to drive from a browser test).

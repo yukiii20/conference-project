@@ -13,7 +13,7 @@ RULES (all still in force)
 - Don't log passwords, session ids, tokens or document contents.
 - No fake numbers: report only what you actually measured.
 
-PHASE 1: AUDIT (write docs/production-audit.md first and show me the top problems + plan)
+PHASE 1: AUDIT (write docs/archive/production-audit.md first and show me the top problems + plan)
 - Frontend bundle size per chunk, slow pages, repeated API calls.
 - Backend: slow endpoints, N+1 queries, endpoints returning too many fields or all rows.
 - Security: every route's auth/permission, file downloads, uploads, cookies, CORS, rate limits,
@@ -85,7 +85,7 @@ PHASE 7: LOAD TEST (k6, local test servers only, never production)
 
 PHASE 8: FINISH
 - npx tsc --noEmit, builds, npm test (root + server), re-seed, npx playwright test, npm audit.
-- Write docs/production-readiness.md:
+- Write docs/archive/production-readiness.md:
   1 problems found, 2 files changed and why, 3 performance before/after, 4 security fixes and
   remaining risks, 5 commands run and real results, 6 missing features, 7 recommended VPS size
   (CPU/RAM/disk), MySQL settings, storage and backups, 8 tasks left before going live,

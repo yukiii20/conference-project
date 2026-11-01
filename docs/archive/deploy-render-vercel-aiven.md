@@ -54,7 +54,7 @@ TARGET
   a verified sender). Same queue/retry/redaction/logging as the SMTP provider. Unit test it with
   a mocked fetch (no real emails).
 
-5. GUIDE: docs/deploy-render-vercel-aiven.md, simple numbered steps for a beginner:
+5. GUIDE: docs/archive/deploy-render-vercel-aiven.md, simple numbered steps for a beginner:
   A Aiven: create free MySQL service, download CA cert, run the SQL (link to the doc above).
   B Render: New -> Blueprint from the GitHub repo (or Web Service), set env vars
     (DB_HOST/PORT/USER/PASSWORD/NAME from Aiven, DB_SSL=true, DB_SSL_CA, SESSION_SECRET new,

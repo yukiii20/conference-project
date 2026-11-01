@@ -97,7 +97,7 @@ B3. CONVENOR DASHBOARD
 - grep src/ for old hard-coded colour classes/hex (old navy header, blue-600 buttons, gray
   backgrounds, old green/red) and switch them to tokens. Also list any leftover raw
   `<button className=` / `<input className=` with a reason.
-- Contrast WCAG AA for every text/background pair (write ratios in docs/ui-audit.md; if one
+- Contrast WCAG AA for every text/background pair (write ratios in docs/archive/ui-audit.md; if one
   fails, darken it slightly and note it). Text >= 14px, inputs 16px on mobile, visible focus ring.
 - Same spacing scale, card radius/shadow, table style and font sizes on every page.
 - Nothing cut off in the header at 1280, 1024, 768, 390px.
@@ -109,5 +109,5 @@ B3. CONVENOR DASHBOARD
   (cd server && npx tsx tests/e2eSeed.ts), npx playwright test: all pass (update colour
   assertions only if tests check exact colours; update texts like "Reviews pending").
 - Commit + push "Step 7B+C: colour theme and shared UI on every page".
-  Update docs/progress.md and docs/ui-audit.md.
+  Update docs/progress.md and docs/archive/ui-audit.md.
 - Show me the test totals, commit hash and the screenshot folder path.

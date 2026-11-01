@@ -1,4 +1,4 @@
-/* Shared theme for the animated scenes (docs/product-video.md's colour list).
+/* Shared theme for the animated scenes (docs/archive/product-video.md's colour list).
    Font: no network access during recording, so this uses a safe system
    stack instead of fetching Inter from Google Fonts - visually close
    enough (system UI sans-serif) and never blocks on a network request. */

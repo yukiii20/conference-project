@@ -100,7 +100,7 @@ dead-code cleanup, and documentation).
 - Real-SMTP sending (as opposed to the mocked-transport tests) was validated
   against the env-validation and startup-failure paths only; an actual Gmail
   send should be spot-checked once real App Password credentials are filled
-  into `server/.env` (see `docs/phase4-test-steps.md` Part A5-A7).
+  into `server/.env` (see `docs/archive/phase4-test-steps.md` Part A5-A7).
 - Full `cd server && npm test` runs occasionally report one worker crashing
   with a Windows access-violation exit code (3221226505) or a single test
   timing out under machine load — a different, unrelated test file each time.
@@ -121,7 +121,7 @@ dead-code cleanup, and documentation).
   `server/tests/certificates.test.ts` rather than by Playwright — reaching a
   real token from the UI means decoding a QR code embedded in a downloaded
   PDF, not practical to automate here. See
-  `docs/attendance-certificates-test-steps.md` for the manual check.
+  `docs/archive/attendance-certificates-test-steps.md` for the manual check.
 - The staff check-in page's camera QR scanner uses `@zxing/browser` (works
   in any browser with camera access — Chrome, Edge, Firefox, Safari, no
   flags needed), not the native `BarcodeDetector` API, which only works in
@@ -129,7 +129,7 @@ dead-code cleanup, and documentation).
   lazy-loaded (`React.lazy`) so its ~450 KB only loads for someone who
   actually opens the Attendance tab or `/staff` — the main bundle is
   unaffected. Manual search always works too, camera or not.
-- While building the Convenor Portal, `docs/phase4-test-steps.md`'s Playwright
+- While building the Convenor Portal, `docs/archive/phase4-test-steps.md`'s Playwright
   tests surfaced a pre-existing mobile-width overflow in `PortalHeader` (the
   header bar used by every signed-in portal, not just Convenor) — the avatar/
   name/role-badge/bell/links row didn't wrap on narrow screens. Fixed by
@@ -142,10 +142,10 @@ All automated checks (type checks, builds, unit/integration tests, end-to-end
 tests, dependency audits, secret-history scan, Supabase-removal scan) pass.
 The application is functionally complete for Phases 1-4, the Convenor
 Portal Part A, and finishing Steps 1-5, and ready for the manual
-click-through in `docs/convenor-portal-test-steps.md`,
-`docs/programme-test-steps.md`, `docs/attendance-certificates-test-steps.md`,
-and `docs/user-guide.md` (and the earlier `docs/phase3-test-steps.md` /
-`docs/phase4-test-steps.md`) before going live. See the project owner's
+click-through in `docs/archive/convenor-portal-test-steps.md`,
+`docs/archive/programme-test-steps.md`, `docs/archive/attendance-certificates-test-steps.md`,
+and `docs/user-guide.md` (and the earlier `docs/archive/phase3-test-steps.md` /
+`docs/archive/phase4-test-steps.md`) before going live. See the project owner's
 required manual checks at the end of `docs/progress.md`'s Step 5 entry —
 real Gmail delivery and overall look-and-feel are the only things that
 genuinely can't be verified by an automated test.

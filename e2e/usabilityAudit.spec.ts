@@ -18,7 +18,7 @@ const FIXTURE = {
 const EXPECTED_AUTH_PROBE_NOISE = /Failed to load resource.*\b40[13]\b/
 
 // Internal identifiers that must never leak into visible UI text — see
-// docs/usability-audit.md. 'null' is checked too, but only as a whole word
+// docs/archive/usability-audit.md. 'null' is checked too, but only as a whole word
 // so it doesn't false-positive on prose that happens to contain it.
 const BAD_TEXT_PATTERNS: Array<{ name: string; re: RegExp }> = [
   { name: 'undefined', re: /\bundefined\b/ },

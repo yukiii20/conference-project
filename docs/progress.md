@@ -54,7 +54,7 @@ marks it presented.
 tsc (root+server), build (both), server tests (381 passed, 31 files), Playwright (29 passed,
 including the new programme.spec.ts) all green. (A couple of individual runs hit a flaky
 Windows Vitest worker crash or timeout under load - a different unrelated file each time;
-re-running always passes, see docs/final-test-report.md.)
+re-running always passes, see docs/archive/final-test-report.md.)
 
 ## Step 4 - Registration, attendance, certificates (Convenor Part C) - DONE
 Checked first: no backend module existed yet for registration_categories/registrations/
@@ -87,7 +87,7 @@ the SQL query itself so it's always measured against the same clock.
 ## Step 5 - Final check, cleanup and push - DONE
 Static checks clean (tsc root+server, build root+server, npm audit root 0 vulnerabilities,
 server audit unchanged at 2 moderate transitive exceljs/uuid advisories, no safe fix
-available - see docs/final-test-report.md). Checked Step 5's list of e2e scenarios (a-j)
+available - see docs/archive/final-test-report.md). Checked Step 5's list of e2e scenarios (a-j)
 against the existing suite: most were already covered (programme, registration/certificates,
 submissions/review lifecycle, cross-conference/role isolation, admin/convenor/author 390px).
 Genuinely missing: admin creates a conference + invites a convenor (added to
@@ -108,13 +108,13 @@ rewrote README.md's "How it works" section to cover Programme/Registration/Certi
 every role, fixed both README.md and docs/deploy.md's MySQL setup steps (they stopped at
 03_triggers.sql, missing the now-required 04_admin_extensions.sql), wrote docs/user-guide.md
 (click-by-click per role: author, reviewer, session chair, staff, convenor, manager, admin),
-and updated docs/final-test-report.md and docs/convenor-portal-test-steps.md (the latter's
+and updated docs/archive/final-test-report.md and docs/archive/convenor-portal-test-steps.md (the latter's
 Attendance/Certificates row no longer says "Coming soon").
 tsc (root+server), build (both), server tests (438 passed, 33 files), root tests (21 passed),
 Playwright (33 passed, including the 3 new scenarios above) all green.
 
 Still needs a human: real Gmail delivery (only validated via EMAIL_MODE=console/mocked SMTP
-in every automated test - see docs/phase4-test-steps.md Part A5-A7 to spot-check with real
+in every automated test - see docs/archive/phase4-test-steps.md Part A5-A7 to spot-check with real
 App Password credentials), and overall look-and-feel across the app (colours, the brick hero,
 badge animation, certificate PDF design, QR scanning with an actual phone camera - the staff
 check-in page's camera scanner was only exercised via manual search in Playwright, since no
@@ -182,7 +182,7 @@ the responsive-audit entry below, run together with this change in the same fina
 pass).
 
 ## Step 7 - Consistent UI and role check - DONE
-UI audit (`docs/ui-audit.md`): confirmed `src/components/ui/` didn't exist at all - every
+UI audit (`docs/archive/ui-audit.md`): confirmed `src/components/ui/` didn't exist at all - every
 button/input/card/badge/confirm/loading pattern was hand-duplicated 20-50+ times. Built the
 shared library (Button, Input/Select/Textarea/Checkbox, FormField, Card, PageHeader, Tabs,
 Table+Pagination, Badge/StatusChip, Modal/ConfirmDialog, Toast/ToastProvider, Spinner/Skeleton,
@@ -223,7 +223,7 @@ shared components - the audit's own "already consistent, migrate for maintainabi
 (auth pages, table headers, card containers) were left as-is since they're not visually broken,
 prioritising the rows that were actual bugs instead of a cosmetic-only refactor of ~30-50 files.
 
-## Responsive UI/UX audit - DONE (docs/responsive-ui-audit.md)
+## Responsive UI/UX audit - DONE (docs/archive/responsive-ui-audit.md)
 Full audit and fix pass across every route/role for mobile-first responsiveness, per the user's
 detailed brief. Found the shared layouts already had solid foundations from earlier steps
 (mobile drawer nav, every table in its own overflow-x-auto wrapper, consistent modal sizing,
@@ -246,11 +246,11 @@ widths.
 tsc (root+server), build (both), server tests (441/445 - one pre-existing unrelated Windows
 Vitest worker crash, documented in final-test-report.md, confirmed by re-running that file
 alone), root tests (21 passed), Playwright (88/88, full suite + responsive.spec.ts) all green.
-See docs/responsive-ui-audit.md for the full findings, screenshots-inspected list, and honestly
+See docs/archive/responsive-ui-audit.md for the full findings, screenshots-inspected list, and honestly
 disclosed remaining limitations (1920px and real-device/real-camera testing not covered).
 
 ## Step 8 - Production readiness - DONE
-Audit first (`docs/production-audit.md`): most security/reliability requirements were already
+Audit first (`docs/archive/production-audit.md`): most security/reliability requirements were already
 correctly implemented from Steps 0-2 (helmet/CSP, CORS locked to `CLIENT_ORIGIN`, CSRF via an
 Origin-header check, httpOnly/Secure/SameSite cookies, rate limits, 100 KB body cap, zod
 validation on every mutating route, no stack-trace leakage, upload content-sniffing, env
@@ -278,7 +278,7 @@ scenario (420 combined peak). Real, measured improvement - throughput 11.04 -> 1
 5xx responses either run (every failure was a 60s client timeout, i.e. queuing, not a crash) -
 honestly reported alongside the fact that both runs still fail the script's own p95<800ms
 threshold at this 420-VU stress-test ceiling (well above the doc's own 100-300 concurrent-user
-target); see docs/production-readiness.md for the full table and the reasoning for not
+target); see docs/archive/production-readiness.md for the full table and the reasoning for not
 overclaiming "fixed for 10,000 users."
 Ran Lighthouse for real against the production build (`vite preview`, `/api` proxied to the test
 backend) on home/conference/login/portal, mobile, simulated throttling - and it found a genuine
@@ -298,7 +298,7 @@ advisories, unchanged since Step 5, no safe fix without a breaking downgrade), P
 one transient `net::ERR_CONNECTION_REFUSED` flake on the first full run, confirmed not a
 regression by re-running that file alone and the full suite again, both clean, with both e2e
 servers staying healthy throughout per `/api/health`).
-Wrote `docs/production-readiness.md`: problems found, files changed, before/after performance
+Wrote `docs/archive/production-readiness.md`: problems found, files changed, before/after performance
 (bundle, Lighthouse, load test), security fixes and remaining risks, commands run, missing
 features, recommended VPS size (2 vCPU/4 GB/60-80 GB SSD) and MySQL settings, tasks left before
 going live, and paid-services-vs-cheaper-options. No SQL run, no schema changes, no secrets
@@ -342,7 +342,7 @@ per the task's own requirement).
 
 Wrote `docs/deploy-guide.md` (beginner, numbered A-F: Aiven already-done pointer, Render env vars
 + plan tradeoffs table, Vercel import + rewrite URL, final checks, auto-redeploy on push, and a
-free-plan-limits table) - left `docs/deploy-render-vercel-aiven.md` (the task prompt itself)
+free-plan-limits table) - left `docs/archive/deploy-render-vercel-aiven.md` (the task prompt itself)
 unmodified rather than overwriting it with the guide, per instruction.
 
 Verified: `tsc` (root+server) clean, both builds clean, `npm test` root (21/21) and server
@@ -352,7 +352,7 @@ not a regression, confirmed by restarting it, re-seeding, and getting 88/88 clea
 No SQL run, no secrets committed, no real emails sent.
 
 ## Step 10 - Product video and home page section - DONE
-Built the full pipeline in `docs/product-video.md` end to end: a self-contained `demo-video/`
+Built the full pipeline in `docs/archive/product-video.md` end to end: a self-contained `demo-video/`
 package (own `package.json`/`node_modules` - mysql2, bcryptjs, sharp, dotenv, tsx - never imports
 from `server/src` or `src/`), `demo-seed.ts` (CS26 demo conference, 3 tracks, 2 published sessions,
 3 deliberately-separate submission fixtures so scenes 5/6/7 are each independently re-recordable
@@ -458,7 +458,7 @@ lazy chunk the instant login succeeds instead of waiting for the route to render
 polling confirmed already at 60s, no duplicate `/me` polling found. Findings, loopback timings, and
 the two things only the user can fix (Render/Aiven region mismatch behind that ~244ms `/api/health`
 DB latency on the live site; Render free tier's 15-minute sleep) are written up in
-`docs/performance-live.md`.
+`docs/archive/performance-live.md`.
 
 Verified: `tsc` (root+server) clean, both builds clean. Bundle size (main `dist/assets/index-*.js`,
 built before vs. after by stashing the frontend diff): raw 507.62 kB -> 507.77 kB (+0.15 kB), gzip
@@ -608,7 +608,7 @@ latency_ms` from the health body was 243-249ms on *every* database-touching call
 confirms the Render/Aiven region-mismatch flagged in an earlier step was a real, repeatable finding,
 not noise. Wrote up the plain-English breakdown (cold start vs. CPU vs. Vercel-Render hop vs.
 Aiven distance) and a ranked list of the three things only the user can fix - region move,
-UptimeRobot-vs-Starter-plan tradeoff, 0.1 shared vCPU - in `docs/performance-live.md`.
+UptimeRobot-vs-Starter-plan tradeoff, 0.1 shared vCPU - in `docs/archive/performance-live.md`.
 
 Then measured every page's API calls per role locally and fixed what the code could fix:
 `getAttendanceDashboard` (convenor Attendance tab + staff desk) ran 4 queries sequentially when
@@ -640,7 +640,7 @@ checkmarks were silently not green (added `--color-success` to the theme); a sys
 skip (`<h1>` straight to `<h3>`) traced to the shared `CardHeader` component always rendering an
 `<h3>` - fixed once at the source plus ~10 call sites that had the same bug independently; 8 pages
 with a title and no one-line explanation of what they're for; inconsistent Title-Case page titles
-on 5 pages. Full table in `docs/usability-audit.md`.
+on 5 pages. Full table in `docs/archive/usability-audit.md`.
 
 The task's named pain points, all built: a **Setup checklist** card on the convenor dashboard (7
 steps - details, logo, key dates, tracks, registration categories, certificate template, publish -

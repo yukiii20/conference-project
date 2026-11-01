@@ -99,6 +99,6 @@ GROUND RULES (same as every phase)
 - Playwright: convenor opens each sidebar item without errors on desktop and 390px mobile;
   invite a reviewer by email; add a committee member and see it on the public page.
 - npx tsc --noEmit, npm run build, npm test (server + frontend), npx playwright test pass.
-- Update docs/final-test-report.md and write docs/convenor-portal-test-steps.md.
+- Update docs/archive/final-test-report.md and write docs/archive/convenor-portal-test-steps.md.
 - Keep the backend running on port 4000 when you finish and give me a short list of what to
   click to test.

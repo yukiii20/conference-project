@@ -5,12 +5,12 @@ Convenor Portal's **Event → Programme** tab, plus the public programme on the
 conference page, the author's "your presentation" notice, and a dedicated
 `/session-chair` portal for marking attendance. Pair this with `npm run build`,
 `npm test` (both `server/` and the repo root) and `npx playwright test`, which
-already cover this ground automatically — see `docs/final-test-report.md` for
+already cover this ground automatically — see `docs/archive/final-test-report.md` for
 the automated results.
 
 ## Before you start
 
-Same prerequisites as `docs/convenor-portal-test-steps.md`: MySQL loaded,
+Same prerequisites as `docs/archive/convenor-portal-test-steps.md`: MySQL loaded,
 backend on `http://localhost:4000` (`cd server && npm run dev`), frontend on
 `http://localhost:5173` (`npm run dev`). You'll want:
 

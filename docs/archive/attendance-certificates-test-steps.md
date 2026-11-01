@@ -6,11 +6,11 @@ Portal's **Event → Attendance** and **Event → Certificates** tabs, a
 dedicated `/staff` check-in page, and the public `/verify/:token` page. Pair
 this with `npm run build`, `npm test` (both `server/` and the repo root) and
 `npx playwright test`, which already cover this ground automatically — see
-`docs/final-test-report.md` for the automated results.
+`docs/archive/final-test-report.md` for the automated results.
 
 ## Before you start
 
-Same prerequisites as `docs/programme-test-steps.md`: MySQL loaded, backend
+Same prerequisites as `docs/archive/programme-test-steps.md`: MySQL loaded, backend
 on `http://localhost:4000`, frontend on `http://localhost:5173`. You'll want:
 
 - a **convenor**,

@@ -1,6 +1,6 @@
 # Production readiness audit (Step 8, Phase 1)
 
-Date: 2026-10-17 to 2026-10-18. Scope: docs/finish-8-production-ready.md, all phases. Run after Step 7
+Date: 2026-10-17 to 2026-10-18. Scope: docs/archive/finish-8-production-ready.md, all phases. Run after Step 7
 (consistent UI + role check) was confirmed DONE in docs/progress.md.
 
 ## Headline finding
@@ -132,7 +132,7 @@ database):
 - `load/scenario.js` + `load/README.md`: a k6 script against the throwaway `:4100` backend only,
   three weighted scenarios (public browse, signed-in portal view, register+check-in — the last one
   deliberately exercises the one-active-registration and once-per-day check-in constraints, asserting
-  every repeat attempt is a clean 400/409, never a 500). See docs/production-readiness.md for the
+  every repeat attempt is a clean 400/409, never a 500). See docs/archive/production-readiness.md for the
   real run's numbers (ramp, p50/p95/p99, error rate, machine specs) — run and measured separately, not
   invented.
 
@@ -150,5 +150,5 @@ certificate→verify lifecycle, including unauthorized-access checks at every st
 covered end-to-end by the existing Playwright suite (`e2e/submissions.spec.ts`,
 `e2e/registration.spec.ts`, `e2e/portal.spec.ts`, `e2e/programme.spec.ts`,
 `e2e/adminPortal.spec.ts`) built up across Steps 3-7 — re-run in full after every change in this
-step (88/88 passing each time, see docs/production-readiness.md for the final run). No gaps found
+step (88/88 passing each time, see docs/archive/production-readiness.md for the final run). No gaps found
 that needed a new scenario.

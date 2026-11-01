@@ -2,7 +2,7 @@
  * One status→colour map for the whole app. Every page that shows a status chip
  * (submissions, reviews, registrations, certificates, role requests, accounts,
  * rooms, email log, ...) should look up its tone here instead of hard-coding
- * bg-x-100/text-x-700 classes locally — see docs/ui-audit.md.
+ * bg-x-100/text-x-700 classes locally — see docs/archive/ui-audit.md.
  */
 export type StatusTone = 'neutral' | 'info' | 'warning' | 'success' | 'danger'
 

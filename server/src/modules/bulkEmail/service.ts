@@ -13,7 +13,7 @@ import type { PreviewContentInput, RecipientGroup, SaveDraftInput } from './vali
 
 type Queryable = Pool | PoolConnection
 
-/** Brevo's free-tier cap (see docs/features-batch-1.md). Approximate: counts every queued/sending/sent row today regardless of EMAIL_MODE, which is conservative in dev (console/smtp modes don't actually touch Brevo) and accurate in production. */
+/** Brevo's free-tier cap (see docs/archive/features-batch-1.md). Approximate: counts every queued/sending/sent row today regardless of EMAIL_MODE, which is conservative in dev (console/smtp modes don't actually touch Brevo) and accurate in production. */
 const BREVO_DAILY_LIMIT = 300
 
 type RecipientRow = { user_id: string | null; email: string; full_name: string }

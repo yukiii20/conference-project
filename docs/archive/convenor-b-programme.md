@@ -62,5 +62,5 @@ GROUND RULES (same as before)
 - Playwright: convenor creates a room and a session, adds an accepted paper, publishes it,
   it shows on the public programme; session chair marks it presented.
 - npx tsc --noEmit, npm run build, npm test, npx playwright test pass.
-- Update docs/final-test-report.md and write docs/programme-test-steps.md.
+- Update docs/archive/final-test-report.md and write docs/archive/programme-test-steps.md.
 - Keep the backend running on port 4000 when you finish.

@@ -23,7 +23,7 @@ never weaken a test to make it pass.
 3. Clean up: remove dead code, unused files and unused npm packages; no console.log of
    personal data or tokens; no TODOs left that hide real bugs (list any that remain).
 4. Docs: update README.md (what the app does, roles, how to run, how to test),
-   docs/TEAM_SETUP.md, docs/deploy.md, docs/final-test-report.md (table Area | Test | Result),
+   docs/TEAM_SETUP.md, docs/deploy.md, docs/archive/final-test-report.md (table Area | Test | Result),
    and write docs/user-guide.md: short click-by-click guide per role (admin, convenor,
    manager, staff, reviewer, session chair, author) in plain simple English.
 5. Commit and push (never .env, storage or node_modules). Show me: total tests passed/failed,

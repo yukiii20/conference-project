@@ -122,7 +122,7 @@ npm test
 
 End-to-end (Playwright) tests live in `e2e/` and run against dedicated
 throwaway backend/frontend instances on different ports — see
-`playwright.config.ts` and `docs/phase4-test-steps.md` for how to start
+`playwright.config.ts` and `docs/archive/phase4-test-steps.md` for how to start
 those.
 
 ## Where things live
@@ -193,6 +193,6 @@ those.
 
 ## Security notes
 
-See `docs/deploy.md` for production deployment and `docs/final-test-report.md`
+See `docs/deploy.md` for production deployment and `docs/archive/final-test-report.md`
 for the security checks already in place (CSRF defense, rate limiting,
 route guards, private file access control, and more).
