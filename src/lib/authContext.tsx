@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { api } from './api'
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import { api, ApiError } from './api'
 import type { MeUser, MyRoleRow, SessionConference } from './types'
 
 export type MeResponse = {
@@ -50,6 +50,18 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+/** Waits before each retry of /auth/me after a non-auth failure (Render waking up or redeploying, a proxy 502/504, a network blip). */
+const ME_RETRY_DELAYS_MS = [1_000, 3_000, 6_000]
+
+/** Only these mean "this session is really gone". Anything else is transient and must never sign the person out. */
+function isSignedOutError(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === 401 || err.status === 403)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MeUser | null>(null)
   const [roles, setRoles] = useState<MyRoleRow[]>([])
@@ -57,8 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [conference, setConference] = useState<SessionConference | null>(null)
   const [loading, setLoading] = useState(true)
+  const lastGoodRef = useRef<MeResponse | null>(null)
 
   const clear = useCallback(() => {
+    lastGoodRef.current = null
     setUser(null)
     setRoles([])
     setIsAdmin(false)
@@ -68,16 +82,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async (): Promise<MeResponse | null> => {
     try {
-      const data = await api.get<MeResponse>('/auth/me')
-      setUser(data.user)
-      setRoles(data.roles)
-      setIsAdmin(data.isAdmin)
-      setIsSuperAdmin(data.isSuperAdmin ?? data.isAdmin)
-      setConference(data.conference ?? null)
-      return data
-    } catch {
-      clear()
-      return null
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const data = await api.get<MeResponse>('/auth/me')
+          lastGoodRef.current = data
+          setUser(data.user)
+          setRoles(data.roles)
+          setIsAdmin(data.isAdmin)
+          setIsSuperAdmin(data.isSuperAdmin ?? data.isAdmin)
+          setConference(data.conference ?? null)
+          return data
+        } catch (err) {
+          if (isSignedOutError(err)) {
+            clear()
+            return null
+          }
+          if (attempt >= ME_RETRY_DELAYS_MS.length) {
+            // Server still unreachable: keep the person signed in with what we
+            // last knew rather than bouncing them to the login page. The next
+            // real request will tell us if the session actually ended.
+            return lastGoodRef.current
+          }
+          await sleep(ME_RETRY_DELAYS_MS[attempt]!)
+        }
+      }
     } finally {
       setLoading(false)
     }
