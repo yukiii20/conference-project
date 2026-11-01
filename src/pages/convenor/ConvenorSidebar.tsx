@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { CalendarRange, FileText, LayoutDashboard, MessageSquare, PartyPopper, Settings, Users, type LucideIcon } from 'lucide-react'
 import { Icon } from '../../components/ui/Icon'
 import { SidebarGroupLabel, SidebarNavItem } from '../../components/AppShell'
@@ -47,6 +47,7 @@ export function ConvenorSidebar({
 
   const items = SECTIONS.filter((s) => s.tabs.length === 0 || visibleTabs(s, isManager).length > 0)
   const location = useLocation()
+  const navigate = useNavigate()
   const { confirmLeave } = useDirtyGuard()
 
   return (
@@ -65,7 +66,14 @@ export function ConvenorSidebar({
               badge={badge}
               collapsed={collapsed}
               onClick={(e) => {
-                if (!isCurrentPage && !confirmLeave()) {
+                const to = `${base}/${s.id}`
+                if (
+                  !isCurrentPage &&
+                  !confirmLeave(() => {
+                    navigate(to)
+                    onNavigate?.()
+                  })
+                ) {
                   e.preventDefault()
                   return
                 }

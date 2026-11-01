@@ -171,7 +171,7 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
         {deadlineRows.map((t) => {
           const row = rows[t.code] ?? EMPTY_ROW
           return (
-            <Card key={t.code}>
+            <Card key={t.code} role="group" aria-label={t.name}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium text-text">{t.name}</p>
                 <Checkbox

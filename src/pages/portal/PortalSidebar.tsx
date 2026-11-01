@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Award,
   Bell,
@@ -54,6 +55,7 @@ export function PortalSidebar({
   collapsed?: boolean
 }) {
   const { confirmLeave } = useDirtyGuard()
+  const navigate = useNavigate()
 
   let lastGroup: string | null = null
   return (
@@ -73,7 +75,13 @@ export function PortalSidebar({
               badge={badge}
               collapsed={collapsed}
               onClick={(e) => {
-                if (!confirmLeave()) {
+                const to = `${base}/${s.id}`
+                if (
+                  !confirmLeave(() => {
+                    navigate(to)
+                    onNavigate?.()
+                  })
+                ) {
                   e.preventDefault()
                   return
                 }

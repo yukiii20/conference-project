@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useDirtyGuard } from '../DirtyGuard'
 import type { TabConfig } from '../sidebarConfig'
 
@@ -13,6 +13,7 @@ export type TabWithElement = TabConfig & { element: ReactNode }
  */
 export function TabbedSection({ basePath, tabs }: { basePath: string; tabs: TabWithElement[] }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const { confirmLeave } = useDirtyGuard()
   const currentId = location.pathname.slice(basePath.length + 1).split('/')[0]
 
@@ -20,14 +21,14 @@ export function TabbedSection({ basePath, tabs }: { basePath: string; tabs: TabW
 
   function handleTabClick(e: React.MouseEvent, id: string) {
     if (id === currentId) return
-    if (!confirmLeave()) {
+    if (!confirmLeave(() => navigate(`${basePath}/${id}`))) {
       e.preventDefault()
     }
   }
 
   return (
     <div>
-      <div className="mb-8 overflow-x-auto border-b border-border-soft">
+      <nav aria-label="Section tabs" className="mb-8 overflow-x-auto border-b border-border-soft">
         <div className="flex gap-6 whitespace-nowrap">
           {tabs.map((t) => {
             const active = t.id === currentId
@@ -36,7 +37,7 @@ export function TabbedSection({ basePath, tabs }: { basePath: string; tabs: TabW
                 key={t.id}
                 to={`${basePath}/${t.id}`}
                 onClick={(e) => handleTabClick(e, t.id)}
-                aria-current={active ? 'true' : undefined}
+                aria-current={active ? 'page' : undefined}
                 className={`-mb-px border-b-2 px-0.5 py-3 text-sm font-medium transition-colors ${
                   active ? 'border-button text-brand' : 'border-transparent text-text-muted hover:border-border hover:text-text'
                 }`}
@@ -46,7 +47,7 @@ export function TabbedSection({ basePath, tabs }: { basePath: string; tabs: TabW
             )
           })}
         </div>
-      </div>
+      </nav>
 
       <Routes>
         <Route index element={<Navigate to={tabs[0]!.id} replace />} />

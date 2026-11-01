@@ -133,6 +133,9 @@ async function performFetch(url: string, method: string, options: RequestOptions
   return data
 }
 
+/** Fired on window after any successful POST/PATCH/PUT/DELETE through this client. */
+export const API_SAVED_EVENT = 'cms:api-saved'
+
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? 'GET'
   const url = buildUrl(path, options.query)
@@ -140,6 +143,9 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   if (method !== 'GET') {
     const data = await performFetch(url, method, options)
     clearGetCache()
+    // Lets the unsaved-changes guard (DirtyGuard) know a save went through, including saves
+    // made by a plain button rather than a <form> submit.
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(API_SAVED_EVENT))
     return data as T
   }
 

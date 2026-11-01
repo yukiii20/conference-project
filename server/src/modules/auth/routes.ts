@@ -152,19 +152,52 @@ authRouter.post('/logout', async (req, res, next) => {
   }
 })
 
+/** The signed-in person's identity, roles and bound conference. Must run inside the session scope (requireAuth). */
+async function meResponse(user: { id: string; conferenceId: string | null }) {
+  const boundConferenceId = user.conferenceId
+  const [profile, roles, isAdmin, isSuper, conference] = await Promise.all([
+    getUserProfile(user.id),
+    getMyRoles(user.id, boundConferenceId),
+    // false inside a conference-bound session (see isPlatformAdmin)
+    isPlatformAdmin(user.id),
+    isSuperAdmin(user.id),
+    boundConferenceId ? findConference(boundConferenceId, { publishedOnly: false }) : Promise.resolve(null),
+  ])
+  return { user: profile, roles, isAdmin, isSuperAdmin: isSuper, conference: sessionConferenceDto(conference) }
+}
+
 authRouter.get('/me', requireAuth, async (req, res, next) => {
   try {
-    const userId = req.user!.id
-    const boundConferenceId = req.user!.conferenceId
-    const [profile, roles, isAdmin, isSuper, conference] = await Promise.all([
-      getUserProfile(userId),
-      getMyRoles(userId, boundConferenceId),
-      // false inside a conference-bound session (see isPlatformAdmin)
-      isPlatformAdmin(userId),
-      isSuperAdmin(userId),
-      boundConferenceId ? findConference(boundConferenceId, { publishedOnly: false }) : Promise.resolve(null),
-    ])
-    res.json({ user: profile, roles, isAdmin, isSuperAdmin: isSuper, conference: sessionConferenceDto(conference) })
+    res.json(await meResponse(req.user!))
+  } catch (err) {
+    next(err)
+  }
+})
+
+/**
+ * Same as /me, but a signed-out visitor gets 200 `{ user: null }` instead of 401. The frontend
+ * asks this on public pages (sign-in, sign-up, registration) just to know whether someone is
+ * already signed in, and a 401 there shows up as a red error in every visitor's browser console.
+ * It reveals nothing: without a valid session cookie the answer is always the same empty one.
+ */
+authRouter.get('/session', async (req, res, next) => {
+  try {
+    const session = await resolveSessionUser(req)
+    if (!session) {
+      res.json({ user: null, roles: [], isAdmin: false, isSuperAdmin: false, conference: null })
+      return
+    }
+    requireAuth(req, res, async (err?: unknown) => {
+      if (err) {
+        next(err)
+        return
+      }
+      try {
+        res.json(await meResponse(req.user!))
+      } catch (e) {
+        next(e)
+      }
+    })
   } catch (err) {
     next(err)
   }

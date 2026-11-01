@@ -54,6 +54,9 @@ const PUBLIC_ROUTES = new Set([
   'authRouter POST /register',
   // Proven with the existing account's password; only ever creates a pending role request.
   'authRouter POST /join-conference',
+  // Signed-in check for public pages: 200 { user: null } without a valid session cookie,
+  // otherwise the same payload as GET /me (it runs requireAuth itself). Covered by tests/authSession.test.ts.
+  'authRouter GET /session',
   'authRouter POST /login',
   'authRouter POST /admin-login',
   'authRouter POST /logout',

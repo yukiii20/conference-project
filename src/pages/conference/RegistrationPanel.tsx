@@ -160,6 +160,7 @@ export function RegistrationPanel({
             <p className="text-sm font-medium text-ink">Register to attend</p>
             <div className="mt-2 flex flex-wrap items-end gap-2">
               <select
+                aria-label="Registration category"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="rounded-md border border-line bg-white px-3 py-2 text-sm focus:border-button"

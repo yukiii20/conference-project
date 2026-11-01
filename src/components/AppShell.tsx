@@ -60,7 +60,7 @@ export function AppShell({
   /** Destinations for the Ctrl/⌘ K "jump to" search (account pages are added automatically). */
   search?: SearchItem[]
   /** Unsaved-changes guard: return false to stay on the page. */
-  beforeNavigate?: () => boolean
+  beforeNavigate?: (proceed?: () => void) => boolean
   children: ReactNode
 }) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
@@ -149,6 +149,15 @@ export function AppShell({
               Conference CMS
             </span>
           </Link>
+          {/* On phones the open drawer covers the header's menu button, so it carries its own close button. */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            className="-mr-2 ml-auto inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white md:hidden"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
         </div>
 
         <div className={`shrink-0 px-4 pb-2 pt-5 ${collapsed ? 'md:hidden' : ''}`}>

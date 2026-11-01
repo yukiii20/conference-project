@@ -28,7 +28,7 @@ type AuthState = {
   /** True only while the very first check is in flight. Callers that need a fresh check on their own mount (route guards) should call refresh() themselves and await its result, rather than relying on this. */
   loading: boolean
   /**
-   * The single place that calls GET /api/auth/me. Updates the shared state
+   * The single place that calls GET /api/auth/session (/me without the signed-out 401). Updates the shared state
    * for every consumer (header, portal pages, ...) and returns the fetched
    * snapshot directly (or null if there's no valid session) so a caller
    * that needs the answer right away — a route guard deciding whether to
@@ -84,7 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       for (let attempt = 0; ; attempt++) {
         try {
-          const data = await api.get<MeResponse>('/auth/me')
+          // /auth/session answers 200 { user: null } when signed out (no console 401 on public pages).
+          const data = await api.get<MeResponse | (Omit<MeResponse, 'user'> & { user: null })>('/auth/session')
+          if (!data.user) {
+            clear()
+            return null
+          }
           lastGoodRef.current = data
           setUser(data.user)
           setRoles(data.roles)

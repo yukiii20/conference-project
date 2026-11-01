@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from 'react'
 
 let fieldIdCounter = 0
 function nextFieldId(): string {
@@ -6,9 +6,15 @@ function nextFieldId(): string {
   return `field-${fieldIdCounter}`
 }
 
+type ControlProps = { id?: string; 'aria-describedby'?: string; 'aria-invalid'?: boolean | 'true' | 'false' }
+
 /**
  * Label + control + help/error text, wired up with the right aria attributes.
- * Pass `id` through to the control via the render prop so label/error stay linked.
+ *
+ * Pass `htmlFor` when the control already has its own id. Otherwise, when the single child is
+ * an element without an id, one is generated and given to it, so the label is always linked
+ * (screen readers announce it and clicking it focuses the control) and the help or error text
+ * is announced through aria-describedby.
  */
 export function FormField({
   label,
@@ -25,21 +31,37 @@ export function FormField({
   htmlFor?: string
   children: ReactNode
 }) {
+  const generatedId = useId()
+  const child = isValidElement<ControlProps>(children) ? (children as ReactElement<ControlProps>) : null
+  const controlId = htmlFor ?? child?.props.id ?? (child ? `field${generatedId}` : undefined)
+  const describedById = controlId && (error || help) ? `${controlId}-desc` : undefined
+
+  const control =
+    child && !htmlFor
+      ? cloneElement(child, {
+          id: controlId,
+          'aria-describedby': [child.props['aria-describedby'], describedById].filter(Boolean).join(' ') || undefined,
+          ...(error ? { 'aria-invalid': true } : {}),
+        })
+      : children
+
   return (
     <div>
       {label ? (
-        <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-text">
+        <label htmlFor={controlId} className="mb-1.5 block text-sm font-medium text-text">
           {label}
           {required ? <span className="text-danger"> *</span> : null}
         </label>
       ) : null}
-      {children}
+      {control}
       {error ? (
-        <p className="mt-1.5 text-sm text-danger" role="alert">
+        <p id={describedById} className="mt-1.5 text-sm text-danger" role="alert">
           {error}
         </p>
       ) : help ? (
-        <p className="mt-1.5 text-sm text-text-muted">{help}</p>
+        <p id={describedById} className="mt-1.5 text-sm text-text-muted">
+          {help}
+        </p>
       ) : null}
     </div>
   )

@@ -32,6 +32,8 @@ export function MyCertificatesTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Shown when the browser refuses clipboard access (e.g. no HTTPS, or permission denied).
+  const [manualCopy, setManualCopy] = useState<{ id: string; url: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,7 +59,7 @@ export function MyCertificatesTab() {
       setCopiedId(c.id)
       setTimeout(() => setCopiedId((id) => (id === c.id ? null : id)), 2000)
     } catch {
-      window.prompt('Copy this link:', url)
+      setManualCopy({ id: c.id, url })
     }
   }
 
@@ -104,6 +106,18 @@ export function MyCertificatesTab() {
                   </div>
                 ) : null}
               </div>
+              {manualCopy?.id === c.id ? (
+                <label className="mt-3 block text-sm text-text-muted">
+                  Copy this verification link:
+                  <input
+                    readOnly
+                    value={manualCopy.url}
+                    onFocus={(e) => e.currentTarget.select()}
+                    autoFocus
+                    className="mt-1 block w-full rounded-md border border-border bg-page-bg px-3 py-2 font-mono text-xs text-text"
+                  />
+                </label>
+              ) : null}
             </li>
           ))}
         </ul>

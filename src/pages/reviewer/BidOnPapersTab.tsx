@@ -144,7 +144,7 @@ export function BidOnPapersTab({ conferenceId }: { conferenceId: string }) {
       ) : (
         <div className="mt-4 space-y-3">
           {data.submissions.map((s) => (
-            <Card key={s.id}>
+            <Card key={s.id} role="group" aria-label={s.title}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-medium text-text">

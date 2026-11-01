@@ -53,7 +53,7 @@ export function CommandPalette({
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Return false to cancel (e.g. the unsaved-changes guard). */
-  beforeNavigate?: () => boolean
+  beforeNavigate?: (proceed?: () => void) => boolean
 }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
@@ -79,10 +79,14 @@ export function CommandPalette({
 
   function choose(item: SearchItem | undefined) {
     if (!item) return
-    if (beforeNavigate && !beforeNavigate()) return
+    const go = () => {
+      if (item.onSelect) item.onSelect()
+      else if (item.to) navigate(item.to)
+    }
     close()
-    if (item.onSelect) item.onSelect()
-    else if (item.to) navigate(item.to)
+    // With unsaved changes the guard shows its own dialog and runs `go` only if confirmed.
+    if (beforeNavigate && !beforeNavigate(go)) return
+    go()
   }
 
   function onKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) {
