@@ -451,7 +451,7 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
           title={conference.name}
         >
           {logoUrl && !logoFailed ? (
-            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 object-contain" onError={() => setLogoFailed(true)} />
+            <img src={logoUrl} alt="" className="h-12 w-auto max-w-[9rem] shrink-0 object-contain" onError={() => setLogoFailed(true)} />
           ) : (
             <span
               style={{ backgroundColor: accent, color: accentText }}
