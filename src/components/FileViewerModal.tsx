@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Modal, Spinner } from './ui'
-import { API_BASE } from '../lib/api'
+import { submissionFileDownloadUrl } from '../lib/submissionFiles'
 
 type ViewKind = 'pdf' | 'image' | 'docx' | 'unsupported'
 
@@ -45,15 +45,24 @@ export function FileViewerModal({
 
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE}/submissions/${submissionId}/files/${file.id}/download`, { credentials: 'include' })
-        if (!res.ok) throw new Error()
+        const res = await fetch(submissionFileDownloadUrl(submissionId, file.id), { credentials: 'include' })
+        if (!res.ok) {
+          // Surface the server's reason (e.g. "This file is no longer available. Please upload it again.").
+          const body = (await res.json().catch(() => null)) as { error?: { message?: string }; message?: string } | null
+          throw new Error(body?.error?.message ?? body?.message ?? `The server returned ${res.status}.`)
+        }
         let blob = await res.blob()
         if (cancelled) return
         if (kind === 'docx') {
           const { renderAsync } = await import('docx-preview')
           if (cancelled || !docxRef.current) return
           docxRef.current.innerHTML = ''
-          await renderAsync(blob, docxRef.current, undefined, { inWrapper: true, ignoreLastRenderedPageBreak: true })
+          try {
+            await renderAsync(blob, docxRef.current, undefined, { inWrapper: true, ignoreLastRenderedPageBreak: true })
+          } catch (renderErr) {
+            console.error('docx render failed', renderErr)
+            throw new Error("This Word file couldn't be displayed here. Download it to open it in Word.")
+          }
         } else {
           // Re-type the blob so the browser renders it inline instead of offering a download.
           const ext = file.original_filename.split('.').pop()?.toLowerCase() ?? ''
@@ -62,8 +71,9 @@ export function FileViewerModal({
           url = URL.createObjectURL(blob)
           setObjectUrl(url)
         }
-      } catch {
-        if (!cancelled) setError('Could not open this file. Try downloading it instead.')
+      } catch (err) {
+        console.error('File preview failed', err)
+        if (!cancelled) setError(err instanceof Error && err.message ? err.message : 'Could not open this file. Try downloading it instead.')
       } finally {
         if (!cancelled) setLoading(false)
       }
