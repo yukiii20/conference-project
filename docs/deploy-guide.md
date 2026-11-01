@@ -177,14 +177,16 @@ sleeps, queued emails, scheduled announcements and review reminders wait. A sche
 Action (`.github/workflows/tick.yml`, template in `deploy/github-tick-workflow.yml`) calls the backend every 10 minutes, which keeps it awake
 and runs any due jobs. Render's 750 free hours a month cover one always-on service.
 
-1. Add the workflow (one time): GitHub → repository → **Add file → Create new file**, name it
-   `.github/workflows/tick.yml`, paste the contents of `deploy/github-tick-workflow.yml`, and
-   commit to `main`. (It lives in `deploy/` because the automated push credential can't
-   create workflow files.)
+1. The workflow file is committed at `.github/workflows/tick.yml` (copy in
+   `deploy/github-tick-workflow.yml`). If GitHub rejects the push with "refusing to allow ... to
+   create or update workflow ... without `workflow` scope", the push credential can't write
+   workflow files: add it by hand instead (GitHub → **Add file → Create new file**, name it
+   `.github/workflows/tick.yml`, paste `deploy/github-tick-workflow.yml`, commit to `main`).
+   The run turns red when the backend can't be reached or any job reports `failed`.
 2. Make a random secret of 24+ characters (same command as above).
 3. Render → backend → **Environment**: add `CRON_SECRET` = that secret, then save.
 4. GitHub → repository → **Settings → Secrets and variables → Actions → New repository secret**:
-   - `TICK_URL` = `https://<your-vercel-site>/api/internal/tick`
+   - `TICK_URL` = `https://<render-service>.onrender.com/api/internal/tick` (Render directly; a cold start can take ~1 minute, longer than a proxied request may wait)
    - `CRON_SECRET` = the same secret
 5. GitHub → **Actions → Background jobs tick → Run workflow**. The log should end with
    `{"jobs":{"email_recover":"ok","email":"ok",...}}`.

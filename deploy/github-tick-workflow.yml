@@ -1,9 +1,12 @@
 # Keeps the Render backend awake and runs its background jobs (email queue, scheduled
 # announcements, review reminders, session cleanup) every 10 minutes.
+# Live copy: .github/workflows/tick.yml (keep the two identical).
 # Does nothing until both repository secrets exist:
-#   TICK_URL     https://<your-vercel-site>/api/internal/tick
+#   TICK_URL     https://<render-service>.onrender.com/api/internal/tick
+#                (call Render directly: a cold start can take ~1 minute)
 #   CRON_SECRET  same value as CRON_SECRET on Render
-# See docs/deploy-guide.md, "Keep background jobs running".
+# The run turns red if the server can't be reached or any job reports "failed".
+# See docs/DEPLOYMENT_CHECKLIST.md, step 3.
 name: Background jobs tick
 
 on:
@@ -27,6 +30,12 @@ jobs:
             echo "TICK_URL / CRON_SECRET not set - skipping."
             exit 0
           fi
-          # A sleeping Render instance can take ~1 minute to wake, so allow time and retry once.
-          curl --fail-with-body --silent --show-error --max-time 120 --retry 2 --retry-delay 20 \
-            -X POST -H "Authorization: Bearer $CRON_SECRET" "$TICK_URL"
+          # A sleeping Render instance can take ~1 minute to wake, so allow time and retry.
+          # Every job is safe to run twice, so a retry after a timeout is harmless.
+          body=$(curl --fail-with-body --silent --show-error --max-time 120 --retry 2 --retry-delay 20 \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" "$TICK_URL")
+          echo "$body"
+          if echo "$body" | grep -q '"failed"'; then
+            echo "::error::At least one background job failed - see the Render logs."
+            exit 1
+          fi

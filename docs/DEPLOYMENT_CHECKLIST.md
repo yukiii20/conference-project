@@ -44,14 +44,18 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## 3. GitHub tick workflow (only if you set `CRON_SECRET`)
 
-The token used for automated pushes can't create workflow files, so add this one by hand:
+The workflow is committed at `.github/workflows/tick.yml` (copy: `deploy/github-tick-workflow.yml`).
 
-1. On GitHub, open the repo → **Add file → Create new file**.
-2. Name it `.github/workflows/tick.yml`.
-3. Paste the contents of `deploy/github-tick-workflow.yml` and commit.
-4. Go to Settings → Secrets and variables → Actions and add two secrets:
-   - `TICK_URL` = `https://<render-service>.onrender.com/api/internal/tick`
+1. If the push of that file was rejected for lack of the `workflow` token scope, add it by hand:
+   GitHub → **Add file → Create new file** → `.github/workflows/tick.yml` → paste
+   `deploy/github-tick-workflow.yml` → commit.
+2. Settings → Secrets and variables → Actions → add two secrets:
+   - `TICK_URL` = `https://conference-project-84xj.onrender.com/api/internal/tick` (Render
+     directly, not through Vercel: a cold start can take ~1 minute)
    - `CRON_SECRET` = the same value as on Render
+3. Actions → **Background jobs tick** → **Run workflow**. It should end green with
+   `{"jobs":{"email_recover":"ok",...}}`. A red run means the server was unreachable or a job
+   failed (details in the Render logs).
 
 ## 4. Checks after deploy
 
