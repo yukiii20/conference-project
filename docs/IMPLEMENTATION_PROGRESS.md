@@ -208,3 +208,34 @@ the browser's own timezone, and certificates printed the UTC issue date.
   - `deploy-guide.md` is the canonical guide for the live Vercel/Render/Aiven setup.
   - `deploy.md` stays as the VPS alternative (a different target, so it isn't merged).
   - The third file was only a prompt spec, so it was archived.
+
+## D3 / M2: Brevo delivery webhook · 1 November 2026 · status: CODE DONE, owner switches it on
+
+**What it does:** `POST /api/webhooks/brevo` changes an email log row from `sent` to
+`delivered`, or to `bounced`.
+- Bounce events: hard bounce, invalid email, blocked and error. The bounce reason is saved.
+- Soft bounces, opens and clicks are ignored.
+- Every update is guarded: `delivered` only upgrades a `sent` row, and a bounce is final.
+  Events that arrive late, twice or out of order can't regress a status.
+- **Authentication:** a shared secret (`BREVO_WEBHOOK_SECRET`, 24+ characters) sent as a bearer
+  token or `?token=`, compared in constant time. With the secret unset, the endpoint returns 404.
+- Batched (array) payloads are supported.
+
+**Files**
+- New:
+  - `server/src/modules/emailWebhooks/{service,routes}.ts`
+  - `tests/brevoWebhook.test.ts`
+  - `tests/brevoWebhookDb.test.ts`
+- Changed:
+  - `app.ts`, `config/env.ts`
+  - `.env.example`, `render.yaml`
+  - `EmailLogTab.tsx` (one-line status legend)
+  - `docs/deploy-guide.md` (setup steps)
+
+**Tests**
+- `brevoWebhook.test.ts`: 7/7 pass (classification, 404 when off, 401 for a wrong or missing
+  token, bearer and query tokens, batches).
+- `brevoWebhookDb.test.ts`: 3 tests (real row transitions). Not run yet: no MySQL here.
+- Lint and `tsc` clean.
+
+**Owner step:** follow "Optional: delivery and bounce tracking" in `docs/deploy-guide.md`.

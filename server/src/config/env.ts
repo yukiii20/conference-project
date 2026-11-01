@@ -53,6 +53,8 @@ const envSchema = z
     SMTP_PASS: z.string().optional(),
     MAIL_FROM: z.string().optional(),
     BREVO_API_KEY: z.string().optional(),
+    // Shared secret for POST /api/webhooks/brevo (delivered/bounced events). Unset = webhook off.
+    BREVO_WEBHOOK_SECRET: z.string().min(24, 'BREVO_WEBHOOK_SECRET must be at least 24 characters.').optional().or(z.literal('').transform(() => undefined)),
     // Used to build links in emails (reset-password, invitations, ...) — never hard-code localhost elsewhere.
     APP_URL: z.string().url().default('http://localhost:5173'),
     // Where uploaded files (logos, banners, photos, certificates) are read

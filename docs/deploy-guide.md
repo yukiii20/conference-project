@@ -151,3 +151,21 @@ For a small/demo deployment, Free-tier Render + Vercel + Aiven is enough to
 fully exercise the app end-to-end; the one real gotcha is Render Free's
 wiped filesystem, which is why `STORAGE_DIR` + a disk is the first thing to
 add when moving past "just trying it out."
+
+## Optional: delivery and bounce tracking (Brevo webhook)
+
+Without this, the email log stops at **Sent** (Brevo accepted the email). With it, rows change to
+**Delivered** or **Bounced**, and a bounce shows Brevo's reason in the Error column.
+
+1. Make a random secret of at least 24 characters (for example, run
+   `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`).
+2. Render → backend → **Environment**: add `BREVO_WEBHOOK_SECRET` with that value, then save
+   (Render redeploys).
+3. Brevo → **Transactional → Settings → Webhooks → Add a new webhook**:
+   - URL: `https://<your-vercel-site>/api/webhooks/brevo`
+   - Events: Delivered, Hard bounce, Invalid email, Blocked, Error
+   - Authentication: **Bearer token** = the same secret. If your Brevo screen has no
+     authentication option, use the URL `…/api/webhooks/brevo?token=<secret>` instead.
+4. Send yourself a test email from the app. Within a minute its row should say **Delivered**.
+
+While `BREVO_WEBHOOK_SECRET` is empty, the endpoint answers 404, so nothing is exposed.

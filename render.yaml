@@ -51,6 +51,8 @@ services:
         value: brevo
       - key: BREVO_API_KEY
         sync: false
+      - key: BREVO_WEBHOOK_SECRET
+        sync: false
       - key: MAIL_FROM
         sync: false
 

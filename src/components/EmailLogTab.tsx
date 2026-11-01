@@ -120,6 +120,9 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
             </option>
           ))}
         </Select>
+        <p className="text-xs text-text-muted">
+          Sent = accepted by the mail service · Delivered = reached the recipient's inbox server · Bounced = rejected, will not arrive
+        </p>
       </div>
 
       <div className="mt-4">
