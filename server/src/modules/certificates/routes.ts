@@ -15,6 +15,7 @@ import {
   listTemplates,
   previewEligibleCount,
   previewTemplatePdf,
+  previewDraftPdf,
   releaseNow,
   removeSignatorySignature,
   removeTemplateBackground,
@@ -30,6 +31,7 @@ import {
   generateCertificatesSchema,
   issueBestPaperSchema,
   issueSpeakerCertificateSchema,
+  previewDraftSchema,
   revokeCertificateSchema,
 } from './validation.js'
 
@@ -129,6 +131,24 @@ certificatesRouter.delete(
       const index = Number(req.params.index)
       await removeSignatorySignature(req.user!.id, req.params.id!, req.params.templateId!, index, auditContextFrom(req))
       res.json({ message: 'Removed.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Live preview of unsaved editor settings (nothing is saved). Registered before the
+// :templateId routes so "preview.pdf" is never read as a template id.
+certificatesRouter.post(
+  '/:id/certificate-templates/preview.pdf',
+  requireConferencePermission('certificate.manage'),
+  validateBody(previewDraftSchema),
+  async (req, res, next) => {
+    try {
+      const pdf = await previewDraftPdf(req.params.id!, req.body)
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Cache-Control', 'no-store')
+      res.send(pdf)
     } catch (err) {
       next(err)
     }

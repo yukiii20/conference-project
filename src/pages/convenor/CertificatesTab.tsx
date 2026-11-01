@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Save, Send, Sparkles, Trash2 } from 'lucide-react'
+import { ChevronDown, Plus, RotateCcw, Save, Send, Sparkles, Trash2 } from 'lucide-react'
 import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { AUTO_CERTIFICATE_TYPES, CERTIFICATE_TYPES, certificateTemplateSchema } from '../../lib/validation'
@@ -24,12 +24,25 @@ import { Icon } from '../../components/ui/Icon'
 import { useToast } from '../../components/ui/Toast'
 
 type Signatory = { name: string; title: string; signature_path: string | null }
+
+type TextKey = 'header' | 'title' | 'subtitle' | 'intro' | 'wording' | 'event' | 'seal'
+type ColorKey = 'frame' | 'accent' | 'title' | 'text' | 'background'
+type ShowKey = 'logo' | 'frame' | 'header' | 'subtitle' | 'intro' | 'seal' | 'number' | 'issued' | 'qr'
+
+type Layout = {
+  name: { y: number; font_size: number; color: string }
+  texts?: Partial<Record<TextKey, string>>
+  colors?: Partial<Record<ColorKey, string>>
+  show?: Partial<Record<ShowKey, boolean>>
+  font?: 'serif' | 'sans'
+}
+
 type Template = {
   id: string
   certificate_type: string
   name: string
   background_path: string | null
-  layout: { name: { y: number; font_size: number; color: string } }
+  layout: Layout
   signatories: Signatory[]
   is_active: boolean
 }
@@ -57,12 +70,172 @@ const TYPE_LABELS: Record<string, string> = {
   best_paper: 'Best paper',
 }
 
-const EMPTY_FORM = {
-  certificate_type: 'participation' as (typeof CERTIFICATE_TYPES)[number],
+// Must match server/src/modules/certificates/export.ts (shown as placeholders: empty = default).
+const DEFAULT_WORDING: Record<string, string> = {
+  participation: 'has participated in',
+  presentation: 'has presented a paper at',
+  speaker: 'has delivered an invited talk at',
+  reviewer: 'has served as a reviewer for',
+  session_chair: 'has chaired a session at',
+  staff: 'has served as organising staff for',
+  best_paper: 'has received the Best Paper Award at',
+}
+const DEFAULT_SUBTITLE: Record<string, string> = {
+  participation: 'of Participation',
+  presentation: 'of Presentation',
+  speaker: 'of Appreciation',
+  reviewer: 'of Appreciation',
+  session_chair: 'of Appreciation',
+  staff: 'of Appreciation',
+  best_paper: 'of Excellence',
+}
+
+const TEXT_FIELDS: Array<{ key: TextKey; label: string; max: number; help?: string; placeholder: (type: string) => string }> = [
+  { key: 'header', label: 'Top line', max: 150, help: 'Small line above the title, shown in capitals.', placeholder: () => '{conference}' },
+  { key: 'title', label: 'Title', max: 60, placeholder: () => 'CERTIFICATE' },
+  { key: 'subtitle', label: 'Subtitle', max: 80, help: 'Shown in capitals under the title.', placeholder: (t) => DEFAULT_SUBTITLE[t] ?? 'of Recognition' },
+  { key: 'intro', label: 'Line above the name', max: 120, placeholder: () => 'This is to certify that' },
+  { key: 'wording', label: 'Line below the name', max: 150, placeholder: (t) => DEFAULT_WORDING[t] ?? 'is recognised at' },
+  { key: 'event', label: 'Event line', max: 200, placeholder: () => '{conference}' },
+  { key: 'seal', label: 'Seal text', max: 6, help: 'Up to 6 letters. Default: the conference acronym.', placeholder: () => 'auto' },
+]
+
+const COLOR_FIELDS: Array<{ key: ColorKey; label: string; fallback: string }> = [
+  { key: 'frame', label: 'Frame and event name', fallback: '' },
+  { key: 'accent', label: 'Gold accents and seal', fallback: '#B8913A' },
+  { key: 'title', label: 'Title', fallback: '#1F2328' },
+  { key: 'text', label: 'Body text', fallback: '#5B6168' },
+  { key: 'background', label: 'Paper', fallback: '#FFFDF8' },
+]
+
+const SHOW_FIELDS: Array<{ key: ShowKey; label: string }> = [
+  { key: 'logo', label: 'Conference logo' },
+  { key: 'frame', label: 'Border frame' },
+  { key: 'header', label: 'Top line' },
+  { key: 'subtitle', label: 'Subtitle' },
+  { key: 'intro', label: 'Line above the name' },
+  { key: 'seal', label: 'Seal' },
+  { key: 'number', label: 'Certificate number' },
+  { key: 'issued', label: 'Issue date' },
+  { key: 'qr', label: 'QR code (verification)' },
+]
+
+const HEX = /^#[0-9A-Fa-f]{6}$/
+
+const EMPTY_FORM: {
+  certificate_type: (typeof CERTIFICATE_TYPES)[number]
+  name: string
+  layout: Layout
+  signatories: Signatory[]
+  is_active: boolean
+} = {
+  certificate_type: 'participation',
   name: '',
   layout: { name: { y: 260, font_size: 48, color: '#1A1A1A' } },
-  signatories: [] as Signatory[],
+  signatories: [],
   is_active: true,
+}
+
+/** Drops empty texts/colours so "empty" always means "use the default design". */
+function cleanLayout(layout: Layout): Layout {
+  const texts = Object.fromEntries(Object.entries(layout.texts ?? {}).filter(([, v]) => v && v.trim()))
+  const colors = Object.fromEntries(Object.entries(layout.colors ?? {}).filter(([, v]) => v && HEX.test(v)))
+  return {
+    name: layout.name,
+    ...(Object.keys(texts).length ? { texts } : {}),
+    ...(Object.keys(colors).length ? { colors } : {}),
+    ...(layout.show && Object.keys(layout.show).length ? { show: layout.show } : {}),
+    ...(layout.font ? { font: layout.font } : {}),
+  }
+}
+
+function cleanSignatories(signatories: Signatory[]): Signatory[] {
+  return signatories.filter((s) => s.name.trim() || s.title.trim())
+}
+
+function EditorSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  return (
+    <details open={defaultOpen} className="group rounded-lg border border-border bg-surface">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-text">
+        {title}
+        <ChevronDown size={16} className="text-text-muted transition group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="space-y-3 border-t border-border px-4 py-4">{children}</div>
+    </details>
+  )
+}
+
+function ColorField({ label, value, fallback, onChange }: { label: string; value: string; fallback: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block text-xs font-medium text-text-muted">
+      {label}
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="color"
+          value={HEX.test(value) ? value : fallback || '#2747A0'}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 w-11 shrink-0 cursor-pointer rounded-md border border-border bg-surface"
+          aria-label={`${label} colour picker`}
+        />
+        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={fallback || 'Conference colour'} className="font-mono uppercase" />
+      </div>
+    </label>
+  )
+}
+
+/** Live PDF preview of the editor's current (unsaved) settings, refreshed 500 ms after the last change. */
+function LivePreview({ conferenceId, body }: { conferenceId: string; body: unknown }) {
+  const [url, setUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const key = JSON.stringify(body)
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const blob = await api.postBlob(`/conferences/${conferenceId}/certificate-templates/preview.pdf`, JSON.parse(key))
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
+        setError(null)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not draw the preview.')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }, 500)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+      const stale = objectUrl
+      if (stale) setTimeout(() => URL.revokeObjectURL(stale), 2000)
+    }
+  }, [conferenceId, key])
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-3">
+      <div className="mb-2 flex items-center justify-between text-xs text-text-muted">
+        <span className="font-medium">Live preview (sample name)</span>
+        {loading ? <span>Updating…</span> : null}
+      </div>
+      {error ? <Alert variant="danger">{error}</Alert> : null}
+      <div className="relative w-full overflow-hidden rounded-md border border-border-soft bg-surface-muted" style={{ aspectRatio: '297 / 210' }}>
+        {url ? (
+          <iframe title="Certificate preview" src={`${url}#toolbar=0&navpanes=0&view=Fit`} className="absolute inset-0 h-full w-full" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-text-muted">Drawing preview…</div>
+        )}
+      </div>
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-button hover:underline">
+          Open full size
+        </a>
+      ) : null}
+    </div>
+  )
 }
 
 function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; onChanged: () => void }) {
@@ -103,7 +276,7 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const parsed = certificateTemplateSchema.safeParse(form)
+    const parsed = certificateTemplateSchema.safeParse({ ...form, layout: cleanLayout(form.layout), signatories: cleanSignatories(form.signatories) })
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Invalid value.')
       return
@@ -134,7 +307,19 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
     })
   }
 
+  const setLayout = (patch: (l: Layout) => Layout) => setForm((p) => ({ ...p, layout: patch(p.layout) }))
+  const setText = (key: TextKey, value: string) => setLayout((l) => ({ ...l, texts: { ...l.texts, [key]: value } }))
+  const setColor = (key: ColorKey, value: string) => setLayout((l) => ({ ...l, colors: { ...l.colors, [key]: value } }))
+  const setShow = (key: ShowKey, value: boolean) => setLayout((l) => ({ ...l, show: { ...l.show, [key]: value } }))
+  const setName = (patch: Partial<Layout['name']>) => setLayout((l) => ({ ...l, name: { ...l.name, ...patch } }))
+
   const editingTemplate = templates.find((t) => t.id === editingId) ?? null
+  const previewBody = {
+    certificate_type: form.certificate_type,
+    layout: cleanLayout(form.layout),
+    signatories: cleanSignatories(form.signatories).map(({ name, title }) => ({ name, title })),
+    template_id: editingId,
+  }
 
   return (
     <Card>
@@ -175,138 +360,182 @@ function TemplatesSection({ conferenceId, onChanged }: { conferenceId: string; o
         </ul>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-dashed border-border bg-surface p-4">
-        <p className="font-medium text-text">{editingId ? 'Edit template' : 'Add a template'}</p>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Select
-            value={form.certificate_type}
-            onChange={(e) => setForm((p) => ({ ...p, certificate_type: e.target.value as (typeof CERTIFICATE_TYPES)[number] }))}
-          >
-            {CERTIFICATE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {TYPE_LABELS[t]}
-              </option>
-            ))}
-          </Select>
-          <Input
-            value={form.name}
-            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-            placeholder="Template name"
-          />
+      <form onSubmit={handleSubmit} className="mt-4 rounded-lg border border-dashed border-border bg-surface-muted/40 p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-medium text-text">{editingId ? `Edit template: ${editingTemplate?.name ?? ''}` : 'Add a template'}</p>
+          <p className="text-xs text-text-muted">Leave a field empty to use the default. You can use {'{conference}'} and {'{name}'} in texts.</p>
         </div>
 
-        <div>
-          <p className="text-xs font-medium text-text-muted">Recipient name position</p>
-          <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <Input
-              type="number"
-              value={form.layout.name.y}
-              onChange={(e) => setForm((p) => ({ ...p, layout: { name: { ...p.layout.name, y: Number(e.target.value) } } }))}
-              placeholder="Y position"
-            />
-            <Input
-              type="number"
-              value={form.layout.name.font_size}
-              onChange={(e) => setForm((p) => ({ ...p, layout: { name: { ...p.layout.name, font_size: Number(e.target.value) } } }))}
-              placeholder="Font size"
-            />
-            <Input
-              value={form.layout.name.color}
-              onChange={(e) => setForm((p) => ({ ...p, layout: { name: { ...p.layout.name, color: e.target.value } } }))}
-              placeholder="#1A1A1A"
-            />
-          </div>
-        </div>
-
-        <div>
-          <p className="text-xs font-medium text-text-muted">Signatories (up to 2)</p>
-          {[0, 1].map((i) => (
-            <div key={i} className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Input
-                value={form.signatories[i]?.name ?? ''}
-                onChange={(e) => setSignatory(i, 'name', e.target.value)}
-                placeholder="Name"
-              />
-              <Input
-                value={form.signatories[i]?.title ?? ''}
-                onChange={(e) => setSignatory(i, 'title', e.target.value)}
-                placeholder="Title"
-              />
-            </div>
-          ))}
-        </div>
-
-        <Checkbox
-          label="Active (one active template per type)"
-          checked={form.is_active}
-          onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
-        />
-
-        <div className="flex gap-2">
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={saving}
-            iconLeft={<Icon icon={editingId ? Save : Plus} size={16} />}
-          >
-            {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add template'}
-          </Button>
-          {editingId ? (
-            <Button type="button" variant="secondary" onClick={resetForm}>
-              Cancel
-            </Button>
-          ) : null}
-        </div>
-
-        {editingTemplate ? (
-          <div className="space-y-4 border-t border-border pt-3">
-            <div>
-              <p className="text-xs font-medium text-text-muted">Certificate background</p>
-              <p className="text-xs text-text-muted/70">PNG or JPG, A4 landscape, at least 2480 x 1754 px</p>
-              <div className="mt-2">
-                <ImageUpload
-                  label="certificate background"
-                  currentPath={editingTemplate.background_path}
-                  uploadUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/background`}
-                  removeUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/background`}
-                  onSaved={() => load()}
-                  onRemoved={() => load()}
-                  maxSizeMB={5}
-                  aspect="square"
-                  size="sm"
-                  uploadButtonText="Upload background"
-                  replaceButtonText="Replace image"
-                />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+          <div className="space-y-3">
+            <EditorSection title="Basics" defaultOpen>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label="Certificate type">
+                  <Select
+                    value={form.certificate_type}
+                    onChange={(e) => setForm((p) => ({ ...p, certificate_type: e.target.value as (typeof CERTIFICATE_TYPES)[number] }))}
+                  >
+                    {CERTIFICATE_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {TYPE_LABELS[t]}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+                <FormField label="Template name">
+                  <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Speaker 2026" />
+                </FormField>
               </div>
-            </div>
+              <Checkbox
+                label="Active (one active template per type)"
+                checked={form.is_active}
+                onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
+              />
+            </EditorSection>
 
-            {([0, 1] as const).map((i) => {
-              const positionLabel = i === 0 ? 'First signature' : 'Second signature'
-              return (
-                <div key={i}>
-                  <p className="text-xs font-medium text-text-muted">{positionLabel}</p>
-                  <p className="text-xs text-text-muted/70">Transparent PNG, about 600 x 200 px</p>
-                  <div className="mt-2">
-                    <ImageUpload
-                      label={positionLabel.toLowerCase()}
-                      currentPath={editingTemplate.signatories[i]?.signature_path ?? null}
-                      uploadUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/signatories/${i}/signature`}
-                      removeUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/signatories/${i}/signature`}
-                      onSaved={() => load()}
-                      onRemoved={() => load()}
-                      maxSizeMB={2}
-                      aspect="square"
-                      size="sm"
-                      uploadButtonText={`Upload ${positionLabel.toLowerCase()}`}
-                      replaceButtonText="Replace image"
-                    />
-                  </div>
+            <EditorSection title="Text on the certificate" defaultOpen>
+              {TEXT_FIELDS.map((f) => (
+                <FormField key={f.key} label={f.label} help={f.help}>
+                  <Input
+                    value={form.layout.texts?.[f.key] ?? ''}
+                    maxLength={f.max}
+                    onChange={(e) => setText(f.key, e.target.value)}
+                    placeholder={f.placeholder(form.certificate_type)}
+                  />
+                </FormField>
+              ))}
+            </EditorSection>
+
+            <EditorSection title="Recipient name">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label={`Font size: ${form.layout.name.font_size}`}>
+                  <input
+                    type="range"
+                    min={20}
+                    max={72}
+                    value={form.layout.name.font_size}
+                    onChange={(e) => setName({ font_size: Number(e.target.value) })}
+                    className="w-full accent-brand"
+                  />
+                </FormField>
+                <FormField label={`Position from top: ${form.layout.name.y}`}>
+                  <input
+                    type="range"
+                    min={180}
+                    max={330}
+                    value={form.layout.name.y}
+                    onChange={(e) => setName({ y: Number(e.target.value) })}
+                    className="w-full accent-brand"
+                  />
+                </FormField>
+              </div>
+              <ColorField label="Name colour" value={form.layout.name.color} fallback="#1A1A1A" onChange={(v) => setName({ color: v })} />
+            </EditorSection>
+
+            <EditorSection title="Colours and font">
+              <FormField label="Font">
+                <Select value={form.layout.font ?? 'serif'} onChange={(e) => setLayout((l) => ({ ...l, font: e.target.value as 'serif' | 'sans' }))}>
+                  <option value="serif">Classic (serif)</option>
+                  <option value="sans">Modern (sans-serif)</option>
+                </Select>
+              </FormField>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {COLOR_FIELDS.map((c) => (
+                  <ColorField key={c.key} label={c.label} value={form.layout.colors?.[c.key] ?? ''} fallback={c.fallback} onChange={(v) => setColor(c.key, v)} />
+                ))}
+              </div>
+              <Button type="button" variant="secondary" size="sm" iconLeft={<Icon icon={RotateCcw} size={14} />} onClick={() => setLayout((l) => ({ ...l, colors: {} }))}>
+                Reset colours
+              </Button>
+              <p className="text-xs text-text-muted">The frame uses your conference colour unless you pick one here.</p>
+            </EditorSection>
+
+            <EditorSection title="Show or hide">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {SHOW_FIELDS.map((s) => (
+                  <Checkbox key={s.key} label={s.label} checked={form.layout.show?.[s.key] ?? true} onChange={(e) => setShow(s.key, e.target.checked)} />
+                ))}
+              </div>
+            </EditorSection>
+
+            <EditorSection title="Signatories (up to 2)">
+              {[0, 1].map((i) => (
+                <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Input value={form.signatories[i]?.name ?? ''} onChange={(e) => setSignatory(i, 'name', e.target.value)} placeholder={`Signatory ${i + 1} name`} />
+                  <Input value={form.signatories[i]?.title ?? ''} onChange={(e) => setSignatory(i, 'title', e.target.value)} placeholder="Title, e.g. Conference Chair" />
                 </div>
-              )
-            })}
+              ))}
+              <p className="text-xs text-text-muted">Leave both empty to show no signature line.</p>
+            </EditorSection>
+
+            <EditorSection title="Images (background and signatures)">
+              {editingTemplate ? (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-text-muted">Certificate background</p>
+                    <p className="text-xs text-text-muted/70">PNG or JPG, A4 landscape, at least 2480 x 1754 px. Tip: hide the border frame if your image has one.</p>
+                    <div className="mt-2">
+                      <ImageUpload
+                        label="certificate background"
+                        currentPath={editingTemplate.background_path}
+                        uploadUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/background`}
+                        removeUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/background`}
+                        onSaved={() => load()}
+                        onRemoved={() => load()}
+                        maxSizeMB={5}
+                        aspect="square"
+                        size="sm"
+                        uploadButtonText="Upload background"
+                        replaceButtonText="Replace image"
+                      />
+                    </div>
+                  </div>
+                  {([0, 1] as const).map((i) => {
+                    const positionLabel = i === 0 ? 'First signature' : 'Second signature'
+                    return (
+                      <div key={i}>
+                        <p className="text-xs font-medium text-text-muted">{positionLabel}</p>
+                        <p className="text-xs text-text-muted/70">Transparent PNG, about 600 x 200 px</p>
+                        <div className="mt-2">
+                          <ImageUpload
+                            label={positionLabel.toLowerCase()}
+                            currentPath={editingTemplate.signatories[i]?.signature_path ?? null}
+                            uploadUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/signatories/${i}/signature`}
+                            removeUrl={`${API_BASE}/conferences/${conferenceId}/certificate-templates/${editingTemplate.id}/signatories/${i}/signature`}
+                            onSaved={() => load()}
+                            onRemoved={() => load()}
+                            maxSizeMB={2}
+                            aspect="square"
+                            size="sm"
+                            uploadButtonText={`Upload ${positionLabel.toLowerCase()}`}
+                            replaceButtonText="Replace image"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">Save the template first, then click Edit to upload a background or signature images.</p>
+              )}
+            </EditorSection>
+
+            <div className="flex gap-2 pt-1">
+              <Button type="submit" variant="primary" disabled={saving} iconLeft={<Icon icon={editingId ? Save : Plus} size={16} />}>
+                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add template'}
+              </Button>
+              {editingId ? (
+                <Button type="button" variant="secondary" onClick={resetForm}>
+                  Cancel
+                </Button>
+              ) : null}
+            </div>
           </div>
-        ) : null}
+
+          <div className="lg:sticky lg:top-4 lg:self-start">
+            <LivePreview conferenceId={conferenceId} body={previewBody} />
+          </div>
+        </div>
       </form>
     </Card>
   )

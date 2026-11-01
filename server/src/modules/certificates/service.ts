@@ -11,8 +11,8 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { PUBLIC_DIR } from '../../storage/paths.js'
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
-import { generateCertificatePdf } from './export.js'
-import type { CertificateTemplateInput } from './validation.js'
+import { generateCertificatePdf, type CertificateLayout } from './export.js'
+import type { CertificateTemplateInput, PreviewDraftInput } from './validation.js'
 import { AUTO_CERTIFICATE_TYPES } from './validation.js'
 
 function isDuplicateKeyError(err: unknown): boolean {
@@ -28,7 +28,7 @@ export type TemplateRow = {
   certificate_type: string
   name: string
   background_path: string | null
-  layout: { name: { y: number; font_size: number; color: string } }
+  layout: CertificateLayout
   signatories: Array<{ name: string; title: string; signature_path: string | null }>
   is_active: boolean
 }
@@ -525,6 +525,40 @@ export async function previewTemplatePdf(conferenceId: string, templateId: strin
     primaryColor: conference.primary_color ?? '#2747A0',
     layout: template.layout,
     signatories: template.signatories,
+    signatureBuffers,
+  })
+}
+
+/**
+ * Live preview of the template editor's unsaved settings: renders a sample PDF from the
+ * posted layout/signatories. Nothing is written. With template_id, that template's
+ * uploaded background and signature images are used too.
+ */
+export async function previewDraftPdf(conferenceId: string, input: PreviewDraftInput): Promise<Buffer> {
+  const template = input.template_id ? await getTemplate(conferenceId, input.template_id) : null
+  const conference = await pool
+    .query(`SELECT name, primary_color, logo_path FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1`, [conferenceId])
+    .then(([rows]) => (rows as Array<{ name: string; primary_color: string | null; logo_path: string | null }>)[0])
+  if (!conference) throw new NotFoundError('This conference does not exist.')
+
+  const [backgroundBuffer, logoBuffer, signatureBuffers] = await Promise.all([
+    readPublicFileIfAny(template?.background_path ?? null),
+    readPublicFileIfAny(conference.logo_path),
+    Promise.all(input.signatories.map((_, i) => readPublicFileIfAny(template?.signatories[i]?.signature_path ?? null))),
+  ])
+
+  return generateCertificatePdf({
+    recipientName: 'Jordan Sample',
+    conferenceName: conference.name,
+    certificateType: input.certificate_type,
+    certificateNumber: 'SAMPLE-0000',
+    issuedAt: new Date(),
+    verificationToken: '0'.repeat(32),
+    backgroundBuffer,
+    logoBuffer,
+    primaryColor: conference.primary_color ?? '#2747A0',
+    layout: input.layout as CertificateLayout,
+    signatories: input.signatories.map((s) => ({ ...s, signature_path: null })),
     signatureBuffers,
   })
 }

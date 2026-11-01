@@ -394,6 +394,28 @@ export const certificateTemplateSchema = z.object({
       font_size: z.coerce.number().min(8).max(200),
       color: z.string().trim().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.'),
     }),
+    texts: z
+      .object({
+        header: z.string().trim().max(150, 'Header must be 150 characters or fewer.').optional(),
+        title: z.string().trim().max(60, 'Title must be 60 characters or fewer.').optional(),
+        subtitle: z.string().trim().max(80, 'Subtitle must be 80 characters or fewer.').optional(),
+        intro: z.string().trim().max(120, 'Intro line must be 120 characters or fewer.').optional(),
+        wording: z.string().trim().max(150, 'Wording must be 150 characters or fewer.').optional(),
+        event: z.string().trim().max(200, 'Event line must be 200 characters or fewer.').optional(),
+        seal: z.string().trim().max(6, 'Seal text must be 6 characters or fewer.').optional(),
+      })
+      .optional(),
+    colors: z
+      .object({
+        frame: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.').optional(),
+        accent: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.').optional(),
+        title: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.').optional(),
+        text: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.').optional(),
+        background: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.').optional(),
+      })
+      .optional(),
+    show: z.record(z.string(), z.boolean()).optional(),
+    font: z.enum(['serif', 'sans']).optional(),
   }),
   signatories: z
     .array(

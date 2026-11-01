@@ -188,6 +188,18 @@ async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
   return data as T
 }
 
+/** POSTs JSON and returns the response body as a Blob (e.g. a generated PDF for a live preview). */
+async function apiPostBlob(path: string, body: unknown): Promise<Blob> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (adminViewAsActive) headers['X-Admin-View-As'] = '1'
+  const res = await fetch(buildUrl(path), { method: 'POST', credentials: 'include', headers, body: JSON.stringify(body) })
+  if (!res.ok) {
+    const data = res.headers.get('content-type')?.includes('application/json') ? await res.json().catch(() => null) : null
+    throw new ApiError(res.status, data?.error?.message ?? 'Something went wrong. Please try again.', data?.error?.fields, data?.error?.code)
+  }
+  return res.blob()
+}
+
 /** Test-only seam: lets tests start each case with a clean cache instead of leaking state between them. */
 export function clearApiCacheForTesting(): void {
   clearGetCache()
@@ -201,4 +213,5 @@ export const api = {
   put: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: 'PUT', body }),
   del: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
   upload: <T>(path: string, formData: FormData) => apiUpload<T>(path, formData),
+  postBlob: (path: string, body: unknown) => apiPostBlob(path, body),
 }

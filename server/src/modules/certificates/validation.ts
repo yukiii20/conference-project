@@ -26,6 +26,51 @@ const nameLayoutSchema = z.object({
     .default('#1A1A1A'),
 })
 
+const hexColour = z
+  .string()
+  .trim()
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a 6-digit hex colour.')
+const optionalText = (max: number) => z.string().trim().max(max).optional()
+
+// Everything below `name` is optional: a missing value means "use the default design".
+const layoutSchema = z.object({
+  name: nameLayoutSchema.default(DEFAULT_NAME_LAYOUT),
+  texts: z
+    .object({
+      header: optionalText(150),
+      title: optionalText(60),
+      subtitle: optionalText(80),
+      intro: optionalText(120),
+      wording: optionalText(150),
+      event: optionalText(200),
+      seal: optionalText(6),
+    })
+    .optional(),
+  colors: z
+    .object({
+      frame: hexColour.optional(),
+      accent: hexColour.optional(),
+      title: hexColour.optional(),
+      text: hexColour.optional(),
+      background: hexColour.optional(),
+    })
+    .optional(),
+  show: z
+    .object({
+      logo: z.boolean().optional(),
+      frame: z.boolean().optional(),
+      header: z.boolean().optional(),
+      subtitle: z.boolean().optional(),
+      intro: z.boolean().optional(),
+      seal: z.boolean().optional(),
+      number: z.boolean().optional(),
+      issued: z.boolean().optional(),
+      qr: z.boolean().optional(),
+    })
+    .optional(),
+  font: z.enum(['serif', 'sans']).optional(),
+})
+
 export const signatorySchema = z.object({
   name: z.string().trim().min(1).max(150),
   title: z.string().trim().min(1).max(150),
@@ -35,7 +80,7 @@ export const signatorySchema = z.object({
 export const certificateTemplateSchema = z.object({
   certificate_type: z.enum(CERTIFICATE_TYPES),
   name: z.string().trim().min(1, 'Name is required.').max(200),
-  layout: z.object({ name: nameLayoutSchema.default(DEFAULT_NAME_LAYOUT) }).default({ name: DEFAULT_NAME_LAYOUT }),
+  layout: layoutSchema.default({ name: DEFAULT_NAME_LAYOUT }),
   signatories: z.array(signatorySchema).max(2).default([]),
   is_active: z.boolean().default(true),
 })
@@ -45,6 +90,18 @@ export const generateCertificatesSchema = z.object({
   certificate_type: z.enum(AUTO_CERTIFICATE_TYPES),
   template_id: z.string().uuid().nullable().optional(),
 })
+/** Live preview of unsaved editor settings. template_id (optional) reuses that template's uploaded background/signatures. */
+export const previewDraftSchema = z.object({
+  certificate_type: z.enum(CERTIFICATE_TYPES),
+  layout: layoutSchema.default({ name: DEFAULT_NAME_LAYOUT }),
+  signatories: z
+    .array(z.object({ name: z.string().trim().max(150), title: z.string().trim().max(150) }))
+    .max(2)
+    .default([]),
+  template_id: z.string().uuid().nullable().optional(),
+})
+export type PreviewDraftInput = z.infer<typeof previewDraftSchema>
+
 export type GenerateCertificatesInput = z.infer<typeof generateCertificatesSchema>
 
 export const issueBestPaperSchema = z.object({
