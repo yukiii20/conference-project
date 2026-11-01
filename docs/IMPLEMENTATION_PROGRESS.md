@@ -153,3 +153,21 @@ the browser's own timezone, and certificates printed the UTC issue date.
 - Frontend 77/77.
 - Server 341 pass; 366 need MySQL (`ECONNREFUSED`), same as before.
 - `tsc` and `vite build` clean.
+
+## Phase 1, items M8 + M3: logo and frontend security headers · 1 November 2026 · status: DONE (headers need a live check)
+
+- **M8:** `public/logo.png` is already 25 KB (384×256, palette PNG). Nothing to do.
+- **M3:** `vercel.json` now sends these headers on every response:
+  - `X-Content-Type-Options: nosniff`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+  - `X-Frame-Options: SAMEORIGIN`
+  - a CSP limited to `frame-ancestors 'self'; base-uri 'self'; object-src 'none'`, which blocks
+    clickjacking without restricting scripts, fonts, video or images
+  - `Permissions-Policy`: camera allowed for the check-in scanner; microphone, location, payment
+    and USB off
+  - HSTS
+- A full script/style CSP is deferred: it needs testing against the live homepage video,
+  Google Fonts, map embeds and blob: PDF previews.
+- **Verify after the Vercel deploy:**
+  - `curl -I https://<site>/` shows the headers.
+  - Homepage, venue map, certificate preview and the check-in camera all still work.
