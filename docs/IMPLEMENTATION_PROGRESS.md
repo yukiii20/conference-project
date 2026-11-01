@@ -449,3 +449,17 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
     `WarningsPanel`
   - `shared.ts` for types, empty forms, track colours and clash detection
 - **Pure move.** Verified with tsc, eslint, vite build and 80/80 frontend tests.
+
+## Phase 2, M5 (part): split `CertificatesTab.tsx` · 1 November 2026 · status: DONE
+
+- The 866-line file is now a 17-line shell plus `src/pages/convenor/certificates/`:
+  - `TemplatesSection` (the designer), `IssueSection`, `IssuedListSection`
+  - `editorParts` (collapsible section, colour field, live preview)
+  - `shared.ts` (types, defaults, field lists)
+- **Pure move.** Verified with tsc, eslint, build and 80/80 frontend tests.
+- **Not split:** `author/SubmissionDetail.tsx` (938 lines) is one large component, so splitting
+  it is a refactor rather than a move. It's left for the Phase 8 author-screen pass, where it can
+  be tested visually.
+- **Server services:** `schedule`, `reviews` and `admin` are left as they are. Their behaviour is
+  covered almost entirely by the MySQL tests, which can't run here, so moving them now would be
+  unverified.
