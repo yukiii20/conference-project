@@ -10,6 +10,7 @@
 | `FEATURE_COMPLETION_MATRIX.md` | Each feature: done, partial or missing |
 | `IMPLEMENTATION_PROGRESS.md` | What has been fixed, with test evidence |
 | `progress.md` | Older day-by-day change log |
+| `DEPLOYMENT_CHECKLIST.md` | **Start here before going live:** SQL run order, new env vars, post-deploy checks |
 | `deploy-guide.md` | **How the live site is deployed** (Vercel + Render + Aiven) |
 | `deploy.md` | Alternative: self-hosting on an Ubuntu VPS with Nginx |
 | `aiven-mysql-setup.md` | The production MySQL database |

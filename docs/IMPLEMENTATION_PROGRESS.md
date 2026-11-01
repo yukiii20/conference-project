@@ -404,3 +404,12 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
   added by a parallel homepage session) with its reason.
 - **Result:** 291/291 route-guard tests; full server suite has 0 failures other than missing
   MySQL.
+
+## Phase 11: deployment checklist · 1 November 2026 · status: DONE (owner runs it)
+
+- New `docs/DEPLOYMENT_CHECKLIST.md`, linked from `docs/README.md`. It covers:
+  - SQL run order: `2026-11-01/`, then `2026-11-01-part-2/`; local first, then Aiven.
+  - Optional env vars (`CRON_SECRET`, `BREVO_WEBHOOK_SECRET`, R2), with what each turns on.
+  - The manual GitHub workflow step.
+  - A post-deploy check list and rollback steps.
+- No production change was made. Every item is for the owner to run.
