@@ -11,6 +11,7 @@ import { assertConferencePermission } from '../../middleware/auth.js'
 import { getConferencePermissions, isPlatformAdmin } from '../auth/service.js'
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import type { RegistrationCategoryInput } from './validation.js'
+import { AMOUNT_PAID_SQL, currentFeesByCategory, priceForNewRegistration, pricedCategoryIds, type CurrentFee } from './fees.service.js'
 
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { code?: string }).code === 'ER_DUP_ENTRY')
@@ -27,6 +28,10 @@ export type CategoryRow = {
   description: string | null
   is_active: boolean
   display_order: number
+  /** The price right now (null = free, or no price covers today - see `priced`). */
+  current_fee: Omit<CurrentFee, 'id'> | null
+  /** True when the category has any active price; with current_fee null that means "not on sale today". */
+  priced: boolean
 }
 
 /** Auto-creates a single "general" category the first time anyone looks to register, if the conference has none yet. */
@@ -43,14 +48,23 @@ async function ensureAtLeastOneCategory(conn: PoolConnection, conferenceId: stri
 }
 
 export async function listCategories(conferenceId: string): Promise<CategoryRow[]> {
-  return withTransaction(null, async (conn) => {
+  const categories = await withTransaction(null, async (conn) => {
     await ensureAtLeastOneCategory(conn, conferenceId)
     const [rows] = await conn.query(
       `SELECT id, code, name, description, is_active, display_order FROM registration_categories
        WHERE conference_id = ? ORDER BY display_order, name`,
       [conferenceId],
     )
-    return rows as CategoryRow[]
+    return rows as Array<Omit<CategoryRow, 'current_fee' | 'priced'>>
+  })
+  const [fees, priced] = await Promise.all([currentFeesByCategory(conferenceId), pricedCategoryIds(conferenceId)])
+  return categories.map((c) => {
+    const fee = fees.get(c.id)
+    return {
+      ...c,
+      current_fee: fee ? { amount: fee.amount, currency: fee.currency, fee_type: fee.fee_type, valid_until: fee.valid_until } : null,
+      priced: priced.has(c.id),
+    }
   })
 }
 
@@ -147,13 +161,15 @@ export type MyRegistrationRow = {
   status: 'pending' | 'confirmed' | 'waitlisted' | 'cancelled'
   category_name: string
   amount_due: string
+  amount_paid: string
   currency: string
   registered_at: string
 }
 
 export async function getMyRegistration(conferenceId: string, userId: string): Promise<MyRegistrationRow | null> {
   const [rows] = await pool.query(
-    `SELECT r.id, r.registration_number, r.status, r.amount_due, r.currency, r.registered_at, c.name AS category_name
+    `SELECT r.id, r.registration_number, r.status, r.amount_due, ${AMOUNT_PAID_SQL} AS amount_paid, r.currency, r.registered_at,
+            c.name AS category_name
      FROM registrations r JOIN registration_categories c ON c.id = r.category_id
      WHERE r.conference_id = ? AND r.user_id = ? AND r.status <> 'cancelled'
      ORDER BY r.registered_at DESC LIMIT 1`,
@@ -177,7 +193,7 @@ export async function register(
   userId: string,
   categoryId: string,
   ctx: AuditContext = {},
-): Promise<{ id: string; registration_number: string; status: string }> {
+): Promise<{ id: string; registration_number: string; status: string; amount_due: number; currency: string }> {
   return withTransaction(userId, async (conn) => {
     const window = await loadDeadlineWindow(conferenceId, 'registration')
     if (!isWindowOpen(window)) {
@@ -217,15 +233,18 @@ export async function register(
       [next, conferenceId],
     )
     const registrationNumber = `${conference.code}-R${String(next).padStart(4, '0')}`
-    const status = conference.registration_requires_payment ? 'pending' : 'confirmed'
+    const price = await priceForNewRegistration(conn, categoryId, conference.default_currency)
+    // Something to pay -> wait for payment. Free -> confirmed, unless the convenor wants to
+    // confirm every registration by hand (registration_requires_payment, the old behaviour).
+    const status = price.amount > 0 || conference.registration_requires_payment ? 'pending' : 'confirmed'
     const qrToken = generateUrlSafeToken(48)
 
     try {
       await conn.query(
         `INSERT INTO registrations
-           (conference_id, user_id, category_id, registration_number, status, amount_due, currency, qr_token, confirmed_at)
-         VALUES (?, ?, ?, ?, ?, 0, ?, ?, ${status === 'confirmed' ? 'NOW(3)' : 'NULL'})`,
-        [conferenceId, userId, categoryId, registrationNumber, status, conference.default_currency, qrToken],
+           (conference_id, user_id, category_id, fee_id, registration_number, status, amount_due, currency, qr_token, confirmed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ${status === 'confirmed' ? 'NOW(3)' : 'NULL'})`,
+        [conferenceId, userId, categoryId, price.feeId, registrationNumber, status, price.amount, price.currency, qrToken],
       )
     } catch (err) {
       if (isDuplicateKeyError(err)) {
@@ -245,11 +264,11 @@ export async function register(
       action: 'registration.create',
       entityType: 'registrations',
       entityId: id,
-      newValues: { category_id: categoryId, status },
+      newValues: { category_id: categoryId, status, fee_id: price.feeId, amount_due: price.amount, currency: price.currency },
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
     })
-    return { id, registration_number: registrationNumber, status }
+    return { id, registration_number: registrationNumber, status, amount_due: price.amount, currency: price.currency }
   })
 }
 
@@ -289,6 +308,7 @@ export type AdminRegistrationRow = {
   category_name: string
   status: string
   amount_due: string
+  amount_paid: string
   currency: string
   registered_at: string
 }
@@ -324,7 +344,7 @@ async function listAllRegistrations(
   const { where, params } = registrationWhere(conferenceId, filter)
   const [rows] = await pool.query(
     `SELECT r.id, r.registration_number, u.full_name, u.email, c.name AS category_name,
-            r.status, r.amount_due, r.currency, r.registered_at
+            r.status, r.amount_due, ${AMOUNT_PAID_SQL} AS amount_paid, r.currency, r.registered_at
      FROM registrations r
      JOIN users u ON u.id = r.user_id
      JOIN registration_categories c ON c.id = r.category_id
@@ -346,7 +366,7 @@ export async function listRegistrations(
   const [[rows], [countRows]] = await Promise.all([
     pool.query(
       `SELECT r.id, r.registration_number, u.full_name, u.email, c.name AS category_name,
-              r.status, r.amount_due, r.currency, r.registered_at
+              r.status, r.amount_due, ${AMOUNT_PAID_SQL} AS amount_paid, r.currency, r.registered_at
        FROM registrations r
        JOIN users u ON u.id = r.user_id
        JOIN registration_categories c ON c.id = r.category_id
@@ -365,12 +385,13 @@ export async function listRegistrations(
 
 export async function exportRegistrationsCsv(conferenceId: string): Promise<string> {
   const rows = await listAllRegistrations(conferenceId, {})
-  const header = ['Registration number', 'Name', 'Email', 'Category', 'Status', 'Amount due', 'Currency', 'Registered at']
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+  const header = ['Registration number', 'Name', 'Email', 'Category', 'Status', 'Amount due', 'Amount paid', 'Currency', 'Registered at']
+  // Quote every cell, and prefix cells a spreadsheet would run as a formula (=, +, -, @) with '.
+  const escape = (v: string) => `"${(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`
   const lines = [header.map(escape).join(',')]
   for (const r of rows) {
     lines.push(
-      [r.registration_number, r.full_name, r.email, r.category_name, r.status, r.amount_due, r.currency, r.registered_at]
+      [r.registration_number, r.full_name, r.email, r.category_name, r.status, r.amount_due, r.amount_paid, r.currency, r.registered_at]
         .map((v) => escape(String(v)))
         .join(','),
     )

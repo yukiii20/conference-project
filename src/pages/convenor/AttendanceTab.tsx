@@ -6,6 +6,8 @@ import { registrationCategorySchema } from '../../lib/validation'
 import { AttendanceDashboard } from '../../components/attendance/AttendanceDashboard'
 import { RegistrationsList } from '../../components/attendance/RegistrationsList'
 import { PrintBadgesPanel } from '../../components/attendance/PrintBadgesPanel'
+import { FeesSection } from '../../components/attendance/FeesSection'
+import { formatMoney } from '../../lib/money'
 import { PageHeader, Table, StatusChip, Button, FormField, Input, Checkbox, Alert, Spinner } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
 import type { Column } from '../../components/ui/Table'
@@ -21,6 +23,13 @@ type Category = {
   description: string | null
   is_active: boolean
   display_order: number
+  current_fee: { amount: number; currency: string } | null
+  priced: boolean
+}
+
+function priceNow(c: Category): string {
+  if (c.current_fee) return c.current_fee.amount === 0 ? 'Free' : formatMoney(c.current_fee.amount, c.current_fee.currency)
+  return c.priced ? 'Not on sale now' : 'Free'
 }
 
 const EMPTY_CATEGORY = { code: '', name: '', description: '', is_active: true, display_order: 0 }
@@ -88,6 +97,12 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
   const columns: Column<Category>[] = [
     { key: 'code', header: 'Code', render: (c) => <span className="font-mono text-xs">{c.code}</span> },
     { key: 'name', header: 'Name', render: (c) => c.name },
+    {
+      key: 'price',
+      header: 'Price now',
+      render: (c) => <span className={c.priced && !c.current_fee ? 'text-gold-ink' : ''}>{priceNow(c)}</span>,
+      className: 'whitespace-nowrap',
+    },
     { key: 'status', header: 'Status', render: (c) => <StatusChip status={c.is_active ? 'active' : 'inactive'} /> },
     {
       key: 'actions',
@@ -158,6 +173,17 @@ function CategoriesSection({ conferenceId, onChanged }: { conferenceId: string; 
           </Button>
         ) : null}
       </form>
+
+      <div className="mt-10">
+        <FeesSection
+          conferenceId={conferenceId}
+          categories={categories}
+          onChanged={() => {
+            load()
+            onChanged()
+          }}
+        />
+      </div>
     </div>
   )
 }
@@ -171,7 +197,7 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
   const initialStatus = searchParams.get('status') ?? ''
   return (
     <div className="mt-6">
-      <PageHeader title="Attendance" subtitle="Registration categories, registrations, and event check-in." />
+      <PageHeader title="Attendance" subtitle="Registration categories and prices, registrations and payments, and event check-in." />
       <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
       <div className="mt-10 max-w-5xl">
         <CategoriesSection conferenceId={conferenceId} onChanged={() => setRefreshKey((k) => k + 1)} />

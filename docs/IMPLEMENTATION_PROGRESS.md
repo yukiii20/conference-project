@@ -266,3 +266,54 @@ the browser's own timezone, and certificates printed the UTC issue date.
   - `tick.test.ts` 5/5.
   - Server 353 pass; 369 need MySQL.
   - Lint and `tsc` clean.
+
+## D2a / H3: registration prices and manual payments · 1 November 2026 · status: CODE DONE, DB tests pending MySQL
+
+**No SQL needed.** It uses the existing `registration_fees`, `registrations.fee_id/amount_due/waiver_*`
+and `payments` tables, the `fees_overlap_*` trigger, and the `payment.manage` / `payment.read_all`
+permissions. That makes it safe to auto-deploy before any Aiven change.
+
+**Behaviour**
+- **Prices:**
+  - Per category, each with a validity window entered in Nepal time.
+  - Overlapping active prices are rejected by the database trigger, shown as a readable 409.
+  - Deleting a price someone registered under switches it off instead of deleting it.
+- **Registering:**
+  - The current price is copied onto the registration (`fee_id`, `amount_due`, `currency`).
+  - A paid category starts `pending`.
+  - A free category is `confirmed` unless "registration requires payment" is on (unchanged
+    behaviour).
+  - A priced category with no price covering today is refused with a clear message instead of
+    silently becoming free.
+- **Payments:**
+  - Staff record cash, bank transfer, eSewa, Khalti, Fonepay or other payments, with an optional
+    reference.
+  - The payment that covers the balance auto-confirms the registration and queues the existing
+    `payment_received` email plus an in-app notification.
+  - Mistakes are voided with a reason, never deleted.
+  - The fee can be waived with a reason (records `waived_by`).
+- **Lists and export:** the registration list and CSV export show amount paid. The CSV now also
+  neutralises spreadsheet-formula cells (`=`, `+`, `-`, `@`).
+- **Screens:**
+  - Convenor Attendance tab: a "Price now" column, a Prices editor, and a Payments column with a
+    payments dialog.
+  - Attendee: prices appear in the category picker, and the ticket shows the fee and what's still
+    owed.
+- **New endpoints:**
+  - `GET /registration-fees`
+  - `POST /registration-categories/:categoryId/fees`
+  - `PATCH` and `DELETE /registration-fees/:feeId`
+  - `GET` and `POST /registrations/:id/payments`
+  - `POST /registrations/:id/payments/:paymentId/void`
+  - `POST /registrations/:id/waive`
+
+**Tests**
+- `registrationFeesValidation.test.ts` 6/6 and `money.test.ts` 3/3 pass.
+- `registrationFees.test.ts`: 14 end-to-end API tests (overlap trigger, permissions, part
+  payments, auto-confirm, void, waive, attendee view). **Not run yet: no MySQL here.**
+- Frontend 80/80.
+- Server 367 pass; all 383 failures are `ECONNREFUSED` (checked from the JSON report: 0
+  non-database failures).
+- Lint, `tsc` and build clean.
+- **Not done:** an online payment gateway (D2b, which needs a merchant account) and a visual
+  check against a running backend.

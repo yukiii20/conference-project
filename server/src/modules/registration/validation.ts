@@ -23,6 +23,48 @@ export const registrationCategorySchema = z.object({
 })
 export type RegistrationCategoryInput = z.infer<typeof registrationCategorySchema>
 
+const isoDateTime = (label: string) =>
+  z
+    .string({ error: `${label} is required.` })
+    .datetime({ offset: true, message: `${label} must be a valid date and time.` })
+    .transform((v) => new Date(v))
+
+const money = z.coerce
+  .number({ error: 'Amount must be a number.' })
+  .min(0, 'Amount cannot be negative.')
+  .max(9_999_999_999, 'Amount is too large.')
+  .transform((v) => Math.round(v * 100) / 100)
+
+export const registrationFeeSchema = z
+  .object({
+    fee_type: z.enum(['early_bird', 'regular', 'late', 'on_site']).default('regular'),
+    amount: money,
+    currency: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{3}$/, 'Currency must be a 3-letter code such as NPR or USD.'),
+    valid_from: isoDateTime('Start'),
+    valid_until: isoDateTime('End'),
+    is_active: z.boolean().default(true),
+  })
+  .refine((v) => v.valid_until > v.valid_from, { message: 'The end must be after the start.', path: ['valid_until'] })
+export type RegistrationFeeInput = z.infer<typeof registrationFeeSchema>
+
+export const PAYMENT_METHODS = ['cash', 'bank_transfer', 'esewa', 'khalti', 'fonepay', 'other'] as const
+
+export const paymentSchema = z.object({
+  amount: money.refine((v) => v > 0, 'Amount must be more than 0.'),
+  method: z.enum(PAYMENT_METHODS, { error: 'Choose how it was paid.' }),
+  reference: optionalText(200, 'Reference'),
+  paid_at: isoDateTime('Paid at').optional(),
+})
+export type PaymentInput = z.infer<typeof paymentSchema>
+
+export const reasonSchema = z.object({
+  reason: z.string().trim().min(3, 'Give a short reason.').max(500, 'Reason must be 500 characters or fewer.'),
+})
+
 export const registerSchema = z.object({
   category_id: z.string().uuid('Choose a category.'),
 })

@@ -373,6 +373,31 @@ export const registrationCategorySchema = z.object({
 })
 export type RegistrationCategoryInput = z.input<typeof registrationCategorySchema>
 
+/** Attendance tab: a price window for a registration category (mirrors server registrationFeeSchema). */
+export const FEE_TYPES = ['early_bird', 'regular', 'late', 'on_site'] as const
+export const registrationFeeSchema = z
+  .object({
+    fee_type: z.enum(FEE_TYPES),
+    amount: z.coerce.number({ error: 'Amount must be a number.' }).min(0, 'Amount cannot be negative.').max(9_999_999_999, 'Amount is too large.'),
+    currency: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{3}$/, 'Currency must be a 3-letter code such as NPR or USD.'),
+    valid_from: z.string().min(1, 'Choose when this price starts.'),
+    valid_until: z.string().min(1, 'Choose when this price ends.'),
+    is_active: z.boolean(),
+  })
+  .refine((v) => v.valid_until > v.valid_from, { message: 'The end must be after the start.', path: ['valid_until'] })
+
+/** Registrations list: a manually recorded payment (mirrors server paymentSchema). */
+export const PAYMENT_METHODS = ['cash', 'bank_transfer', 'esewa', 'khalti', 'fonepay', 'other'] as const
+export const paymentSchema = z.object({
+  amount: z.coerce.number({ error: 'Amount must be a number.' }).gt(0, 'Amount must be more than 0.'),
+  method: z.enum(PAYMENT_METHODS, { error: 'Choose how it was paid.' }),
+  reference: z.string().trim().max(200, 'Reference must be 200 characters or fewer.'),
+})
+
 /** A2.9 — Certificates tab: templates. */
 export const CERTIFICATE_TYPES = [
   'participation',

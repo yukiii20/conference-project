@@ -2,15 +2,32 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { API_BASE, api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
+import { formatMoney } from '../../lib/money'
 import { useAuth } from '../../lib/authContext'
 import { ConfirmDialog } from '../../components/ui/Modal'
 
-type Category = { id: string; code: string; name: string; is_active: boolean }
+type Category = {
+  id: string
+  code: string
+  name: string
+  is_active: boolean
+  current_fee?: { amount: number; currency: string; valid_until: string } | null
+  priced?: boolean
+}
+
+function categoryLabel(c: Category): string {
+  if (c.current_fee && c.current_fee.amount > 0) return `${c.name} — ${formatMoney(c.current_fee.amount, c.current_fee.currency)}`
+  if (c.priced && !c.current_fee) return `${c.name} — not available now`
+  return `${c.name} — free`
+}
 type MyRegistration = {
   id: string
   registration_number: string
   status: 'pending' | 'confirmed' | 'waitlisted' | 'cancelled'
   category_name: string
+  amount_due?: string
+  amount_paid?: string
+  currency?: string
   registered_at: string
 }
 type MyCertificate = {
@@ -149,8 +166,8 @@ export function RegistrationPanel({
               >
                 <option value="">Choose a category</option>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+                  <option key={c.id} value={c.id} disabled={Boolean(c.priced && !c.current_fee)}>
+                    {categoryLabel(c)}
                   </option>
                 ))}
               </select>
@@ -164,6 +181,17 @@ export function RegistrationPanel({
                 {busy ? 'Registering…' : 'Register to attend'}
               </button>
             </div>
+            {(() => {
+              const chosen = categories.find((c) => c.id === categoryId)
+              if (!chosen?.current_fee || chosen.current_fee.amount === 0) return null
+              return (
+                <p className="mt-2 text-xs text-ink/60">
+                  Fee {formatMoney(chosen.current_fee.amount, chosen.current_fee.currency)} — this price applies until{' '}
+                  {formatKathmandu(chosen.current_fee.valid_until)}. You'll get your ticket now; the organisers confirm it once your payment is
+                  received.
+                </p>
+              )
+            })()}
           </div>
         )
       ) : (
@@ -171,6 +199,17 @@ export function RegistrationPanel({
           <p className="text-sm font-medium text-ink">Your ticket</p>
           <p className="mt-2 font-mono text-lg">{registration.registration_number}</p>
           <p className="mt-1 text-sm text-ink/70">{registration.category_name}</p>
+          {Number(registration.amount_due ?? 0) > 0 && registration.currency ? (
+            <p className="mt-1 text-sm text-ink/70">
+              Fee {formatMoney(registration.amount_due!, registration.currency)}
+              {Number(registration.amount_paid ?? 0) >= Number(registration.amount_due)
+                ? ' · paid'
+                : ` · paid ${formatMoney(registration.amount_paid ?? 0, registration.currency)}, ${formatMoney(
+                    Number(registration.amount_due) - Number(registration.amount_paid ?? 0),
+                    registration.currency,
+                  )} still to pay`}
+            </p>
+          ) : null}
           <p className="mt-1 text-sm text-ink/60">{STATUS_NOTE[registration.status]}</p>
           {registration.status === 'pending' && contactEmail ? (
             <p className="mt-1 text-sm text-ink/60">

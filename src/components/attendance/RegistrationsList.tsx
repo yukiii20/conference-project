@@ -6,6 +6,8 @@ import { ConfirmDialog } from '../ui/Modal'
 import { Table, Pagination } from '../ui/Table'
 import type { Column } from '../ui/Table'
 import { Alert, Button, Input, Select } from '../ui'
+import { formatMoney } from '../../lib/money'
+import { PaymentsModal } from './PaymentsModal'
 
 type Category = { id: string; name: string }
 
@@ -17,8 +19,17 @@ type AdminRegistration = {
   category_name: string
   status: 'pending' | 'confirmed' | 'waitlisted' | 'cancelled'
   amount_due: string
+  amount_paid: string
   currency: string
   registered_at: string
+}
+
+function paymentSummary(r: AdminRegistration): { text: string; owing: boolean } {
+  const due = Number(r.amount_due)
+  const paid = Number(r.amount_paid ?? 0)
+  if (due === 0) return { text: paid > 0 ? `${formatMoney(paid, r.currency)} paid` : 'Free', owing: false }
+  if (paid >= due) return { text: `${formatMoney(due, r.currency)} · paid`, owing: false }
+  return { text: `${formatMoney(paid, r.currency)} of ${formatMoney(due, r.currency)}`, owing: r.status !== 'cancelled' }
 }
 
 /**
@@ -108,6 +119,7 @@ export function RegistrationsList({
   }
 
   const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null)
+  const [paymentsFor, setPaymentsFor] = useState<AdminRegistration | null>(null)
 
   async function cancelRegistration(id: string) {
     setConfirmingCancelId(null)
@@ -136,6 +148,14 @@ export function RegistrationsList({
     },
     { key: 'category', header: 'Category', render: (r) => r.category_name },
     { key: 'status', header: 'Status', render: (r) => <StatusChip status={r.status} /> },
+    {
+      key: 'payment',
+      header: 'Payment',
+      render: (r) => {
+        const s = paymentSummary(r)
+        return <span className={`whitespace-nowrap text-sm ${s.owing ? 'text-danger' : 'text-text-muted'}`}>{s.text}</span>
+      },
+    },
     { key: 'registered', header: 'Registered', render: (r) => formatKathmandu(r.registered_at), className: 'whitespace-nowrap' },
     ...(readOnly
       ? []
@@ -145,6 +165,9 @@ export function RegistrationsList({
             header: '',
             render: (r: AdminRegistration) => (
               <div className="flex gap-2">
+                <Button type="button" variant="link" size="sm" onClick={() => setPaymentsFor(r)}>
+                  Payments
+                </Button>
                 {r.status === 'pending' ? (
                   <Button type="button" variant="link" size="sm" disabled={busyId === r.id} onClick={() => confirmRegistration(r.id)}>
                     Confirm
@@ -208,11 +231,19 @@ export function RegistrationsList({
           rowKey={(r) => r.id}
           loading={loading}
           emptyTitle="No registrations yet."
-          minWidth={800}
+          minWidth={900}
         />
       </div>
 
       <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+
+      <PaymentsModal
+        conferenceId={conferenceId}
+        registration={paymentsFor}
+        canManage={!readOnly}
+        onClose={() => setPaymentsFor(null)}
+        onChanged={load}
+      />
 
       <ConfirmDialog
         open={confirmingCancelId !== null}

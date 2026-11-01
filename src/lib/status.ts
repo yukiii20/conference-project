@@ -84,6 +84,10 @@ const STATUS_TONE: Record<string, StatusTone> = {
   bounced: 'danger',
   queued: 'info',
   sending: 'info',
+  // payments
+  successful: 'success',
+  voided: 'neutral',
+  refunded: 'neutral',
   // suggestions (home page suggestion box, triaged from /super-admin)
   new: 'warning',
   read: 'neutral',

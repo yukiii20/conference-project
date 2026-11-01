@@ -30,13 +30,17 @@ import {
   sessionCheckinByRegistrationId,
   updateCategory,
 } from './service.js'
+import { createFee, deleteFee, listFees, listPayments, recordPayment, updateFee, voidPayment, waiveRegistrationFee } from './fees.service.js'
 import {
   checkinLookupQuerySchema,
   checkinSchema,
   manualCheckinSchema,
   manualSessionCheckinSchema,
+  paymentSchema,
+  reasonSchema,
   registerSchema,
   registrationCategorySchema,
+  registrationFeeSchema,
   sessionCheckinSchema,
 } from './validation.js'
 
@@ -72,6 +76,105 @@ registrationRouter.patch(
     try {
       await updateCategory(req.user!.id, req.params.id!, req.params.categoryId!, req.body, auditContextFrom(req))
       res.json({ message: 'Category updated.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ------------------------------------------------------------------- Fees
+registrationRouter.get('/:id/registration-fees', requireConferencePermission('registration.read_all'), async (req, res, next) => {
+  try {
+    res.json({ fees: await listFees(req.params.id!) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+registrationRouter.post(
+  '/:id/registration-categories/:categoryId/fees',
+  requireConferencePermission('registration.manage'),
+  validateBody(registrationFeeSchema),
+  async (req, res, next) => {
+    try {
+      res.status(201).json(await createFee(req.user!.id, req.params.id!, req.params.categoryId!, req.body, auditContextFrom(req)))
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+registrationRouter.patch(
+  '/:id/registration-fees/:feeId',
+  requireConferencePermission('registration.manage'),
+  validateBody(registrationFeeSchema),
+  async (req, res, next) => {
+    try {
+      await updateFee(req.user!.id, req.params.id!, req.params.feeId!, req.body, auditContextFrom(req))
+      res.json({ message: 'Price updated.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+registrationRouter.delete('/:id/registration-fees/:feeId', requireConferencePermission('registration.manage'), async (req, res, next) => {
+  try {
+    const { deactivated } = await deleteFee(req.user!.id, req.params.id!, req.params.feeId!, auditContextFrom(req))
+    res.json({ message: deactivated ? 'Price switched off (people already registered under it).' : 'Price deleted.', deactivated })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// --------------------------------------------------------------- Payments
+registrationRouter.get(
+  '/:id/registrations/:registrationId/payments',
+  requireConferencePermission('payment.read_all'),
+  async (req, res, next) => {
+    try {
+      res.json(await listPayments(req.params.id!, req.params.registrationId!))
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+registrationRouter.post(
+  '/:id/registrations/:registrationId/payments',
+  requireConferencePermission('payment.manage'),
+  validateBody(paymentSchema),
+  async (req, res, next) => {
+    try {
+      res.status(201).json(await recordPayment(req.user!.id, req.params.id!, req.params.registrationId!, req.body, auditContextFrom(req)))
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+registrationRouter.post(
+  '/:id/registrations/:registrationId/payments/:paymentId/void',
+  requireConferencePermission('payment.manage'),
+  validateBody(reasonSchema),
+  async (req, res, next) => {
+    try {
+      await voidPayment(req.user!.id, req.params.id!, req.params.registrationId!, req.params.paymentId!, req.body.reason, auditContextFrom(req))
+      res.json({ message: 'Payment voided.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+registrationRouter.post(
+  '/:id/registrations/:registrationId/waive',
+  requireConferencePermission('registration.manage'),
+  validateBody(reasonSchema),
+  async (req, res, next) => {
+    try {
+      await waiveRegistrationFee(req.user!.id, req.params.id!, req.params.registrationId!, req.body.reason, auditContextFrom(req))
+      res.json({ message: 'Fee waived.' })
     } catch (err) {
       next(err)
     }
