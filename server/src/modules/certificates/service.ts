@@ -514,7 +514,7 @@ export async function previewTemplatePdf(conferenceId: string, templateId: strin
   ])
 
   return generateCertificatePdf({
-    recipientName: 'Jordan Sample',
+    recipientName: 'Recipient Name',
     conferenceName: conference.name,
     certificateType: template.certificate_type,
     certificateNumber: 'SAMPLE-0000',
@@ -548,7 +548,7 @@ export async function previewDraftPdf(conferenceId: string, input: PreviewDraftI
   ])
 
   return generateCertificatePdf({
-    recipientName: 'Jordan Sample',
+    recipientName: 'Recipient Name',
     conferenceName: conference.name,
     certificateType: input.certificate_type,
     certificateNumber: 'SAMPLE-0000',
