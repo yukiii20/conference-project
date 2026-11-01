@@ -23,9 +23,9 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   support_email: 'conferencemanagment4@gmail.com',
   footer_text:
     'A platform for running academic conferences — calls for papers, peer review, programme and participants.',
-  hero_headline: 'Run your academic conference in one place',
+  hero_headline: 'Where research meets the world.',
   hero_subheadline:
-    'Calls for papers, peer review, programme and participants, from first abstract to final session.',
+    'Discover academic conferences, share groundbreaking research, collaborate with scholars and experience every stage of the conference journey in one place.',
   faq_items: [
     {
       q: 'How do I submit an abstract?',

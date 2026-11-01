@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Mail } from 'lucide-react'
+import { ArrowRight, Mail } from 'lucide-react'
 import { SITE } from '../../content/site'
 import { usePlatformSettings } from '../../lib/platformSettings'
 import { LogoMark } from './LandingHeader'
@@ -37,9 +37,32 @@ export function LandingFooter() {
   }
 
   return (
-    <footer className="bg-footer text-white">
-      <div className="mx-auto max-w-[1200px] px-4 pb-10 pt-14 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+    <footer className="relative overflow-hidden bg-footer text-white">
+      <div className="pointer-events-none absolute -right-40 -top-40 h-[420px] w-[420px] rounded-full bg-indigo/15 blur-3xl" aria-hidden="true" />
+      <div className="relative mx-auto max-w-[1240px] px-4 pb-10 pt-16 sm:px-6 lg:pt-20">
+        <div className="flex flex-col gap-8 border-b border-white/10 pb-14 lg:flex-row lg:items-end lg:justify-between">
+          <p className="max-w-2xl font-display text-4xl font-semibold leading-[1.08] tracking-[-0.015em] sm:text-5xl">
+            Where research <span className="italic text-gold">meets</span> the world.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a
+              href="/#conferences"
+              onClick={(e) => handleSectionLink(e, '#conferences')}
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand transition hover:bg-gold"
+            >
+              Explore conferences
+              <ArrowRight size={16} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />
+            </a>
+            <Link
+              to="/signup"
+              className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3 text-sm font-medium text-white transition hover:border-white/50"
+            >
+              Create an account
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
             <div className="flex items-center gap-2.5 font-semibold">
               <LogoMark size={32} onDark />
@@ -59,7 +82,7 @@ export function LandingFooter() {
 
           {columns.map((col) => (
             <div key={col.heading}>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/40">{col.heading}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/60">{col.heading}</p>
               <ul className="mt-4 space-y-2.5 text-sm">
                 {col.links.map((link) =>
                   'to' in link ? (
@@ -89,7 +112,15 @@ export function LandingFooter() {
           <span>
             © {year} {platformName}
           </span>
-          <span>Banepa, Nepal</span>
+          <span className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+            <span>Banepa, Nepal</span>
+            <span>
+              Photography via{' '}
+              <a href="https://unsplash.com/license" target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:text-white hover:underline">
+                Unsplash
+              </a>
+            </span>
+          </span>
         </div>
       </div>
     </footer>

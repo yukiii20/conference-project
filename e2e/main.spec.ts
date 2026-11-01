@@ -46,7 +46,7 @@ test.describe('public pages', () => {
     const errors = trackConsoleErrors(page)
     const res = await page.goto('/')
     expect(res?.status()).toBeLessThan(400)
-    await expect(page.getByRole('link', { name: FIXTURE.conferenceName, exact: false })).toBeVisible()
+    await expect(page.getByRole('link', { name: FIXTURE.conferenceName, exact: false }).first()).toBeVisible()
     await expectNotBlank(page)
     expect(errors, `console errors on /:\n${errors.join('\n')}`).toEqual([])
   })
@@ -172,7 +172,7 @@ test.describe('convenor edits the conference', () => {
     await expect(page.getByText('Saved.').first()).toBeVisible()
 
     await page.goto('/')
-    await expect(page.getByText('Open for abstracts')).toBeVisible()
+    await expect(page.locator('dt', { hasText: 'Open for abstracts' })).toBeVisible()
     const statValue = page.locator('dt', { hasText: 'Open for abstracts' }).locator('xpath=following-sibling::dd[1]')
     await expect(statValue).not.toHaveText('0')
   })

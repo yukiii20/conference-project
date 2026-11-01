@@ -174,7 +174,7 @@ export function HomeHero({
 
           <h1
             id="home-hero-title"
-            className="home-rise mt-6 max-w-[14ch] font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.6rem]"
+            className="home-rise mt-6 max-w-[16ch] font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.6rem]"
             style={{ animationDelay: '140ms' }}
           >
             {headline}

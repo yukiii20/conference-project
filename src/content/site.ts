@@ -11,23 +11,23 @@ export const SITE = {
   },
 
   seo: {
-    title: 'Conference Management System — calls for papers, review and programmes',
+    title: 'Conference Management System — discover academic conferences and share your research',
     description:
-      'Run your academic conference in one place: calls for papers, double-blind peer review, programme scheduling and participant management, from first abstract to final session.',
+      'Discover academic conferences, submit research, take part in double-blind peer review, register and receive your certificate — every stage of the conference journey in one place.',
   },
 
   hero: {
-    headline: 'Run your academic conference in one place',
+    headline: 'Where research meets the world.',
     subheadline:
-      'Calls for papers, peer review, programme and participants, from first abstract to final session.',
-    primaryCta: 'Browse conferences',
+      'Discover academic conferences, share groundbreaking research, collaborate with scholars and experience every stage of the conference journey in one place.',
+    primaryCta: 'Explore conferences',
     secondaryCta: 'Submit abstract',
   },
 
   nav: [
     { id: 'conferences', label: 'Conferences' },
+    { id: 'features', label: 'Platform' },
     { id: 'how-it-works', label: 'How it works' },
-    { id: 'features', label: 'Features' },
     { id: 'faq', label: 'FAQ' },
     { id: 'contact', label: 'Contact' },
   ],
@@ -188,8 +188,10 @@ export const SITE = {
         heading: 'Platform',
         links: [
           { label: 'Conferences', href: '#conferences' },
+          { label: 'The platform', href: '#features' },
           { label: 'How it works', href: '#how-it-works' },
           { label: 'FAQ', href: '#faq' },
+          { label: 'Contact', href: '#contact' },
           { label: 'Feedback', href: '#suggestions' },
         ],
       },
