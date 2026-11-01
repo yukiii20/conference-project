@@ -82,4 +82,50 @@ describe('stripDocumentMetadata', () => {
     const image = Buffer.from([0x89, 0x50, 0x4e, 0x47])
     expect(await stripDocumentMetadata(image, 'png')).toEqual({ buffer: image, stripped: false })
   })
+
+  it('DOCX: tracked changes, comments, the people list and custom properties lose the author', async () => {
+    const zip = new JSZip()
+    zip.file('[Content_Types].xml', '<Types/>')
+    zip.file(
+      'word/document.xml',
+      `<w:document><w:body><w:p><w:ins w:id="1" w:author="${AUTHOR}" w:date="2026-01-01T00:00:00Z"><w:r><w:t>Inserted text</w:t></w:r></w:ins>` +
+        `<w:del w:id="2" w:author='${AUTHOR}'><w:r><w:delText>gone</w:delText></w:r></w:del></w:p></w:body></w:document>`,
+    )
+    zip.file('word/comments.xml', `<w:comments><w:comment w:id="0" w:author="${AUTHOR}" w:initials="RBS"><w:p><w:r><w:t>Note</w:t></w:r></w:p></w:comment></w:comments>`)
+    zip.file('word/people.xml', `<w15:people><w15:person w15:author="${AUTHOR}"><w15:presenceInfo w15:providerId="AD" w15:userId="ram@tu.edu.np"/></w15:person></w15:people>`)
+    zip.file('word/footer1.xml', `<w:ftr><w:p><w:ins w:author="${AUTHOR}"><w:r><w:t>Page</w:t></w:r></w:ins></w:p></w:ftr>`)
+    zip.file('docProps/custom.xml', `<Properties><property name="Owner"><vt:lpwstr>${AUTHOR}</vt:lpwstr></property><property name="Rev"><vt:i4>3</vt:i4></property></Properties>`)
+
+    const out = await JSZip.loadAsync((await stripDocumentMetadata(await zip.generateAsync({ type: 'nodebuffer' }), 'docx')).buffer)
+    for (const name of ['word/document.xml', 'word/comments.xml', 'word/people.xml', 'word/footer1.xml', 'docProps/custom.xml']) {
+      const xml = await out.file(name)!.async('string')
+      expect(xml, name).not.toContain(AUTHOR)
+      expect(xml, name).not.toContain('ram@tu.edu.np')
+      expect(xml, name).not.toContain('RBS')
+    }
+    const doc = await out.file('word/document.xml')!.async('string')
+    expect(doc).toContain('Inserted text')
+    expect(doc).toContain('<w:delText>gone</w:delText>')
+    expect(doc).toContain('w:author="Author"')
+    expect(await out.file('word/comments.xml')!.async('string')).toContain('<w:t>Note</w:t>')
+    expect(await out.file('docProps/custom.xml')!.async('string')).toContain('<vt:i4>3</vt:i4>')
+  })
+
+  it('PPTX: legacy and modern comment-author lists and slide comments lose the author', async () => {
+    const zip = new JSZip()
+    zip.file('[Content_Types].xml', '<Types/>')
+    zip.file('ppt/commentAuthors.xml', `<p:cmAuthorLst><p:cmAuthor id="0" name="${AUTHOR}" initials="RBS" lastIdx="1" clrIdx="0"/></p:cmAuthorLst>`)
+    zip.file('ppt/authors.xml', `<p188:authorLst><p188:author id="{1}" name="${AUTHOR}" initials="RBS" userId="ram@tu.edu.np" providerId="AD"/></p188:authorLst>`)
+    zip.file('ppt/slides/slide1.xml', '<p:sld><p:cSld><a:t>Slide title</a:t></p:cSld></p:sld>')
+    zip.file('docProps/core.xml', `<cp:coreProperties><dc:creator>${AUTHOR}</dc:creator></cp:coreProperties>`)
+
+    const out = await JSZip.loadAsync((await stripDocumentMetadata(await zip.generateAsync({ type: 'nodebuffer' }), 'pptx')).buffer)
+    for (const name of ['ppt/commentAuthors.xml', 'ppt/authors.xml', 'docProps/core.xml']) {
+      const xml = await out.file(name)!.async('string')
+      expect(xml, name).not.toContain(AUTHOR)
+      expect(xml, name).not.toContain('ram@tu.edu.np')
+    }
+    expect(await out.file('ppt/commentAuthors.xml')!.async('string')).toContain('lastIdx="1"')
+    expect(await out.file('ppt/slides/slide1.xml')!.async('string')).toContain('Slide title')
+  })
 })
