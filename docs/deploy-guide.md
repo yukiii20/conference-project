@@ -169,3 +169,29 @@ Without this, the email log stops at **Sent** (Brevo accepted the email). With i
 4. Send yourself a test email from the app. Within a minute its row should say **Delivered**.
 
 While `BREVO_WEBHOOK_SECRET` is empty, the endpoint answers 404, so nothing is exposed.
+
+## Keep background jobs running (recommended on Render's free plan)
+
+Render's free plan puts the backend to sleep after about 15 minutes without traffic. While it
+sleeps, queued emails, scheduled announcements and review reminders wait. A scheduled GitHub
+Action (`.github/workflows/tick.yml`, template in `deploy/github-tick-workflow.yml`) calls the backend every 10 minutes, which keeps it awake
+and runs any due jobs. Render's 750 free hours a month cover one always-on service.
+
+1. Add the workflow (one time): GitHub → repository → **Add file → Create new file**, name it
+   `.github/workflows/tick.yml`, paste the contents of `deploy/github-tick-workflow.yml`, and
+   commit to `main`. (It lives in `deploy/` because the automated push credential can't
+   create workflow files.)
+2. Make a random secret of 24+ characters (same command as above).
+3. Render → backend → **Environment**: add `CRON_SECRET` = that secret, then save.
+4. GitHub → repository → **Settings → Secrets and variables → Actions → New repository secret**:
+   - `TICK_URL` = `https://<your-vercel-site>/api/internal/tick`
+   - `CRON_SECRET` = the same secret
+5. GitHub → **Actions → Background jobs tick → Run workflow**. The log should end with
+   `{"jobs":{"email_recover":"ok","email":"ok",...}}`.
+
+Notes:
+- GitHub may run scheduled workflows a few minutes late. That's fine for these jobs.
+- GitHub pauses scheduled workflows in repositories with no commits for 60 days. If that
+  happens, re-enable the workflow on the Actions tab.
+- Any other scheduler (for example cron-job.org) works too: send `POST` to the same URL with
+  the header `Authorization: Bearer <CRON_SECRET>`.

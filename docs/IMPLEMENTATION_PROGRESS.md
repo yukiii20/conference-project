@@ -239,3 +239,30 @@ the browser's own timezone, and certificates printed the UTC issue date.
 - Lint and `tsc` clean.
 
 **Owner step:** follow "Optional: delivery and bounce tracking" in `docs/deploy-guide.md`.
+
+## H2: background jobs while Render sleeps · 1 November 2026 · status: CODE DONE, owner adds 3 secrets
+
+- **Endpoint:** `POST /api/internal/tick` runs one pass of every job:
+  - email stuck-row recovery and one email batch
+  - scheduled announcements
+  - review reminders
+  - session cleanup
+- **Safety:**
+  - Protected by `CRON_SECRET` (bearer token, constant-time compare); returns 404 while it's
+    unset.
+  - One failing job doesn't stop the others.
+  - A second tick while one is running gets 202.
+  - All jobs were already safe to repeat: atomic email claim, `INSERT IGNORE` reminders,
+    `FOR UPDATE` announcements.
+- **Scheduler:** `.github/workflows/tick.yml (template: deploy/github-tick-workflow.yml)` calls it every 10 minutes. It skips until the
+  `TICK_URL` and `CRON_SECRET` repository secrets exist. This also keeps the free Render
+  instance awake.
+- **Files:**
+  - `server/src/jobs/tick.ts`
+  - `tests/tick.test.ts`
+  - `app.ts`, `config/env.ts`, `.env.example`, `render.yaml`
+  - `docs/deploy-guide.md` ("Keep background jobs running")
+- **Tests:**
+  - `tick.test.ts` 5/5.
+  - Server 353 pass; 369 need MySQL.
+  - Lint and `tsc` clean.

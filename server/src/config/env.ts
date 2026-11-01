@@ -53,6 +53,8 @@ const envSchema = z
     SMTP_PASS: z.string().optional(),
     MAIL_FROM: z.string().optional(),
     BREVO_API_KEY: z.string().optional(),
+    // Bearer token for POST /api/internal/tick (external scheduler; see .github/workflows/tick.yml). Unset = off.
+    CRON_SECRET: z.string().min(24, 'CRON_SECRET must be at least 24 characters.').optional().or(z.literal('').transform(() => undefined)),
     // Shared secret for POST /api/webhooks/brevo (delivered/bounced events). Unset = webhook off.
     BREVO_WEBHOOK_SECRET: z.string().min(24, 'BREVO_WEBHOOK_SECRET must be at least 24 characters.').optional().or(z.literal('').transform(() => undefined)),
     // Used to build links in emails (reset-password, invitations, ...) — never hard-code localhost elsewhere.

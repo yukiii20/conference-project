@@ -1,0 +1,32 @@
+# Keeps the Render backend awake and runs its background jobs (email queue, scheduled
+# announcements, review reminders, session cleanup) every 10 minutes.
+# Does nothing until both repository secrets exist:
+#   TICK_URL     https://<your-vercel-site>/api/internal/tick
+#   CRON_SECRET  same value as CRON_SECRET on Render
+# See docs/deploy-guide.md, "Keep background jobs running".
+name: Background jobs tick
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /api/internal/tick
+        env:
+          TICK_URL: ${{ secrets.TICK_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$TICK_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "TICK_URL / CRON_SECRET not set - skipping."
+            exit 0
+          fi
+          # A sleeping Render instance can take ~1 minute to wake, so allow time and retry once.
+          curl --fail-with-body --silent --show-error --max-time 120 --retry 2 --retry-delay 20 \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" "$TICK_URL"
