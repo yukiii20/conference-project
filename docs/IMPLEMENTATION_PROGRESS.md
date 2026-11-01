@@ -441,3 +441,11 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
 - **Pure move:** the code is unchanged apart from added `export`s and narrower imports. Tabs
   import only `shared`, never each other.
 - **Verified:** tsc, eslint, vite build and 80/80 frontend tests.
+
+## Phase 2, M5 (part): split `ProgrammeTab.tsx` · 1 November 2026 · status: DONE
+
+- The 1,417-line file is now an 18-line shell plus `src/pages/convenor/programme/`:
+  - `RoomsSection`, `TimeSlotsSection`, `SessionsSection`, `SessionManagePanel`,
+    `WarningsPanel`
+  - `shared.ts` for types, empty forms, track colours and clash detection
+- **Pure move.** Verified with tsc, eslint, vite build and 80/80 frontend tests.
