@@ -69,7 +69,7 @@ describe('registration fees', () => {
     expect((await convenor.agent.post(url).send(fee(1000, 0, 48))).status).toBe(201)
     const clash = await convenor.agent.post(url).send(fee(1200, 24, 72, { fee_type: 'late' }))
     expect(clash.status).toBe(409)
-    expect(clash.body.message).toMatch(/already has an active price/)
+    expect(clash.body.error?.message).toMatch(/already has an active price/)
   })
 
   it('rejects an end before the start and a bad currency', async () => {
@@ -120,7 +120,7 @@ describe('registering with a price', () => {
     const attendee = await loginAs(conferenceId, 'fees-gap@example.com')
     const res = await attendee.agent.post(`/api/conferences/${conferenceId}/register`).send({ category_id: categoryId })
     expect(res.status).toBe(409)
-    expect(res.body.message).toMatch(/no price for this category today/)
+    expect(res.body.error?.message).toMatch(/no price for this category today/)
   })
 })
 

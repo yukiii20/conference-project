@@ -43,14 +43,30 @@ describe('admin cannot suspend the last active admin', () => {
   // and the count can never reach zero). It's still a real safety net for the
   // service function itself, which other code paths may call directly in the
   // future, so this test exercises suspendUser() at that layer.
+  // Since the super administrator role, only a (super) admin may lock an admin account, so the
+  // acting account is an admin. To reach "zero other active admins" the actor's own account is
+  // made inactive directly in the database (a state the HTTP route can't produce).
   it('rejects a suspend that would leave zero active admins', async () => {
     const onlyAdminId = await createUser({ email: 'only-admin@example.com', password: 'Str0ng!Pass' })
     await makePlatformAdmin(onlyAdminId)
-    const someoneElse = await createUser({ email: 'bystander@example.com', password: 'Str0ng!Pass' })
+    const inactiveAdmin = await createUser({ email: 'inactive-admin@example.com', password: 'Str0ng!Pass' })
+    await makePlatformAdmin(inactiveAdmin)
+    await pool.query(`UPDATE users SET status = 'deactivated' WHERE id = ?`, [inactiveAdmin])
 
-    await expect(suspendUser(someoneElse, onlyAdminId)).rejects.toThrow(/last active administrator/i)
+    await expect(suspendUser(inactiveAdmin, onlyAdminId)).rejects.toThrow(/last active administrator/i)
 
     const [rows] = await pool.query('SELECT status FROM users WHERE id = ?', [onlyAdminId])
+    expect((rows as Array<{ status: string }>)[0]!.status).toBe('active')
+  })
+
+  it('refuses a non-admin actor locking an admin account', async () => {
+    const adminId = await createUser({ email: 'target-admin@example.com', password: 'Str0ng!Pass' })
+    await makePlatformAdmin(adminId)
+    const someoneElse = await createUser({ email: 'bystander@example.com', password: 'Str0ng!Pass' })
+
+    await expect(suspendUser(someoneElse, adminId)).rejects.toThrow(/super administrator/i)
+
+    const [rows] = await pool.query('SELECT status FROM users WHERE id = ?', [adminId])
     expect((rows as Array<{ status: string }>)[0]!.status).toBe('active')
   })
 
@@ -59,9 +75,8 @@ describe('admin cannot suspend the last active admin', () => {
     await makePlatformAdmin(adminAId)
     const adminBId = await createUser({ email: 'admin-b@example.com', password: 'Str0ng!Pass' })
     await makePlatformAdmin(adminBId)
-    const someoneElse = await createUser({ email: 'bystander2@example.com', password: 'Str0ng!Pass' })
 
-    await suspendUser(someoneElse, adminAId)
+    await suspendUser(adminBId, adminAId)
 
     const [rows] = await pool.query('SELECT status FROM users WHERE id = ?', [adminAId])
     expect((rows as Array<{ status: string }>)[0]!.status).toBe('suspended')

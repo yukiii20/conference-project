@@ -4,6 +4,7 @@
 -- Run it while connected to the Aiven database (the one DB_NAME points at).
 -- =====================================================================
 SET NAMES utf8mb4;
+USE conference_cms;
 
 INSERT IGNORE INTO roles (code, name, scope, description) VALUES
   ('super_admin', 'Super Administrator', 'platform',

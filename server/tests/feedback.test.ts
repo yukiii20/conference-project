@@ -173,7 +173,7 @@ describe('feedback survey: answering', () => {
     // "overall" is required.
     const missing = await request(app).post(url).set('Cookie', attendee.cookie).send({ answers: [{ question_id: q('venue'), rating: 4 }] })
     expect(missing.status).toBe(400)
-    expect(missing.body.fields?.[q('overall')]).toBeTruthy()
+    expect(missing.body.error?.fields?.[q('overall')]).toBeTruthy()
     const badChoice = await request(app)
       .post(url)
       .set('Cookie', attendee.cookie)

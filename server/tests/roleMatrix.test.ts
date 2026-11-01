@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db/pool.js'
-import { addConferenceMember, createConference, createDirectSession, createUser, makePlatformAdmin, resetDatabase } from './helpers.js'
+import { addConferenceMember, createConference, createDirectSession, createUser, makePlatformAdmin, resetDatabase, upsertConferenceSettings } from './helpers.js'
 
 /**
  * Role matrix (docs/role-matrix.md) as an executable check: every conference role is sent to a
@@ -71,6 +71,8 @@ const cookies: Record<string, string> = {}
 beforeAll(async () => {
   await resetDatabase()
   conferenceId = await createConference({ name: 'Matrix Conference' })
+  // Real conference creation always adds a settings row (admin/service.ts createConference).
+  await upsertConferenceSettings(conferenceId)
   otherConferenceId = await createConference({ name: 'Other Conference' })
   for (const role of Object.keys(DOCUMENTED)) {
     const userId = await createUser({ email: `matrix-${role}@example.com`, password: 'Str0ng!Pass' })
