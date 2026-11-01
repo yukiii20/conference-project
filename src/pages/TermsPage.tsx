@@ -18,12 +18,6 @@ export function TermsPage() {
 
   return (
     <div className="min-h-screen bg-page-bg text-text">
-      <div
-        dangerouslySetInnerHTML={{
-          __html:
-            '<!-- TEMPLATE: these terms of use are a starting point and have not been reviewed by a lawyer. Have them checked against your jurisdiction\'s requirements before public launch. -->',
-        }}
-      />
       <LandingHeader />
       <main className="mx-auto max-w-[760px] px-4 py-14 sm:px-6">
         <h1 className="font-display text-4xl font-semibold tracking-tight">Terms of use</h1>

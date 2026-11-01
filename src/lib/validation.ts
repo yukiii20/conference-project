@@ -368,7 +368,7 @@ export const registrationCategorySchema = z.object({
     .toLowerCase()
     .regex(/^[a-z0-9_]{2,40}$/, 'Code must be 2-40 lowercase letters, digits or underscores.'),
   name: z.string().trim().min(1, 'Name is required.').max(100, 'Name must be 100 characters or fewer.'),
-  description: optionalTrimmed(500, 'Description'),
+  description: optionalTrimmed(500, 'Description').nullable().optional(),
   is_active: z.boolean().default(true),
   display_order: z.coerce.number().int().default(0),
 })

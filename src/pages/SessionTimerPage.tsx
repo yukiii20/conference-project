@@ -114,6 +114,7 @@ function useScreenAwake(): 'wake-lock' | 'video' | 'unsupported' {
     return () => {
       cancelled = true
       document.removeEventListener('visibilitychange', onVisibility)
+      // The wake lock may already be gone (tab hidden); nothing to do either way.
       lock?.release().catch(() => {})
       if (video) {
         video.pause()
@@ -226,6 +227,7 @@ export function SessionTimerPage() {
       } else if (e.key === 'q' || e.key === 'Q') {
         act(startQa)
       } else if (e.key === 'f' || e.key === 'F') {
+        // Browsers refuse fullscreen without a user gesture; the timer works the same windowed.
         document.documentElement.requestFullscreen?.().catch(() => {})
       }
     }

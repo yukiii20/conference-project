@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
+import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
 // Deliberately NOT 4000/5173 (the user's real dev servers) — see
@@ -11,10 +12,23 @@ export const E2E_BASE_URL = 'http://localhost:5273'
 // or blocked, fall back to the full browser (still headless) instead of
 // failing every test with "spawn UNKNOWN". Harmless no-op on a machine
 // where the default headless shell works fine.
+// Set PLAYWRIGHT_CHROMIUM_PATH to force a specific browser; otherwise use the newest
+// Playwright-installed full chromium for the current Windows user, if there is one.
 function chromiumExecutablePathOverride(): string | undefined {
-  const candidate =
-    'C:\\Users\\ADMIN\\AppData\\Local\\ms-playwright\\chromium-1248\\chrome-win64\\chrome.exe'
-  return existsSync(candidate) ? candidate : undefined
+  const explicit = process.env.PLAYWRIGHT_CHROMIUM_PATH
+  if (explicit) return existsSync(explicit) ? explicit : undefined
+  if (!process.env.LOCALAPPDATA) return undefined
+  const root = path.join(process.env.LOCALAPPDATA, 'ms-playwright')
+  if (!existsSync(root)) return undefined
+  const buildNumber = (d: string) => Number(d.slice('chromium-'.length)) || 0
+  const builds = readdirSync(root)
+    .filter((d) => d.startsWith('chromium-'))
+    .sort((a, b) => buildNumber(b) - buildNumber(a))
+  for (const build of builds) {
+    const candidate = path.join(root, build, 'chrome-win64', 'chrome.exe')
+    if (existsSync(candidate)) return candidate
+  }
+  return undefined
 }
 
 export default defineConfig({

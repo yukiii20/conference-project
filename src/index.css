@@ -458,3 +458,90 @@ input[type='number']::-webkit-inner-spin-button {
     scrollbar-width: thin;
   }
 }
+
+/* ------------------------------------------------------------------
+   Home page motion. Every effect is opacity/transform/clip-path only
+   (no layout shift) and is switched off by the reduced-motion rule above
+   plus the explicit overrides at the end of this block.
+   ------------------------------------------------------------------ */
+@keyframes home-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes home-unveil {
+  from {
+    clip-path: inset(8% 8% 8% 8% round 28px);
+    transform: scale(1.06);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 28px);
+    transform: none;
+  }
+}
+
+@keyframes home-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes home-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+.home-rise {
+  animation: home-rise 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.home-unveil {
+  animation: home-unveil 1400ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+
+.home-draw {
+  transform-origin: left;
+  animation: home-draw 1200ms cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+
+/* A very slow float for one or two decorative overlays — never on content people read. */
+.home-drift {
+  animation: home-drift 9s ease-in-out infinite;
+}
+
+/* Fine film grain over photography, so overlaid type sits on a calmer surface. */
+.home-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-rise,
+  .home-unveil,
+  .home-draw,
+  .home-drift {
+    animation: none !important;
+    clip-path: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

@@ -360,3 +360,31 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
 - Server: 371 pass, 389 need MySQL, 0 failures from other causes.
 - Frontend 80/80.
 - Lint, `tsc` and build clean.
+
+## M4, certificate PDF test, L4–L6 · 1 November 2026 · status: DONE
+
+- **M4: schema parity.** New `server/tests/schemaParity.test.ts` runs the same sample payloads
+  through each client/server schema pair: name, email, phone, password, login, forgot password,
+  registration category, keywords, invite member. They must agree.
+  - **Drift found and fixed:** the client registration-category form rejected a missing
+    `description` that the server accepts.
+  - **Documented exception:** keywords. The abstract form requires one or more keywords on
+    purpose, while the API accepts keyword-less drafts (many existing tests rely on that). The
+    test allows the client to be stricter, never looser.
+- **Certificate PDF test** (`server/tests/certificatePdf.test.ts`, no database). It parses the
+  PDF back and checks:
+  - a single A4 landscape page
+  - the name, conference, number and Nepal issue date are present
+  - `{conference}` placeholders are filled
+  - hidden parts don't render
+  - a very long name, conference or signatory set never spills onto a second page
+  - 5/5 pass.
+- **L4:** removed the `dangerouslySetInnerHTML` HTML-comment hack from the Privacy and Terms
+  pages. The source-level "template, not reviewed by a lawyer" notice stays. **The owner still
+  needs a lawyer to review both pages before launch.**
+- **L5:** `playwright.config.ts` no longer hard-codes `C:\Users\ADMIN\...`. It uses
+  `PLAYWRIGHT_CHROMIUM_PATH` if set, otherwise the newest Playwright-installed full chromium for
+  the current user (sorted numerically), otherwise the default.
+- **L6:** every intentional `.catch(() => {})` now has a one-line reason (the forgot-password
+  page already had one).
+- **Result:** frontend 80/80, lint and `tsc` clean.

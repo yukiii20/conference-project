@@ -74,6 +74,7 @@ export function NotificationBell() {
       setNotifications((prev) =>
         prev.map((n) => (n.id === notification.id ? { ...n, read_at: new Date().toISOString() } : n)),
       )
+      // Best effort: a failed "mark as read" only leaves the dot on until the next refresh.
       api.post(`/me/notifications/${notification.id}/read`).catch(() => {})
     }
     if (notification.link_path) navigate(notification.link_path)

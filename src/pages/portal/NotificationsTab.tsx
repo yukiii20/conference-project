@@ -33,6 +33,7 @@ export function NotificationsTab() {
   async function handleSelect(n: NotificationRow) {
     if (!n.read_at) {
       setNotifications((prev) => prev.map((row) => (row.id === n.id ? { ...row, read_at: new Date().toISOString() } : row)))
+      // Best effort: a failed "mark as read" only leaves it unread until the next refresh.
       api.post(`/me/notifications/${n.id}/read`).catch(() => {})
     }
     if (n.link_path) navigate(n.link_path)

@@ -30,6 +30,7 @@ export function SuggestionBox() {
   useEffect(() => {
     // Home page never otherwise checks the session — ask once so a logged-in
     // visitor's name/email can be prefilled below.
+    // Background refresh of the list; the form still works if it fails, so stay silent.
     refresh().catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

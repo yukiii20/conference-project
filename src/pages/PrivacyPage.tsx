@@ -18,12 +18,6 @@ export function PrivacyPage() {
 
   return (
     <div className="min-h-screen bg-page-bg text-text">
-      <div
-        dangerouslySetInnerHTML={{
-          __html:
-            '<!-- TEMPLATE: this privacy policy is a starting point and has not been reviewed by a lawyer. Have it checked against your jurisdiction\'s requirements before public launch. -->',
-        }}
-      />
       <LandingHeader />
       <main className="mx-auto max-w-[760px] px-4 py-14 sm:px-6">
         <h1 className="font-display text-4xl font-semibold tracking-tight">Privacy policy</h1>
