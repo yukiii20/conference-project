@@ -14,6 +14,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/erro
 import { generateCertificatePdf, type CertificateLayout } from './export.js'
 import type { CertificateTemplateInput, PreviewDraftInput } from './validation.js'
 import { AUTO_CERTIFICATE_TYPES } from './validation.js'
+import { sampleRecipientName } from '../../utils/sampleRecipient.js'
 
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { code?: string }).code === 'ER_DUP_ENTRY')
@@ -498,6 +499,19 @@ async function issueOne(
   return certificateId
 }
 
+/**
+ * Name shown on preview PDFs: a real person who would receive this certificate type,
+ * else any registered participant, else a placeholder.
+ */
+async function previewRecipientName(conferenceId: string, certificateType: string): Promise<string> {
+  if ((AUTO_CERTIFICATE_TYPES as readonly string[]).includes(certificateType)) {
+    const recipients = await eligibleRecipients(conferenceId, certificateType as (typeof AUTO_CERTIFICATE_TYPES)[number])
+    const name = recipients.find((r) => r.full_name?.trim())?.full_name.trim()
+    if (name) return name
+  }
+  return sampleRecipientName(conferenceId)
+}
+
 /** A one-off sample PDF for the template editor's "live preview" — nothing is written to the database. */
 export async function previewTemplatePdf(conferenceId: string, templateId: string): Promise<Buffer> {
   const template = await getTemplate(conferenceId, templateId)
@@ -514,7 +528,7 @@ export async function previewTemplatePdf(conferenceId: string, templateId: strin
   ])
 
   return generateCertificatePdf({
-    recipientName: 'Recipient Name',
+    recipientName: await previewRecipientName(conferenceId, template.certificate_type),
     conferenceName: conference.name,
     certificateType: template.certificate_type,
     certificateNumber: 'SAMPLE-0000',
@@ -548,7 +562,7 @@ export async function previewDraftPdf(conferenceId: string, input: PreviewDraftI
   ])
 
   return generateCertificatePdf({
-    recipientName: 'Recipient Name',
+    recipientName: await previewRecipientName(conferenceId, input.certificate_type),
     conferenceName: conference.name,
     certificateType: input.certificate_type,
     certificateNumber: 'SAMPLE-0000',

@@ -5,6 +5,7 @@ import { htmlToText, wrapEmailHtml } from '../../email/layout.js'
 import { renderHtmlTemplate } from '../../email/render.js'
 import { insertAuditLog } from '../../utils/audit.js'
 import { NotFoundError } from '../../utils/errors.js'
+import { sampleRecipientName } from '../../utils/sampleRecipient.js'
 import type { SaveEmailTemplateInput } from './validation.js'
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
@@ -139,7 +140,6 @@ export async function resetEmailTemplate(actorUserId: string, conferenceId: stri
 
 const SAMPLE_VALUES: Record<string, string> = {
   platform_name: 'Conference CMS',
-  full_name: 'Jordan Lee',
   conference_name: 'International Conference on Sample Research 2026',
   conference_code: 'ICSR26',
   role_name: 'reviewer',
@@ -177,6 +177,9 @@ export async function previewEmailTemplate(
   const sampleData: Record<string, string> = {}
   for (const key of template.placeholders) {
     sampleData[key] = sampleValueFor(key)
+  }
+  if (template.placeholders.includes('full_name')) {
+    sampleData.full_name = await sampleRecipientName(conferenceId)
   }
 
   const subject = renderHtmlTemplate(template.subject, sampleData).replace(/<[^>]+>/g, '')

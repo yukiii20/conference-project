@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError } from '../../utils/errors.js'
 import { renderHtmlTemplate } from '../../email/render.js'
 import { wrapEmailHtml } from '../../email/layout.js'
 import { sanitizeTemplateHtml } from '../emailTemplates/service.js'
+import { sampleRecipientName } from '../../utils/sampleRecipient.js'
 import type { PreviewContentInput, RecipientGroup, SaveDraftInput } from './validation.js'
 
 type Queryable = Pool | PoolConnection
@@ -149,12 +150,12 @@ export async function previewRecipients(
   }
 }
 
-const SAMPLE_RECIPIENT = { first_name: 'Jordan', full_name: 'Jordan Lee' }
-
 export async function previewContent(conferenceId: string, input: PreviewContentInput): Promise<{ subject: string; html: string }> {
   const conference = await loadConference(pool, conferenceId)
+  const fullName = await sampleRecipientName(conferenceId)
   const data = {
-    ...SAMPLE_RECIPIENT,
+    first_name: firstName(fullName),
+    full_name: fullName,
     conference_name: conference.name,
     conference_url: conferenceUrl(conference.slug),
   }

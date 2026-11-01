@@ -85,7 +85,7 @@ describe('email templates', () => {
 
     const res = await agent.get(`/api/conferences/${conferenceId}/email-templates/account_created/preview`)
     expect(res.status).toBe(200)
-    expect(res.body.html).toContain('Jordan Lee')
+    expect(res.body.html).toContain('Recipient Name') // no registrants yet → placeholder
     expect(res.body.html).not.toContain('{{full_name}}')
   })
 
