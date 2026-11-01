@@ -405,7 +405,7 @@ export function ConferencePage() {
           sectionRefs.current.about = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
@@ -470,11 +470,11 @@ export function ConferencePage() {
           sectionRefs.current.announcements = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Announcements</h2>
         {announcements.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">No announcements yet.</p>
+          <p className="mt-4 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-5 text-center text-sm text-ink/60">No announcements yet.</p>
         ) : (
           <ul className="mt-6 space-y-4">
             {announcements.map((a) => (
@@ -494,11 +494,11 @@ export function ConferencePage() {
           sectionRefs.current.committees = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Committees</h2>
         {committees.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Committees will be announced soon.</p>
+          <p className="mt-4 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-5 text-center text-sm text-ink/60">Committees will be announced soon.</p>
         ) : (
           <div className="mt-6 space-y-8">
             {committees.map((c) => (
@@ -530,11 +530,11 @@ export function ConferencePage() {
           sectionRefs.current.speakers = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Speakers</h2>
         {speakers.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Speakers will be announced soon.</p>
+          <p className="mt-4 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-5 text-center text-sm text-ink/60">Speakers will be announced soon.</p>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {speakers.map((s) => {
@@ -567,11 +567,11 @@ export function ConferencePage() {
           sectionRefs.current.supporters = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Supporters</h2>
         {groupedSupporters.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Supporters will be announced soon.</p>
+          <p className="mt-4 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-5 text-center text-sm text-ink/60">Supporters will be announced soon.</p>
         ) : (
           <div className="mt-6 space-y-8">
             {groupedSupporters.map((group) => (
@@ -608,7 +608,7 @@ export function ConferencePage() {
           sectionRefs.current.programme = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-3xl font-semibold tracking-tight">Programme</h2>
@@ -636,7 +636,7 @@ export function ConferencePage() {
           ) : null}
         </div>
         {groupedSchedule.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">The programme will be announced soon.</p>
+          <p className="mt-4 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-5 text-center text-sm text-ink/60">The programme will be announced soon.</p>
         ) : (
           <div className="mt-6 space-y-8">
             {groupedSchedule.map((day) => (
@@ -708,7 +708,7 @@ export function ConferencePage() {
           sectionRefs.current.registration = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Registration</h2>
         <div className="mt-4">
@@ -722,7 +722,7 @@ export function ConferencePage() {
           sectionRefs.current.location = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Location</h2>
         <div className="mt-6 grid gap-6 md:grid-cols-2">
@@ -748,7 +748,7 @@ export function ConferencePage() {
           sectionRefs.current['key-dates'] = el
         }}
         style={sectionStyle}
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6"
+        className="mx-auto max-w-7xl px-4 py-6 sm:px-6"
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Key dates</h2>
         {nextDeadline && daysUntilNext !== null ? (
@@ -758,7 +758,7 @@ export function ConferencePage() {
           </p>
         ) : null}
         {deadlines.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-8 text-center text-sm text-ink/60">Key dates will be announced soon.</p>
+          <p className="mt-4 rounded-xl border border-dashed border-border bg-surface/60 px-4 py-5 text-center text-sm text-ink/60">Key dates will be announced soon.</p>
         ) : (
           <div className="mt-6 overflow-x-auto rounded-xl border border-border-soft bg-surface shadow-card">
             <table className="w-full min-w-[480px] text-left text-sm">

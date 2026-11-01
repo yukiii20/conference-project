@@ -155,7 +155,7 @@ function ConferenceLogo({ conference, accent, className }: { conference: Confere
   }
   return (
     <span
-      className={`flex items-center justify-center font-display text-lg font-semibold text-white ${className}`}
+      className={`flex items-center justify-center font-display text-base font-semibold text-white ${className}`}
       style={{ backgroundColor: accent }}
       aria-hidden="true"
     >
@@ -173,57 +173,57 @@ function ConferenceCard({ conference: c, abstractsOpen }: { conference: Conferen
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-card-hover"
     >
       <div
-        className="relative h-20 shrink-0"
+        className="relative h-14 shrink-0"
         style={{ backgroundImage: `linear-gradient(135deg, ${accent} 0%, ${darken(accent, 0.4)} 100%)` }}
         aria-hidden="true"
       >
         <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:14px_14px]" />
         {c.code ? (
-          <span className="absolute right-3 top-3 rounded-md bg-black/20 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-white/90 backdrop-blur-sm">
+          <span className="absolute right-2.5 top-2.5 rounded-md bg-black/20 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-white/90 backdrop-blur-sm">
             {c.code}
           </span>
         ) : null}
       </div>
-      <div className="flex flex-1 flex-col px-5 pb-5">
-        <ConferenceLogo conference={c} accent={accent} className="relative z-10 -mt-8 h-16 w-16 rounded-xl border-4 border-surface shadow-sm" />
-        <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-snug text-text">{c.name}</h3>
-        {c.tagline ? <p className="mt-1 line-clamp-1 text-sm text-text-muted">{c.tagline}</p> : null}
+      <div className="flex flex-1 flex-col px-4 pb-4">
+        <ConferenceLogo conference={c} accent={accent} className="relative z-10 -mt-6 h-12 w-12 rounded-lg border-[3px] border-surface shadow-sm" />
+        <h3 className="mt-2 line-clamp-2 text-[15px] font-semibold leading-snug text-text">{c.name}</h3>
+        {c.tagline ? <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">{c.tagline}</p> : null}
 
-        <dl className="mt-4 space-y-1.5 text-sm text-text-muted">
+        <dl className="mt-3 space-y-1 text-[13px] text-text-muted">
           <div className="flex items-center gap-2">
             <dt className="sr-only">Dates</dt>
-            <CalendarDays size={15} aria-hidden="true" className="shrink-0" />
+            <CalendarDays size={14} aria-hidden="true" className="shrink-0" />
             <dd>{formatDateRange(c.start_date, c.end_date)}</dd>
           </div>
           {place ? (
             <div className="flex items-center gap-2">
               <dt className="sr-only">Location</dt>
-              <MapPin size={15} aria-hidden="true" className="shrink-0" />
+              <MapPin size={14} aria-hidden="true" className="shrink-0" />
               <dd className="truncate capitalize">{place}</dd>
             </div>
           ) : null}
         </dl>
 
-        <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+        <div className="mt-auto flex items-center justify-between gap-3 pt-3">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <span
               style={{ backgroundColor: `${accent}1a`, color: darken(accent, 0.2) }}
-              className="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+              className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium"
             >
               {STATUS_LABELS[c.status] ?? c.status}
             </span>
             {abstractsOpen && c.status !== 'submission_open' ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-success">
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-success">
                 <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
                 Accepting abstracts
               </span>
             ) : null}
           </div>
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-soft text-text-muted transition group-hover:border-brand group-hover:bg-brand group-hover:text-on-brand"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-soft text-text-muted transition group-hover:border-brand group-hover:bg-brand group-hover:text-on-brand"
             aria-hidden="true"
           >
-            <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
+            <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
           </span>
         </div>
       </div>
@@ -691,7 +691,7 @@ export function HomePage() {
                   </button>
                 </div>
               ) : loading ? (
-                <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {[0, 1, 2].map((i) => (
                     <SkeletonCard key={i} />
                   ))}
@@ -716,7 +716,7 @@ export function HomePage() {
                   ) : null}
                 </div>
               ) : (
-                <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {filtered.map((c) => (
                     <ConferenceCard key={c.id} conference={c} abstractsOpen={openDeadlines.has(c.id)} />
                   ))}
