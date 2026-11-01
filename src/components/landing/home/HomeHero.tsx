@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, CalendarDays, EyeOff, MapPin, PlayCircle } from 'lucide-react'
 import { publicImageUrl } from '../../../lib/storage'
@@ -128,7 +128,7 @@ function FeaturedCard({
   )
 }
 
-export function HomeHero({
+export const HomeHero = memo(function HomeHero({
   headline,
   subheadline,
   featured,
@@ -174,13 +174,13 @@ export function HomeHero({
 
           <h1
             id="home-hero-title"
-            className="home-rise mt-6 max-w-[16ch] font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.6rem]"
+            className="home-settle mt-6 max-w-[16ch] font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.6rem]"
             style={{ animationDelay: '140ms' }}
           >
             {headline}
           </h1>
 
-          <p className="home-rise mt-6 max-w-[34rem] text-[17px] leading-relaxed text-text-muted sm:text-lg" style={{ animationDelay: '260ms' }}>
+          <p className="home-settle mt-6 max-w-[34rem] text-[17px] leading-relaxed text-text-muted sm:text-lg" style={{ animationDelay: '260ms' }}>
             {subheadline}
           </p>
 
@@ -260,4 +260,4 @@ export function HomeHero({
       </div>
     </section>
   )
-}
+})

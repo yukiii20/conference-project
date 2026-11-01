@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { Reveal } from '../Reveal'
@@ -45,7 +45,7 @@ function useScrollProgress<T extends HTMLElement>() {
   return [ref, progress] as const
 }
 
-export function JourneyTimeline() {
+export const JourneyTimeline = memo(function JourneyTimeline() {
   const [listRef, progress] = useScrollProgress<HTMLOListElement>()
   const reached = Math.floor(progress * STEPS.length + 0.35)
 
@@ -113,4 +113,4 @@ export function JourneyTimeline() {
       </ol>
     </div>
   )
-}
+})

@@ -236,7 +236,12 @@ export function HomePage() {
     ignoreSpyTimeoutRef.current = window.setTimeout(stopIgnoring, 900)
   }, [])
 
-  function handleWatchDemo() {
+  const goExplore = useCallback(() => handleNavigate('conferences'), [handleNavigate])
+  const goPlatform = useCallback(() => handleNavigate('features'), [handleNavigate])
+  const goContact = useCallback(() => handleNavigate('contact'), [handleNavigate])
+  const goFeedback = useCallback(() => handleNavigate('suggestions'), [handleNavigate])
+
+  const handleWatchDemo = useCallback(() => {
     demoSectionRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
     const video = demoVideoRef.current
     if (video) {
@@ -245,7 +250,7 @@ export function HomePage() {
         // Autoplay can still be blocked; the visible controls are the fallback.
       })
     }
-  }
+  }, [])
 
   // ---- Derived data ----------------------------------------------------------
   const today = todayDateString()
@@ -312,8 +317,8 @@ export function HomePage() {
             open: deadlinesLoaded ? openIds.size : null,
             tracks: trackCount,
           }}
-          onExplore={() => handleNavigate('conferences')}
-          onDiscover={() => handleNavigate('features')}
+          onExplore={goExplore}
+          onDiscover={goPlatform}
           onWatchDemo={handleWatchDemo}
         />
 
@@ -325,7 +330,7 @@ export function HomePage() {
             loading={loading}
             error={error}
             onRetry={loadConferences}
-            onContact={() => handleNavigate('contact')}
+            onContact={goContact}
           />
         </section>
 
@@ -402,7 +407,7 @@ export function HomePage() {
         </section>
 
         <section id="contact" ref={sectionRef('contact')} style={scrollMargin} className="pb-8">
-          <ContactSection email={contactEmail} onFeedback={() => handleNavigate('suggestions')} />
+          <ContactSection email={contactEmail} onFeedback={goFeedback} />
         </section>
 
         <SuggestionBox />

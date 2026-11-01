@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, CalendarDays, MapPin, Search, Ticket, X } from 'lucide-react'
 import { publicImageUrl } from '../../../lib/storage'
@@ -166,7 +166,7 @@ function SkeletonCard() {
   )
 }
 
-export function ConferenceDiscovery({
+export const ConferenceDiscovery = memo(function ConferenceDiscovery({
   conferences,
   windows,
   featuredId,
@@ -329,4 +329,4 @@ export function ConferenceDiscovery({
       )}
     </div>
   )
-}
+})

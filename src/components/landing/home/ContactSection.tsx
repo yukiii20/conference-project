@@ -1,8 +1,9 @@
+import { memo } from 'react'
 import { ArrowRight, Mail, MapPin, MessageSquareText } from 'lucide-react'
 import { SITE } from '../../../content/site'
 import { Reveal } from '../Reveal'
 
-export function ContactSection({ email, onFeedback }: { email: string; onFeedback: () => void }) {
+export const ContactSection = memo(function ContactSection({ email, onFeedback }: { email: string; onFeedback: () => void }) {
   const gmailHref = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`
   return (
     <div className="mx-auto max-w-[1240px] px-4 sm:px-6">
@@ -75,4 +76,4 @@ export function ContactSection({ email, onFeedback }: { email: string; onFeedbac
       </Reveal>
     </div>
   )
-}
+})

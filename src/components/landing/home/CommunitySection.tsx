@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { EyeOff, Globe2, Mail, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { SITE } from '../../../content/site'
 import { CountUp, Reveal } from '../Reveal'
@@ -21,7 +22,7 @@ function Photo({ name, alt, className, sizes }: { name: string; alt: string; cla
   )
 }
 
-export function CommunitySection({ stats, tracks }: { stats: PublicStats | null; tracks: number | null }) {
+export const CommunitySection = memo(function CommunitySection({ stats, tracks }: { stats: PublicStats | null; tracks: number | null }) {
   // Only real, non-zero numbers are shown; the band disappears if there's nothing to show.
   const figures = [
     { label: 'Research submissions', value: stats?.submissions ?? 0 },
@@ -96,4 +97,4 @@ export function CommunitySection({ stats, tracks }: { stats: PublicStats | null;
       </div>
     </div>
   )
-}
+})

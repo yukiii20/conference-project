@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ReactNode } from 'react'
 import { ClipboardList, FileText, Gavel, LayoutDashboard, ShieldCheck, Timer, type LucideIcon } from 'lucide-react'
 import { SITE } from '../../../content/site'
@@ -61,7 +62,7 @@ function RoleTile({
   )
 }
 
-export function RolesSection() {
+export const RolesSection = memo(function RolesSection() {
   return (
     <div className="mx-auto max-w-[1240px] px-4 py-24 sm:px-6 lg:py-32">
       <Reveal>
@@ -166,4 +167,4 @@ export function RolesSection() {
       </div>
     </div>
   )
-}
+})

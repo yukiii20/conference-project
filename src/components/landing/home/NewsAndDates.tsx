@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
 import { formatKathmandu } from '../../../lib/datetime'
@@ -35,7 +36,7 @@ export function buildKeyDates(
   return out.sort((x, y) => x.at.localeCompare(y.at)).slice(0, limit)
 }
 
-export function NewsAndDates({ announcements, keyDates }: { announcements: Announcement[]; keyDates: KeyDate[] }) {
+export const NewsAndDates = memo(function NewsAndDates({ announcements, keyDates }: { announcements: Announcement[]; keyDates: KeyDate[] }) {
   if (announcements.length === 0 && keyDates.length === 0) return null
   const both = announcements.length > 0 && keyDates.length > 0
 
@@ -122,4 +123,4 @@ export function NewsAndDates({ announcements, keyDates }: { announcements: Annou
       </div>
     </div>
   )
-}
+})

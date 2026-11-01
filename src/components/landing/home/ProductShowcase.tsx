@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import {
   Award,
   BarChart3,
@@ -121,7 +121,7 @@ const ALSO: Array<{ icon: LucideIcon; label: string }> = [
   { icon: ClipboardCheck, label: 'Attendance & reports' },
 ]
 
-export function ProductShowcase() {
+export const ProductShowcase = memo(function ProductShowcase() {
   const [active, setActive] = useState(0)
   const story = STORIES[active]!
 
@@ -257,4 +257,4 @@ export function ProductShowcase() {
       </div>
     </div>
   )
-}
+})
