@@ -22,7 +22,9 @@ import {
   Spinner,
   UploadIcon,
   DownloadIcon,
+  EyeIcon,
 } from '../../components/ui'
+import { FileViewerModal } from '../../components/FileViewerModal'
 
 type Track = { id: string; name: string }
 
@@ -109,6 +111,7 @@ export function SubmissionDetail({
   const [submissionCode, setSubmissionCode] = useState<string | null>(null)
   const [authors, setAuthors] = useState<Author[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
+  const [viewingFile, setViewingFile] = useState<FileRow | null>(null)
   const [history, setHistory] = useState<HistoryRow[]>([])
   const [feedback, setFeedback] = useState<Feedback>({ decisions: [], reviews: [] })
   const [canEdit, setCanEdit] = useState(true)
@@ -787,6 +790,9 @@ export function SubmissionDetail({
               <p className="mt-3 text-sm text-text-muted">No files uploaded yet.</p>
             ) : (
               <ul className="mt-4 divide-y divide-border">
+                {id ? (
+                  <FileViewerModal submissionId={id} file={viewingFile} onClose={() => setViewingFile(null)} onDownload={handleDownload} />
+                ) : null}
                 {files.map((f) => (
                   <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                     <div>
@@ -796,15 +802,26 @@ export function SubmissionDetail({
                       </p>
                       <p className="text-text-muted">{f.original_filename}</p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      iconLeft={<DownloadIcon className="h-4 w-4" />}
-                      onClick={() => handleDownload(f.id)}
-                    >
-                      Download
-                    </Button>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        iconLeft={<EyeIcon className="h-4 w-4" />}
+                        onClick={() => setViewingFile(f)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        iconLeft={<DownloadIcon className="h-4 w-4" />}
+                        onClick={() => handleDownload(f.id)}
+                      >
+                        Download
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>

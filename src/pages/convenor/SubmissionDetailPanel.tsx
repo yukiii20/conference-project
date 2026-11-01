@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { Avatar } from '../../components/Avatar'
 import { downloadSubmissionFile } from '../../lib/submissionFiles'
+import { FileViewerModal } from '../../components/FileViewerModal'
 import { assignReviewerSchema, decisionSchema, DECISIONS, DECISION_STAGES, type DecisionInput } from '../../lib/validation'
 import {
   DECISION_LABELS,
@@ -92,6 +93,7 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
   const [submission, setSubmission] = useState<Submission | null>(null)
   const [authors, setAuthors] = useState<Author[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
+  const [viewingFile, setViewingFile] = useState<FileRow | null>(null)
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [reviewerOptions, setReviewerOptions] = useState<ReviewerOption[]>([])
   const [decisions, setDecisions] = useState<Decision[]>([])
@@ -254,6 +256,7 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
 
       <Card>
         <CardHeader title="Files" />
+        <FileViewerModal submissionId={submissionId} file={viewingFile} onClose={() => setViewingFile(null)} onDownload={handleDownload} />
         {files.length === 0 ? (
           <p className="text-sm text-text-muted">No files uploaded.</p>
         ) : (
@@ -263,9 +266,14 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
                 <span>
                   {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} · v{f.version} <span className="text-text-muted">({f.status})</span> — {f.original_filename}
                 </span>
-                <Button type="button" variant="outline" size="sm" onClick={() => handleDownload(f.id)}>
-                  Download
-                </Button>
+                <div className="flex shrink-0 gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setViewingFile(f)}>
+                    View
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleDownload(f.id)}>
+                    Download
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

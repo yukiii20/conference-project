@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { downloadSubmissionFile } from '../../lib/submissionFiles'
+import { FileViewerModal } from '../../components/FileViewerModal'
 import { RECOMMENDATIONS, reviewFormSchema, type ReviewFormInput } from '../../lib/validation'
 import { FILE_KIND_LABELS } from '../../lib/submissionDisplay'
 import { Alert, Button, Card, ConfirmDialog, FormField, Select, SkeletonText, Textarea } from '../../components/ui'
@@ -39,6 +40,7 @@ const EMPTY_FORM = {
 export function ReviewForm({ assignmentId, submissionId }: { assignmentId: string; submissionId: string }) {
   const [submission, setSubmission] = useState<AssignmentDetail['submission'] | null>(null)
   const [files, setFiles] = useState<AssignmentDetail['files']>([])
+  const [viewingFile, setViewingFile] = useState<AssignmentDetail['files'][number] | null>(null)
   const [reviewStatus, setReviewStatus] = useState<string>('draft')
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(true)
@@ -165,6 +167,7 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
           {files.length > 0 ? (
             <div className="mt-4 border-t border-border pt-4">
               <h3 className="text-sm font-medium text-text">Files</h3>
+              <FileViewerModal submissionId={submissionId} file={viewingFile} onClose={() => setViewingFile(null)} onDownload={handleDownload} />
               <ul className="mt-2 space-y-3">
                 {files.map((f) => (
                   <li key={f.id} className="text-sm">
@@ -172,9 +175,14 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
                       <span>
                         {FILE_KIND_LABELS[f.file_kind] ?? f.file_kind} (v{f.version})
                       </span>
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleDownload(f.id)}>
-                        Download
-                      </Button>
+                      <div className="flex shrink-0 gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setViewingFile(f)}>
+                          View
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleDownload(f.id)}>
+                          Download
+                        </Button>
+                      </div>
                     </div>
                   </li>
                 ))}
