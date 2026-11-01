@@ -20,6 +20,26 @@ type QueueEmailInput = {
  * bulk_email_recipients so per-recipient delivery status can be read live).
  */
 export async function queueEmail(conn: PoolConnection, input: QueueEmailInput): Promise<number> {
+  let subject = input.subject
+  let templateData = input.templateData
+  // Almost every template's subject starts "[{{conference_code}}]". Callers that didn't pass the
+  // conference's code/name get them filled in here, so no email ever shows a raw placeholder.
+  if (
+    input.conferenceId &&
+    (/\{\{conference_(code|name)\}\}/.test(subject) || templateData.conference_code == null || templateData.conference_name == null)
+  ) {
+    const [rows] = await conn.query(`SELECT code, name FROM conferences WHERE id = ? LIMIT 1`, [input.conferenceId])
+    const conference = (rows as Array<{ code: string; name: string }>)[0]
+    if (conference) {
+      templateData = {
+        ...templateData,
+        conference_code: templateData.conference_code ?? conference.code,
+        conference_name: templateData.conference_name ?? conference.name,
+      }
+      subject = renderTemplate(subject, templateData)
+    }
+  }
+
   const [result] = await conn.query(
     `INSERT INTO email_logs (conference_id, user_id, recipient_email, template_key, subject, template_data, entity_type, entity_id, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued')`,
@@ -28,8 +48,8 @@ export async function queueEmail(conn: PoolConnection, input: QueueEmailInput): 
       input.userId,
       input.recipientEmail,
       input.templateKey,
-      input.subject,
-      JSON.stringify(input.templateData),
+      subject,
+      JSON.stringify(templateData),
       input.entityType ?? null,
       input.entityId ?? null,
     ],

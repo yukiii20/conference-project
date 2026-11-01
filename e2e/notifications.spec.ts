@@ -46,7 +46,9 @@ test('role approval notifies the author (bell badge + dropdown) and shows up in 
   // 3. Convenor's own "Email log" tab lists queued/sent email activity.
   await page.locator('nav').getByRole('link', { name: 'Communication', exact: true }).click()
   await page.getByRole('link', { name: 'Email log', exact: true }).click()
-  await expect(page.getByText('role_request_approved').first()).toBeVisible()
+  // The log shows the humanised template name, and the subject has its conference code filled in.
+  await expect(page.getByText('Role request approved').first()).toBeVisible()
+  await expect(page.getByText('{{conference_code}}')).toHaveCount(0)
 
   // 4. The author sees an unread notification.
   await signIn(page, authorEmail, FIXTURE.password, 'author')

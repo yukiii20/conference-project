@@ -14,3 +14,14 @@ export function prefetchPortalChunk(path: string | null | undefined): void {
     import('../pages/SuperAdminPage')
   }
 }
+
+/**
+ * On app start: when the page is opened directly at a signed-in area (e.g. a
+ * bookmarked /portal), begin downloading its chunk right away, in parallel with
+ * the /api/auth/me check, instead of only after that check finishes and the
+ * route renders. This is what pushed /portal's LCP past the 2.5s target.
+ */
+export function prefetchForCurrentPath(pathname: string): void {
+  const area = ['/convenor', '/manager', '/portal', '/super-admin'].find((p) => pathname === p || pathname.startsWith(`${p}/`))
+  if (area && !pathname.startsWith('/super-admin/login')) prefetchPortalChunk(area)
+}

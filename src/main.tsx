@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { prefetchForCurrentPath } from './lib/prefetch'
 
 /**
  * Identity comes only from the MySQL-backed session cookie via
@@ -22,6 +23,7 @@ function clearLeftoverAuthSdkKeys() {
 }
 
 clearLeftoverAuthSdkKeys()
+prefetchForCurrentPath(window.location.pathname)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
