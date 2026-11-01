@@ -430,3 +430,14 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
   - New export test in `reports.test.ts` (needs DB): CSV is neutralised, XLSX stores plain text
     and no formulas.
 - tsc and eslint are clean. The full suite was not finished before this push.
+
+## Phase 2, M5 (part): split `SuperAdminPage.tsx` · 1 November 2026 · status: DONE
+
+- The 1,993-line page is now a 218-line shell (tab list, sidebar, data loading) plus one file per
+  tab in `src/pages/superAdmin/`:
+  - `ConferencesTab`, `ConvenorTabs`, `UsersTab`, `DashboardTab`, `AdminsTab`,
+    `PlatformSettingsTab`
+  - `shared.ts` for types and date formatters
+- **Pure move:** the code is unchanged apart from added `export`s and narrower imports. Tabs
+  import only `shared`, never each other.
+- **Verified:** tsc, eslint, vite build and 80/80 frontend tests.
