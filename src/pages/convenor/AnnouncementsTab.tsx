@@ -4,6 +4,7 @@ import { api, ApiError } from '../../lib/api'
 import { ANNOUNCEMENT_AUDIENCES, announcementSchema, type AnnouncementInput } from '../../lib/validation'
 import { PageHeader, Card, Badge, Button, Input, Textarea, Checkbox, Alert, Spinner } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
+import { formatKathmandu } from '../../lib/datetime'
 
 type Announcement = {
   id: string
@@ -156,7 +157,7 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
               <p className="mt-1 whitespace-pre-line text-sm text-text-muted">{a.body}</p>
               <p className="mt-2 text-xs text-text-muted">
                 Audience: {a.audience.map((aud) => AUDIENCE_LABELS[aud as keyof typeof AUDIENCE_LABELS] ?? aud).join(', ')}
-                {a.status === 'scheduled' && a.publish_at ? ` · publishes ${new Date(a.publish_at).toLocaleString()}` : ''}
+                {a.status === 'scheduled' && a.publish_at ? ` · publishes ${formatKathmandu(a.publish_at)}` : ''}
               </p>
               {(a.status === 'draft' || a.status === 'scheduled') && (
                 <div className="mt-3 flex flex-wrap gap-2">

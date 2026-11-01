@@ -1,13 +1,16 @@
 import { pool } from '../../db/pool.js'
-import { localDateKey, localDateRangeToUtc } from '../../utils/timezone.js'
+import { PLATFORM_TIMEZONE, addDaysToDateKey, localDateKey, localDateRangeToUtc, weekStartKey } from '../../utils/timezone.js'
 import { NotFoundError } from '../../utils/errors.js'
 
 type DateRange = { from: string; to: string }
 
-/** Defaults to the last 30 days (inclusive) when the caller doesn't pick a range. */
-function resolveRange(input: Partial<DateRange>): DateRange {
-  const to = input.to ?? new Date().toISOString().slice(0, 10)
-  const from = input.from ?? new Date(Date.parse(to) - 29 * 86_400_000).toISOString().slice(0, 10)
+/**
+ * Defaults to the last 30 days (inclusive) when the caller doesn't pick a range. "Today" is
+ * today in `timeZone` — between 00:00 and 05:45 Nepal time the UTC date is still yesterday.
+ */
+export function resolveRange(input: Partial<DateRange>, timeZone: string = PLATFORM_TIMEZONE, now: Date = new Date()): DateRange {
+  const to = input.to ?? localDateKey(timeZone, now)
+  const from = input.from ?? addDaysToDateKey(to, -29)
   return { from, to }
 }
 
@@ -194,12 +197,12 @@ const CACHE_TTL_MS = 60_000
 const convenorCache = new Map<string, { expiresAt: number; data: ConvenorAnalytics }>()
 
 export async function getConvenorAnalytics(conferenceId: string, input: Partial<DateRange>): Promise<ConvenorAnalytics> {
-  const range = resolveRange(input)
+  const conference = await loadConference(conferenceId)
+  const range = resolveRange(input, conference.timezone)
   const cacheKey = `${conferenceId}:${range.from}:${range.to}`
   const cached = convenorCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) return cached.data
 
-  const conference = await loadConference(conferenceId)
   const [
     submissions_per_day,
     submissions_per_track,
@@ -249,14 +252,20 @@ async function conferencesByStatus(): Promise<NamedCount[]> {
   return (rows as Array<{ name: string; count: number }>).map((r) => ({ name: r.name, count: Number(r.count) }))
 }
 
+/** UTC bounds of the whole Nepal days from..to, for the platform-wide charts. */
+function platformWindow(range: DateRange): [Date, Date] {
+  const { startUtc, endUtc } = localDateRangeToUtc(range.from, range.to, PLATFORM_TIMEZONE)
+  return [startUtc, endUtc]
+}
+
 async function usersOverTime(range: DateRange): Promise<DailyPoint[]> {
   const [rows] = await pool.query(
-    `SELECT created_at FROM users WHERE created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)`,
-    [`${range.from} 00:00:00`, range.to],
+    `SELECT created_at FROM users WHERE created_at BETWEEN ? AND ?`,
+    platformWindow(range),
   )
   const counts = new Map<string, number>()
   for (const row of rows as Array<{ created_at: string }>) {
-    const key = localDateKey('UTC', new Date(row.created_at))
+    const key = localDateKey(PLATFORM_TIMEZONE, new Date(row.created_at))
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
   return fillDailySeries(range.from, range.to, counts)
@@ -266,13 +275,13 @@ export type EmailDayPoint = { date: string; sent: number; failed: number }
 
 async function emailsSentFailedPerDay(range: DateRange): Promise<EmailDayPoint[]> {
   const [rows] = await pool.query(
-    `SELECT queued_at, status FROM email_logs WHERE queued_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)`,
-    [`${range.from} 00:00:00`, range.to],
+    `SELECT queued_at, status FROM email_logs WHERE queued_at BETWEEN ? AND ?`,
+    platformWindow(range),
   )
   const sent = new Map<string, number>()
   const failed = new Map<string, number>()
   for (const row of rows as Array<{ queued_at: string; status: string }>) {
-    const key = localDateKey('UTC', new Date(row.queued_at))
+    const key = localDateKey(PLATFORM_TIMEZONE, new Date(row.queued_at))
     if (row.status === 'sent' || row.status === 'delivered') sent.set(key, (sent.get(key) ?? 0) + 1)
     else if (row.status === 'failed' || row.status === 'bounced') failed.set(key, (failed.get(key) ?? 0) + 1)
   }
@@ -284,15 +293,12 @@ export type WeekPoint = { week_start: string; count: number }
 
 async function suggestionsPerWeek(range: DateRange): Promise<WeekPoint[]> {
   const [rows] = await pool.query(
-    `SELECT created_at FROM suggestions WHERE created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)`,
-    [`${range.from} 00:00:00`, range.to],
+    `SELECT created_at FROM suggestions WHERE created_at BETWEEN ? AND ?`,
+    platformWindow(range),
   )
   const counts = new Map<string, number>()
   for (const row of rows as Array<{ created_at: string }>) {
-    const d = new Date(row.created_at)
-    const dayOfWeek = d.getUTCDay() // 0=Sun
-    const weekStart = new Date(d.getTime() - dayOfWeek * 86_400_000)
-    const key = weekStart.toISOString().slice(0, 10)
+    const key = weekStartKey(localDateKey(PLATFORM_TIMEZONE, new Date(row.created_at)))
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
   return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([week_start, count]) => ({ week_start, count }))

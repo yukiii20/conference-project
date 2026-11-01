@@ -5,6 +5,7 @@ import { ASSIGNABLE_MEMBER_ROLES, inviteMemberSchema, type InviteMemberInput } f
 import { Alert, Button, Checkbox, EmptyState, Input, Select, Spinner, StatusChip } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
 import { TableContainer } from '../../components/ui/Table'
+import { formatKathmandu } from '../../lib/datetime'
 
 type Member = {
   id: string
@@ -268,7 +269,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                     <td className="px-3 py-2">
                       <StatusChip status={m.status} labels={{ active: 'active', removed: 'removed' }} />
                     </td>
-                    <td className="px-3 py-2 text-text-muted">{new Date(m.created_at).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 text-text-muted">{formatKathmandu(m.created_at, { dateOnly: true })}</td>
                     <td className="px-3 py-2 text-right">
                       {m.role_code !== 'convenor' && m.status === 'active' ? (
                         <button

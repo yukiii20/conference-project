@@ -76,3 +76,10 @@ export function formatDateRange(startDate: string, endDate: string): string {
   }
   return `${fullFmt.format(start)} – ${fullFmt.format(end)}`
 }
+
+/** Today's "YYYY-MM-DD" in Asia/Kathmandu, shifted by `offsetDays` (between 00:00 and 05:45 NPT the UTC date is still yesterday). */
+export function kathmanduToday(offsetDays = 0, now: Date = new Date()): string {
+  const key = kathmanduDateKey(now.toISOString())
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + offsetDays)).toISOString().slice(0, 10)
+}

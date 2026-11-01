@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { StatusChip } from '../../components/ui/Badge'
 import { Alert, Button, EmptyState, SkeletonText, Textarea } from '../../components/ui'
+import { formatKathmandu } from '../../lib/datetime'
 
 type Assignment = {
   id: string
@@ -104,7 +105,7 @@ export function AssignmentsList({
               <p className="font-medium text-text">{a.title}</p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-text-muted">
                 <StatusChip status={a.status} labels={STATUS_LABELS} />
-                {a.due_at ? <span>Due {new Date(a.due_at).toLocaleDateString()}</span> : null}
+                {a.due_at ? <span>Due {formatKathmandu(a.due_at, { dateOnly: true })}</span> : null}
                 {a.is_overdue ? <span className="font-medium text-danger">Overdue</span> : null}
               </div>
             </div>

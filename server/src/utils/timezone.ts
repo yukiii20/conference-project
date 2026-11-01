@@ -64,3 +64,19 @@ export function localDateRangeToUtc(
   const endUtc = new Date(endOfDayStartUtc.getTime() + 999)
   return { startUtc, endUtc }
 }
+
+/** Every conference so far runs on Nepal time; used where no conference timezone applies (platform-wide views). */
+export const PLATFORM_TIMEZONE = 'Asia/Kathmandu'
+
+/** 'YYYY-MM-DD' shifted by `days` calendar days (pure date arithmetic, no timezone involved). */
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10)
+}
+
+/** Week bucketing (weeks start on Sunday): the Sunday that starts the week containing `dateKey`. */
+export function weekStartKey(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  const dow = new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay() // 0 = Sunday
+  return addDaysToDateKey(dateKey, -dow)
+}

@@ -5,6 +5,7 @@ import { statusLabel } from '../lib/status'
 import { StatusChip } from './ui/Badge'
 import { Alert, Button, Select, Table } from './ui'
 import type { Column } from './ui/Table'
+import { formatKathmandu } from '../lib/datetime'
 
 type EmailLogRow = {
   id: number
@@ -74,7 +75,7 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
     { key: 'subject', header: 'Subject', render: (r) => r.subject },
     { key: 'status', header: 'Status', render: (r) => <StatusChip status={r.status} /> },
     { key: 'attempts', header: 'Attempts', render: (r) => r.attempts },
-    { key: 'queued', header: 'Queued', render: (r) => new Date(r.queued_at).toLocaleString(), className: 'whitespace-nowrap' },
+    { key: 'queued', header: 'Queued', render: (r) => formatKathmandu(r.queued_at), className: 'whitespace-nowrap' },
     {
       key: 'error',
       header: 'Error',

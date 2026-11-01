@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 import { PageHeader, Tabs, Button, Textarea, Alert, Spinner } from '../../components/ui'
 import type { RoleRequestForReview, RoleRequestStatus } from '../../lib/types'
+import { formatKathmandu } from '../../lib/datetime'
 
 const TABS: RoleRequestStatus[] = ['pending', 'approved', 'rejected']
 
@@ -118,7 +119,7 @@ export function RoleRequestsTab({ conferenceId }: { conferenceId: string }) {
                     </p>
                     <p className="mt-1 text-sm text-text-muted">
                       {getRoleDefinition(request.role_code)?.label ?? request.role_code} ·{' '}
-                      {new Date(request.created_at).toLocaleDateString()}
+                      {formatKathmandu(request.created_at, { dateOnly: true })}
                     </p>
                     {request.status === 'rejected' && request.reject_reason ? (
                       <p className="mt-1 text-sm text-danger">Reason: {request.reject_reason}</p>

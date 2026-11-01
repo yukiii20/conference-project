@@ -3,6 +3,7 @@ import {
   formatDateRange,
   formatKathmandu,
   formatKathmanduTime,
+  kathmanduToday,
   fromKathmanduDateInputValue,
   fromKathmanduInputValue,
   kathmanduDateKey,
@@ -115,5 +116,17 @@ describe('formatDateRange', () => {
 
   it('formats a range spanning two years', () => {
     expect(formatDateRange('2026-12-30', '2027-01-02')).toBe('30 December 2026 – 2 January 2027')
+  })
+})
+
+describe('kathmanduToday', () => {
+  // 20:30 UTC on 1 Nov is 02:15 on 2 Nov in Kathmandu (UTC+5:45).
+  const late = new Date('2026-11-01T20:30:00Z')
+  it('uses the Kathmandu date, not the UTC date', () => {
+    expect(kathmanduToday(0, late)).toBe('2026-11-02')
+  })
+  it('shifts across month ends', () => {
+    expect(kathmanduToday(-29, late)).toBe('2026-10-04')
+    expect(kathmanduToday(30, late)).toBe('2026-12-02')
   })
 })

@@ -121,3 +121,35 @@ step 3: `npm run r2 -- check`).
 
 **Remaining:** files lost on Render before this change can't be recovered; they need to be
 re-uploaded. See the guide's step 5.
+
+---
+
+## Phase 1, item H1: double-blind file anonymisation · 1 November 2026 · status: DONE
+
+See commit 95d0f79. Reviewers get neutral file names (`S-0012-full_paper-v2.pdf`), and author
+metadata is stripped from PDF/DOCX/PPTX on upload. `tests/anonymize.test.ts`: 5/5 pass.
+
+## Phase 1, item M1: Nepal-time dates · 1 November 2026 · status: DONE
+
+**Problem:** "today" was the UTC date, so between 00:00 and 05:45 Nepal time, analytics ranges,
+default review due dates and dashboard day keys were one day behind. Several lists showed times in
+the browser's own timezone, and certificates printed the UTC issue date.
+
+**Fixed**
+- Server:
+  - Analytics default range uses the conference timezone.
+  - Platform charts bucket users, emails and suggestions by Nepal day and week.
+  - Certificate "Issued" date is in Nepal time.
+  - New helpers in `utils/timezone.ts`: `PLATFORM_TIMEZONE`, `addDaysToDateKey`, `weekStartKey`.
+- Client:
+  - New `kathmanduToday()` in `src/lib/datetime.ts`, used by the analytics presets, dashboard, and
+    the auto-assign and assignment due dates.
+  - Email log, submission history, announcements, members, role requests, decisions and reviewer
+    due dates now use `formatKathmandu`.
+- Left alone on purpose: DATE-column (`YYYY-MM-DD`) formatting, which carries no timezone.
+
+**Tests:** new `server/tests/timezone.test.ts` (5) and `kathmanduToday` tests (2), both covering
+20:30 UTC = next day in Nepal.
+- Frontend 77/77.
+- Server 341 pass; 366 need MySQL (`ECONNREFUSED`), same as before.
+- `tsc` and `vite build` clean.

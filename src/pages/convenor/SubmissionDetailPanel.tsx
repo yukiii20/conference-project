@@ -11,6 +11,7 @@ import {
   SUBMISSION_STATUS_LABELS,
 } from '../../lib/submissionDisplay'
 import { Alert, Badge, Button, Card, CardHeader, ConfirmDialog, Input, Select, StatusChip, Textarea } from '../../components/ui'
+import { formatKathmandu, kathmanduToday } from '../../lib/datetime'
 
 type Submission = {
   id: string
@@ -84,9 +85,7 @@ type DetailResponse = {
 }
 
 function defaultDueDate() {
-  const d = new Date()
-  d.setDate(d.getDate() + 14)
-  return d.toISOString().slice(0, 10)
+  return kathmanduToday(14)
 }
 
 export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferenceId: string; submissionId: string }) {
@@ -291,7 +290,7 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
                 <p className="font-medium text-text">
                   {a.reviewer_name ?? a.reviewer_email ?? 'Reviewer'} — <span className="capitalize">{a.status.replace('_', ' ')}</span>
                 </p>
-                <p className="text-text-muted">Due {new Date(a.due_at).toLocaleDateString()}</p>
+                <p className="text-text-muted">Due {formatKathmandu(a.due_at, { dateOnly: true })}</p>
                 {a.review_status === 'submitted' ? (
                   <div className="mt-2 space-y-1 text-text/80">
                     <p>
@@ -350,7 +349,7 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
                 <span className="font-medium text-text capitalize">
                   {d.stage.replace('_', ' ')}: {DECISION_LABELS[d.decision] ?? d.decision}
                 </span>{' '}
-                — {new Date(d.decided_at).toLocaleString()}
+                — {formatKathmandu(d.decided_at)}
                 {d.comments_to_author ? <span className="block text-text-muted">{d.comments_to_author}</span> : null}
               </li>
             ))}

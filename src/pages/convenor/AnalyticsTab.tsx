@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { API_BASE, api, ApiError } from '../../lib/api'
-import { formatKathmandu } from '../../lib/datetime'
+import { formatKathmandu, kathmanduToday } from '../../lib/datetime'
 import { PageHeader, Alert, Button, Input, LinkButton, Spinner } from '../../components/ui'
 import {
   ChartCard,
@@ -35,10 +35,10 @@ const PRESETS = [
 ]
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
+  return kathmanduToday()
 }
 function daysAgoIso(days: number): string {
-  return new Date(Date.now() - (days - 1) * 86_400_000).toISOString().slice(0, 10)
+  return kathmanduToday(-(days - 1))
 }
 
 export function AnalyticsTab({ conferenceId }: { conferenceId: string }) {

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { useAuth } from '../../lib/authContext'
-import { formatKathmandu, formatKathmanduTime } from '../../lib/datetime'
+import { formatKathmandu, formatKathmanduTime, kathmanduToday } from '../../lib/datetime'
 import { humanizeAuditAction } from '../../lib/humanize'
 import { relativeTime, sumLastDays } from '../../lib/relativeTime'
 import { DEADLINE_LABELS } from '../conference/types'
@@ -66,7 +66,7 @@ type Extras = {
 const NO_EXTRAS: Extras = { analytics: null, deadlines: null, sessions: null, rooms: [], activity: null }
 
 function isoDay(offsetDays: number): string {
-  return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10)
+  return kathmanduToday(offsetDays)
 }
 
 function shortDay(iso: string): string {

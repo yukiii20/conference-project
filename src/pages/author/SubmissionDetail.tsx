@@ -839,7 +839,7 @@ export function SubmissionDetail({
                 {history.map((h) => (
                   <li key={h.id} className="text-text-muted">
                     <span className="font-medium text-text">{SUBMISSION_STATUS_LABELS[h.to_status] ?? h.to_status}</span>{' '}
-                    — {new Date(h.changed_at).toLocaleString()}
+                    — {formatKathmandu(h.changed_at)}
                     {h.reason ? <span className="block text-text-muted">{h.reason}</span> : null}
                   </li>
                 ))}

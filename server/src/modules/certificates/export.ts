@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import { env } from '../../config/env.js'
+import { PLATFORM_TIMEZONE } from '../../utils/timezone.js'
 
 const DEFAULT_ACCENT = '#B8913A'
 const DEFAULT_TITLE = '#1F2328'
@@ -67,6 +68,8 @@ export type CertificateData = {
   certificateType: string
   certificateNumber: string
   issuedAt: Date
+  /** IANA zone the issue date is shown in; defaults to Nepal time. */
+  timeZone?: string
   verificationToken: string
   backgroundBuffer: Buffer | null
   logoBuffer: Buffer | null
@@ -106,8 +109,8 @@ function initials(name: string): string {
   return letters.slice(0, 3).join('') || 'C'
 }
 
-function formatIssued(date: Date): string {
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+export function formatIssued(date: Date, timeZone: string = PLATFORM_TIMEZONE): string {
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone })
 }
 
 /** Lighter tint of a hex colour (mix with white). */
@@ -341,7 +344,7 @@ export async function generateCertificatePdf(data: CertificateData): Promise<Buf
     doc.font('Helvetica-Bold').fontSize(9).fillColor(INK).text(data.certificateNumber, footerX, footerBottom - 24, { lineBreak: false })
   }
   if (show.issued) {
-    doc.font('Helvetica').fontSize(7.5).fillColor(textColor).text(`Issued ${formatIssued(data.issuedAt)}`, footerX, footerBottom - 10, { lineBreak: false })
+    doc.font('Helvetica').fontSize(7.5).fillColor(textColor).text(`Issued ${formatIssued(data.issuedAt, data.timeZone)}`, footerX, footerBottom - 10, { lineBreak: false })
   }
 
   if (show.qr) {

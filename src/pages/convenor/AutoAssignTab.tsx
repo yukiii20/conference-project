@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { useToast } from '../../components/ui/Toast'
 import { Alert, Badge, Button, Card, CardHeader, Checkbox, FormField, Input, PageHeader, Spinner, TableContainer } from '../../components/ui'
+import { kathmanduToday } from '../../lib/datetime'
 
 type ProposedAssignment = {
   submission_id: string
@@ -21,9 +22,7 @@ type PreviewResponse = {
 }
 
 function defaultDueDate() {
-  const d = new Date()
-  d.setDate(d.getDate() + 14)
-  return d.toISOString().slice(0, 10)
+  return kathmanduToday(14)
 }
 
 export function AutoAssignTab({ conferenceId }: { conferenceId: string }) {
