@@ -431,7 +431,6 @@ async function issueOne(
   const certificateNumber = await nextCertificateNumber(conn, conferenceId, conference.code)
   const verificationToken = generateUrlSafeToken(32)
 
-  let certificateId: string
   try {
     await conn.query(
       `INSERT INTO certificates
@@ -456,7 +455,7 @@ async function issueOne(
     throw err
   }
   const [idRows] = await conn.query('SELECT id FROM certificates WHERE certificate_number = ? LIMIT 1', [certificateNumber])
-  certificateId = (idRows as Array<{ id: string }>)[0]!.id
+  const certificateId = (idRows as Array<{ id: string }>)[0]!.id
 
   const [backgroundBuffer, logoBuffer, signatureBuffers] = await Promise.all([
     readPublicFileIfAny(template?.background_path ?? null),

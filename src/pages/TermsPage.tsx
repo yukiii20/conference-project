@@ -18,7 +18,6 @@ export function TermsPage() {
 
   return (
     <div className="min-h-screen bg-page-bg text-text">
-      {/* eslint-disable-next-line react/no-danger */}
       <div
         dangerouslySetInnerHTML={{
           __html:

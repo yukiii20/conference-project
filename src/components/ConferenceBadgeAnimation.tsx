@@ -144,7 +144,7 @@ export function ConferenceBadgeAnimation({ code, name, shortName, logoUrl, color
         return
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [displayName])
 
   const nameLineStep = nameFit.fontSize * 1.3

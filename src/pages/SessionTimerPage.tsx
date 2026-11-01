@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Maximize, MessageCircleQuestion, Pause, Play, RotateCcw, SkipForward, Check } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
@@ -150,9 +150,10 @@ export function SessionTimerPage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this session.'))
   }, [conferenceId, sessionId])
 
-  const config: TimerConfig | null = data
-    ? { talkMinutes: data.timing.talk_minutes, qaMinutes: data.timing.qa_minutes, talkCount: data.talks.length }
-    : null
+  const config: TimerConfig | null = useMemo(
+    () => (data ? { talkMinutes: data.timing.talk_minutes, qaMinutes: data.timing.qa_minutes, talkCount: data.talks.length } : null),
+    [data],
+  )
 
   // Restore an in-progress timer after an accidental reload, once the talk count is known.
   useEffect(() => {

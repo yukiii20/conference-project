@@ -11,7 +11,6 @@ import {
   createTrack,
   createUser,
   resetDatabase,
-  setDeadlineWindow,
   upsertConferenceSettings,
 } from './helpers.js'
 

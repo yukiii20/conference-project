@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { useToast } from '../../components/ui/Toast'
-import { Alert, Badge, Button, Card, CardHeader, Checkbox, FormField, Input, PageHeader, Spinner, TableContainer } from '../../components/ui'
+import { Alert, Badge, Button, Card, CardHeader, Checkbox, FormField, Input, PageHeader, TableContainer } from '../../components/ui'
 import { kathmanduToday } from '../../lib/datetime'
 
 type ProposedAssignment = {

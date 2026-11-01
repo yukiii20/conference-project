@@ -107,7 +107,7 @@ async function loadSubmissionInConference(
 
 export async function getSubmissionOverviewDetail(actorUserId: string, conferenceId: string, submissionId: string) {
   await assertConferencePermission(actorUserId, conferenceId, 'submission.read_all')
-  const sub = await loadSubmissionInConference(submissionId, conferenceId)
+  await loadSubmissionInConference(submissionId, conferenceId) // 404s if it isn't in this conference
   const canSeeReviews = await hasPermission(actorUserId, conferenceId, 'review.read_all')
 
   const [coreRows] = await pool.query(

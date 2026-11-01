@@ -10,7 +10,8 @@
     "create-admin": "tsx src/scripts/createAdmin.ts",
     "doctor": "tsx src/scripts/doctor.ts",
     "test": "vitest run",
-    "r2": "tsx src/scripts/r2.ts"
+    "r2": "tsx src/scripts/r2.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",
@@ -37,6 +38,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.7",
@@ -50,9 +52,12 @@
     "@types/qrcode": "^1.5.6",
     "@types/sanitize-html": "^2.16.2",
     "@types/supertest": "^6.0.2",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "supertest": "^7.0.0",
     "tsx": "^4.19.1",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^5.0.3"
   }
 }

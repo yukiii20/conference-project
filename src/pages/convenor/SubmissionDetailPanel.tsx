@@ -68,12 +68,6 @@ type ReviewerOption = {
   bid: 'want' | 'can' | 'not_interested' | 'conflict' | null
 }
 
-const BID_LABELS: Record<string, string> = {
-  want: 'wants to review',
-  can: 'can review',
-  not_interested: 'not interested',
-}
-
 type Decision = { id: string; stage: string; decision: string; comments_to_author: string | null; decided_at: string }
 
 type DetailResponse = {

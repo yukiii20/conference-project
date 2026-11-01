@@ -171,3 +171,28 @@ the browser's own timezone, and certificates printed the UTC issue date.
 - **Verify after the Vercel deploy:**
   - `curl -I https://<site>/` shows the headers.
   - Homepage, venue map, certificate preview and the check-in camera all still work.
+
+## Phase 1, items H4 + L1: ESLint and dead code · 1 November 2026 · status: DONE
+
+- **Setup:** ESLint 9 flat config in both packages (`eslint.config.js`, `server/eslint.config.js`),
+  with `npm run lint` in each.
+  - Rules: recommended JS and TypeScript, plus react-hooks on the frontend.
+  - Dev dependencies: `eslint`, `@eslint/js`, `typescript-eslint`, `globals`, and
+    `eslint-plugin-react-hooks` (frontend only).
+- **Findings fixed:**
+  - 13 unused imports and variables
+  - 2 `any` types (the session row is now typed)
+  - 1 `prefer-const`
+  - 2 disable comments naming a rule that doesn't exist
+  - 5 stale disable comments
+  - `SessionTimerPage`'s timer config is now memoised; it used to re-run its effect on every
+    render
+- **L1:** deleted `src/components/LinkifiedText.tsx` (imported nowhere).
+- **Result:**
+  - `npm run lint` clean in both packages; `tsc` clean.
+  - Frontend 77/77.
+  - Server 341 pass; 366 need MySQL, unchanged.
+  - `vite build` OK.
+- **Known and accepted:** `npm audit` now also lists `minimatch` < 11.0.1 (a moderate ReDoS in
+  glob parsing) inside ESLint's own dependencies. This is dev-only and never shipped. No ESLint 9
+  release avoids it, and npm's only suggested "fix" is a downgrade to ESLint 4.

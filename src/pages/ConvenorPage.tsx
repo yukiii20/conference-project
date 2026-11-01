@@ -126,7 +126,7 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
     }
     // Re-run on every navigation so badges/the missing-dates banner stay fresh
     // after an action taken on another tab (e.g. approving a role request).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [conferenceId, location.pathname])
 
   const workspaceLabel = viewAs ? 'Admin view' : isManagerPortal ? 'Manager workspace' : 'Convenor workspace'

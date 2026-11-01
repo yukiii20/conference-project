@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Bug, HelpCircle, Lightbulb, Mail, MessageSquare, Trash2, Eye, Download, type LucideIcon } from 'lucide-react'
 import { api, ApiError, API_BASE } from '../lib/api'
 import { statusLabel } from '../lib/status'
-import { Alert, Button, Card, ConfirmDialog, FormField, Icon, Input, Modal, Select, StatusChip, Table, Pagination, Textarea } from './ui'
+import { Alert, Button, ConfirmDialog, FormField, Icon, Input, Modal, Select, StatusChip, Table, Pagination, Textarea } from './ui'
 import type { Column } from './ui/Table'
 
 type SuggestionCategory = 'feature' | 'bug' | 'question' | 'other'

@@ -1189,7 +1189,7 @@ function UsersTab() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load users.')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [query, page])
 
   // A new search invalidates the current page - start back at page 1 rather

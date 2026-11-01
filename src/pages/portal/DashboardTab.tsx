@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Award, CalendarDays, CheckCircle2, ChevronRight, ClipboardCheck, FileText, ListChecks, Mic, QrCode, Ticket, type LucideIcon } from 'lucide-react'
-import { api, ApiError } from '../../lib/api'
+import { api } from '../../lib/api'
 import { useAuth } from '../../lib/authContext'
 import { formatKathmandu } from '../../lib/datetime'
 import { getRoleDefinition } from '../../lib/roles'

@@ -23,9 +23,9 @@ const INITIAL_FORM: FormState = {
   confirm_password: '',
 }
 
-function fieldError(schema: { safeParse: (v: unknown) => any }, value: unknown): string {
+function fieldError(schema: { safeParse: (v: unknown) => { success: boolean; error?: { issues: Array<{ message: string }> } } }, value: unknown): string {
   const result = schema.safeParse(value)
-  return result.success ? '' : (result.error.issues[0]?.message ?? 'Invalid value.')
+  return result.success ? '' : (result.error?.issues[0]?.message ?? 'Invalid value.')
 }
 
 /**

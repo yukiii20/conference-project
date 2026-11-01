@@ -3,12 +3,10 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { SessionTimerFields, TimerDefaultsSection } from './SessionTimerSettings'
 import {
-  fromKathmanduDateInputValue,
   fromKathmanduInputValue,
   formatKathmandu,
   formatKathmanduTime,
   kathmanduDateKey,
-  toKathmanduDateInputValue,
   toKathmanduInputValue,
 } from '../../lib/datetime'
 import {

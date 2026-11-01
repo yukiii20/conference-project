@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { formatKathmandu } from '../../lib/datetime'
 import { downloadSubmissionFile, uploadSubmissionFile, validateSubmissionFile, SUBMISSION_FILE_RULES } from '../../lib/submissionFiles'
-import { buildSubmissionSchema, coAuthorSchema, type CoAuthorInput } from '../../lib/validation'
+import { buildSubmissionSchema, coAuthorSchema } from '../../lib/validation'
 import {
   FILE_KIND_LABELS,
   SUBMISSION_STATUS_LABELS,

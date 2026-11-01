@@ -116,7 +116,20 @@ export async function resolveSessionUser(req: Request): Promise<SessionUser | nu
      LIMIT 1`,
     [tokenHash],
   )
-  const row = (rows as any[])[0]
+  type SessionRow = {
+    session_id: string
+    user_id: string
+    remember_me: number
+    is_admin_session: number
+    conference_id: string | null
+    last_seen_at: string
+    expires_at: string
+    email: string
+    full_name: string
+    status: 'active' | 'suspended' | 'deactivated'
+    bound_conference_id: string | null
+  }
+  const row = (rows as SessionRow[])[0]
   if (!row) return null
 
   const now = Date.now()

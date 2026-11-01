@@ -8,7 +8,7 @@
 // Usage (from the repo root):
 //   npx tsx demo-video/record.ts            # records every scene
 //   npx tsx demo-video/record.ts --scene 10  # re-records just scene 10
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rename, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import mysql from 'mysql2/promise'

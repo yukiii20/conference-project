@@ -50,7 +50,7 @@ export function EmailLogTab({ scope }: { scope: Scope }) {
     } finally {
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [basePath, status, page])
 
   useEffect(() => {
