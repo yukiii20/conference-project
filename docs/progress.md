@@ -1192,7 +1192,7 @@ invitations once each skipping responders, not before the last day), routeGuards
 - `79e1704` Certificate PDF redesigned (`server/src/modules/certificates/export.ts`): no
   overlapping seal/footer/QR, conference-colour frame, auto-shrinking names. Checked by
   rendering sample PDFs; DB-backed certificate tests not run (no database on this machine).
-- **Pending SQL in one place:** `database/2026-11-01/` (gitignored, like `batch-3-sql/`) has
+- **Pending SQL in one place:** `database/2026-11-01/` has
   `1-LOCAL-run-this.sql` (conference_cms + conference_cms_test), `2-AIVEN-run-this.sql`,
   `3-CHECK.sql` and a README. Covers all of batch 3 plus `06_session_conference.sql`.
   `test-setup.sql` now also contains the batch-3 tables for fresh test databases.

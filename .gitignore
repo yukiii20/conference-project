@@ -39,11 +39,7 @@ demo-video/assets/music.mp3
 *.sln
 *.sw?
 
-# Batch 3 SQL files (run by hand in MySQL Workbench; kept out of git)
-database/batch-3-sql/
-# Dated "run this" SQL folders built from the files above (also kept out of git)
-database/20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
-
 # Stray archives / test media in the project root
 /*.zip
+database/*.zip
 /test.mp3
