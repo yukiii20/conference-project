@@ -7,3 +7,5 @@ process.env.NODE_ENV = 'test'
 // Keeps uploaded test files out of server/storage (the dev server's real
 // storage) — see tests/globalSetup.ts for the matching cleanup.
 process.env.STORAGE_ROOT = 'storage-test'
+// Tests must never write to a real R2 bucket, even if server/.env says STORAGE_DRIVER=r2.
+process.env.STORAGE_DRIVER = 'local'

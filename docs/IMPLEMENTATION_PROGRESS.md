@@ -64,3 +64,60 @@ These were already pushed to `main` earlier on 1 November. Details are in `docs/
   inside `exceljs`.
 - Dated SQL run folder `database/2026-11-01/`.
 - Stray zip files removed from the working tree.
+
+---
+
+## Phase 1, item C1: Cloudflare R2 file storage · 1 November 2026 · status: CODE DONE, needs owner setup
+
+The owner chose R2 for **D1**. The database stays on Aiven MySQL.
+
+**Work completed**
+- Storage driver interface with two drivers:
+  - `local`: today's behaviour, used by default and always in tests
+  - `r2`: Cloudflare R2 through its S3 API
+- Every save, read, delete and download now goes through it:
+  - logos and photos
+  - submission files
+  - certificate PDFs and their images
+  - abstract books
+  - badge logos
+- Downloads are streamed, and a missing file returns a clean 404 ("upload it again") instead of
+  an error page.
+- With R2 on, `/files/public/*` is served from R2 at the same URLs.
+- `npm run r2 -- check | upload` checks the R2 settings and copies local files into the bucket.
+
+**Files**
+- New:
+  - `server/src/storage/driver.ts`
+  - `server/src/storage/send.ts`
+  - `server/src/scripts/r2.ts`
+  - `server/tests/storage.test.ts`
+  - `docs/cloudflare-r2-setup.md`
+- Changed:
+  - storage helpers
+  - 4 download routes and 3 services
+  - `app.ts`
+  - `utils/health.ts` (health now reports `storage`)
+  - `config/env.ts`
+  - `tests/setup.ts`
+  - `.env.example`
+  - `render.yaml`
+- New dependency: `@aws-sdk/client-s3` (the official S3 client). `npm audit` reports nothing
+  new.
+
+**Bug found and fixed while testing:** the R2 public-file handler read the full URL instead of
+the wildcard part, so every public file would have returned 404. Caught by
+`storage.test.ts` before release.
+
+**Tests**
+- `tsc` clean.
+- `storage.test.ts`: 22/22 pass. It covers both drivers (R2 mocked, no network), path-escape
+  rejection, streaming, filename encoding, and 404s.
+- Full server suite without a database: 331 pass, and the same 366 still need MySQL. No new
+  failures.
+
+**Not verified yet:** a real R2 bucket. That needs the owner's Cloudflare account (setup guide
+step 3: `npm run r2 -- check`).
+
+**Remaining:** files lost on Render before this change can't be recovered; they need to be
+re-uploaded. See the guide's step 5.

@@ -3,9 +3,7 @@ import { withTransaction } from '../../db/withTransaction.js'
 import { insertAuditLog } from '../../utils/audit.js'
 import { localDateKey } from '../../utils/timezone.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
-import { PUBLIC_DIR } from '../../storage/paths.js'
+import { readPublicFile } from '../../storage/fileStore.js'
 import { generateBadgeSheetPdf, generateSingleBadgePdf, type BadgeConference, type BadgePerson, type BadgeRoleLabel } from './export.js'
 import type { BadgeFilterQuery } from './validation.js'
 
@@ -137,7 +135,7 @@ async function loadConferenceForBadges(conferenceId: string): Promise<BadgeConfe
   let logoBuffer: Buffer | null = null
   if (row.logo_path) {
     try {
-      logoBuffer = await readFile(path.join(PUBLIC_DIR, row.logo_path))
+      logoBuffer = await readPublicFile(row.logo_path)
     } catch {
       logoBuffer = null
     }

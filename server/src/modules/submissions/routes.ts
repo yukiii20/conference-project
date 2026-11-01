@@ -1,3 +1,4 @@
+import { sendPrivateFile } from '../../storage/send.js'
 import { Router } from 'express'
 import multer from 'multer'
 import { requireAuth } from '../../middleware/auth.js'
@@ -162,10 +163,8 @@ submissionsRouter.post('/:sid/files/:kind', requireAuth, uploadRateLimit, upload
 
 submissionsRouter.get('/:sid/files/:fileId/download', requireAuth, async (req, res, next) => {
   try {
-    const { absolutePath, filename } = await getDownloadableFile(req.user!.id, req.params.sid!, req.params.fileId!)
-    res.download(absolutePath, filename, (err) => {
-      if (err) next(err)
-    })
+    const { storagePath, filename, mime } = await getDownloadableFile(req.user!.id, req.params.sid!, req.params.fileId!)
+    await sendPrivateFile(res, storagePath, filename, mime)
   } catch (err) {
     next(err)
   }

@@ -1,6 +1,4 @@
-import { mkdir, unlink, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { PUBLIC_DIR } from './paths.js'
+import { storage } from './driver.js'
 
 /** `${folder}/${uuid}.${ext}` — folder is always server-constructed (never from client input). */
 export function buildPublicPath(folder: string, ext: string): string {
@@ -8,17 +6,17 @@ export function buildPublicPath(folder: string, ext: string): string {
 }
 
 export async function savePublicFile(relativePath: string, buffer: Buffer): Promise<void> {
-  const full = path.join(PUBLIC_DIR, relativePath)
-  await mkdir(path.dirname(full), { recursive: true })
-  await writeFile(full, buffer)
+  await storage().put('public', relativePath, buffer)
+}
+
+/** The file's bytes, or null if it doesn't exist (e.g. a logo lost before storage moved to R2). */
+export async function readPublicFile(relativePath: string | null | undefined): Promise<Buffer | null> {
+  if (!relativePath) return null
+  return storage().get('public', relativePath)
 }
 
 /** Best-effort cleanup — a missing file (already deleted, or never existed) is not an error here. */
 export async function deletePublicFile(relativePath: string | null | undefined): Promise<void> {
   if (!relativePath) return
-  try {
-    await unlink(path.join(PUBLIC_DIR, relativePath))
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
-  }
+  await storage().delete('public', relativePath)
 }

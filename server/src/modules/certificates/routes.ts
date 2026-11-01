@@ -1,3 +1,4 @@
+import { sendPrivateFile } from '../../storage/send.js'
 import { Router } from 'express'
 import { requireAuth, requireConferencePermission, assertConferencePermission } from '../../middleware/auth.js'
 import { validateBody } from '../../middleware/validate.js'
@@ -278,8 +279,8 @@ certificatesRouter.get('/:id/certificates/:certificateId/download', requireAuth,
     } catch {
       hasManagePermission = false
     }
-    const { absolutePath, filename } = await downloadCertificate(req.params.id!, req.params.certificateId!, req.user!.id, hasManagePermission)
-    res.download(absolutePath, filename)
+    const { storagePath, filename } = await downloadCertificate(req.params.id!, req.params.certificateId!, req.user!.id, hasManagePermission)
+    await sendPrivateFile(res, storagePath, filename)
   } catch (err) {
     next(err)
   }

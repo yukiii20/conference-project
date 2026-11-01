@@ -1,3 +1,4 @@
+import { sendPrivateFile } from '../../storage/send.js'
 import { Router } from 'express'
 import { requireConferencePermission } from '../../middleware/auth.js'
 import { validateBody } from '../../middleware/validate.js'
@@ -47,8 +48,8 @@ abstractBookRouter.patch(
 
 abstractBookRouter.get('/:id/abstract-book/download', requireConferencePermission(PERM), async (req, res, next) => {
   try {
-    const { absolutePath, filename } = await bookFile(req.params.id!, { publicOnly: false })
-    res.download(absolutePath, filename)
+    const { storagePath, filename } = await bookFile(req.params.id!, { publicOnly: false })
+    await sendPrivateFile(res, storagePath, filename)
   } catch (err) {
     next(err)
   }
@@ -65,8 +66,8 @@ abstractBookRouter.get('/:id/abstract-book/public', async (req, res, next) => {
 
 abstractBookRouter.get('/:id/abstract-book/public.pdf', async (req, res, next) => {
   try {
-    const { absolutePath, filename } = await bookFile(req.params.id!, { publicOnly: true })
-    res.download(absolutePath, filename)
+    const { storagePath, filename } = await bookFile(req.params.id!, { publicOnly: true })
+    await sendPrivateFile(res, storagePath, filename)
   } catch (err) {
     next(err)
   }

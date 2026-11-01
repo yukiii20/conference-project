@@ -41,6 +41,8 @@ import { sessionTimerRouter } from './modules/sessionTimer/routes.js'
 import { abstractBookRouter } from './modules/abstractBook/routes.js'
 import { feedbackMeRouter, feedbackRouter } from './modules/feedback/routes.js'
 import { PUBLIC_DIR } from './storage/paths.js'
+import { storage } from './storage/driver.js'
+import { publicFileHandler } from './storage/send.js'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
@@ -140,7 +142,13 @@ export function createApp() {
   app.use(requireMatchingOrigin)
   app.use(blockWritesInAdminViewAsMode)
 
-  app.use('/files/public', express.static(PUBLIC_DIR, { maxAge: '7d', immutable: true }))
+  // Public uploads keep the same URL whichever storage driver is active: local disk is served
+  // straight from the folder; R2 objects are streamed through this backend.
+  if (storage().name === 'local') {
+    app.use('/files/public', express.static(PUBLIC_DIR, { maxAge: '7d', immutable: true }))
+  } else {
+    app.get('/files/public/*', publicFileHandler)
+  }
 
   const startedAt = Date.now()
 
@@ -154,6 +162,7 @@ export function createApp() {
       uptime_seconds: Math.round((Date.now() - startedAt) / 1000),
       database: db,
       email_queue: email,
+      storage: storage().name,
     })
   })
 

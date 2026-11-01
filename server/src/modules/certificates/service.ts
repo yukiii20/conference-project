@@ -5,11 +5,8 @@ import { insertAuditLog, type AuditContext } from '../../utils/audit.js'
 import { generateUrlSafeToken } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { notifyUser } from '../../utils/notifications.js'
-import { buildPublicPath, deletePublicFile, savePublicFile } from '../../storage/fileStore.js'
-import { privateFileAbsolutePath, savePrivateFile } from '../../storage/privateFileStore.js'
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
-import { PUBLIC_DIR } from '../../storage/paths.js'
+import { buildPublicPath, deletePublicFile, readPublicFile, savePublicFile } from '../../storage/fileStore.js'
+import { savePrivateFile } from '../../storage/privateFileStore.js'
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import { generateCertificatePdf, type CertificateLayout } from './export.js'
 import type { CertificateTemplateInput, PreviewDraftInput } from './validation.js'
@@ -394,7 +391,7 @@ async function loadConferenceForCertificate(conn: PoolConnection, conferenceId: 
 async function readPublicFileIfAny(relativePath: string | null): Promise<Buffer | null> {
   if (!relativePath) return null
   try {
-    return await readFile(path.join(PUBLIC_DIR, relativePath))
+    return await readPublicFile(relativePath)
   } catch {
     return null
   }
@@ -805,7 +802,7 @@ export async function downloadCertificate(
   certificateId: string,
   requestingUserId: string,
   hasManagePermission: boolean,
-): Promise<{ absolutePath: string; filename: string }> {
+): Promise<{ storagePath: string; filename: string }> {
   const [rows] = await pool.query(
     'SELECT id, recipient_user_id, certificate_number, file_path, status FROM certificates WHERE id = ? AND conference_id = ? LIMIT 1',
     [certificateId, conferenceId],
@@ -821,7 +818,7 @@ export async function downloadCertificate(
     throw new ForbiddenError('Certificates have not been released yet.')
   }
 
-  return { absolutePath: privateFileAbsolutePath(cert.file_path), filename: `${cert.certificate_number}.pdf` }
+  return { storagePath: cert.file_path, filename: `${cert.certificate_number}.pdf` }
 }
 
 export async function revokeCertificate(actorUserId: string, conferenceId: string, certificateId: string, reason: string, ctx: AuditContext = {}): Promise<void> {

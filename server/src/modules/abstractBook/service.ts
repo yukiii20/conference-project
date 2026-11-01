@@ -1,12 +1,10 @@
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import sharp from 'sharp'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { insertAuditLog, type AuditContext } from '../../utils/audit.js'
 import { NotFoundError } from '../../utils/errors.js'
-import { PUBLIC_DIR } from '../../storage/paths.js'
-import { buildPrivatePath, deletePrivateFile, privateFileAbsolutePath, savePrivateFile } from '../../storage/privateFileStore.js'
+import { readPublicFile } from '../../storage/fileStore.js'
+import { buildPrivatePath, deletePrivateFile, savePrivateFile } from '../../storage/privateFileStore.js'
 import { generateAbstractBook, type BookAbstract, type BookGroup } from './export.js'
 import type { GenerateBookInput } from './validation.js'
 
@@ -55,7 +53,8 @@ function formatDateRange(start: string, end: string): string {
 async function loadLogo(relativePath: string | null): Promise<Buffer | null> {
   if (!relativePath) return null
   try {
-    return await sharp(await readFile(path.join(PUBLIC_DIR, relativePath))).png().toBuffer()
+    const original = await readPublicFile(relativePath)
+    return original ? await sharp(original).png().toBuffer() : null
   } catch {
     return null
   }
@@ -311,10 +310,10 @@ export async function setBookPublished(
   })
 }
 
-export async function bookFile(conferenceId: string, opts: { publicOnly: boolean }): Promise<{ absolutePath: string; filename: string }> {
+export async function bookFile(conferenceId: string, opts: { publicOnly: boolean }): Promise<{ storagePath: string; filename: string }> {
   const book = await loadBook(conferenceId)
   if (!book || (opts.publicOnly && !book.is_published)) throw new NotFoundError('The book of abstracts is not available.')
-  return { absolutePath: privateFileAbsolutePath(book.file_path), filename: 'book-of-abstracts.pdf' }
+  return { storagePath: book.file_path, filename: 'book-of-abstracts.pdf' }
 }
 
 /** For the public conference page: is there a published book to link to? */

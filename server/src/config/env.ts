@@ -62,6 +62,16 @@ const envSchema = z
     // deploy/restart, so anything written outside the disk is lost. See
     // server/src/storage/paths.ts.
     STORAGE_DIR: z.string().optional(),
+
+    // Where uploaded files live. 'local' = the STORAGE_DIR folder above (development,
+    // tests). 'r2' = a Cloudflare R2 bucket (production on Render's free plan, whose disk
+    // is wiped on every deploy). Paths saved in the database are the same for both, so
+    // switching never changes a URL. See docs/cloudflare-r2-setup.md.
+    STORAGE_DRIVER: z.enum(['local', 'r2']).default('local'),
+    R2_ACCOUNT_ID: z.string().optional(),
+    R2_ACCESS_KEY_ID: z.string().optional(),
+    R2_SECRET_ACCESS_KEY: z.string().optional(),
+    R2_BUCKET: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.EMAIL_MODE === 'smtp') {
@@ -85,6 +95,12 @@ const envSchema = z
       }
       if (!data.MAIL_FROM) {
         ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'MAIL_FROM is required when EMAIL_MODE=brevo (must be a Brevo-verified sender).' })
+      }
+    }
+
+    if (data.STORAGE_DRIVER === 'r2') {
+      for (const key of ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'] as const) {
+        if (!data[key]) ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when STORAGE_DRIVER=r2.` })
       }
     }
 

@@ -1,6 +1,7 @@
 import { statfs } from 'node:fs/promises'
 import { pool } from '../db/pool.js'
 import { STORAGE_ROOT } from '../storage/paths.js'
+import { storage } from '../storage/driver.js'
 
 /** Pings the database with a trivial query, timing the round trip. Never throws — callers get ok:false instead. */
 export async function pingDatabase(): Promise<{ ok: boolean; latency_ms: number | null }> {
@@ -15,6 +16,8 @@ export async function pingDatabase(): Promise<{ ok: boolean; latency_ms: number 
 
 /** Free/total bytes on the filesystem backing server/storage. Never throws — callers get nulls instead. */
 export async function getStorageDiskSpace(): Promise<{ free_bytes: number | null; total_bytes: number | null }> {
+  // R2 has no disk to measure (and no practical size limit for this app).
+  if (storage().name !== 'local') return { free_bytes: null, total_bytes: null }
   try {
     const stats = await statfs(STORAGE_ROOT)
     return { free_bytes: stats.bavail * stats.bsize, total_bytes: stats.blocks * stats.bsize }

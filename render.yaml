@@ -54,9 +54,17 @@ services:
       - key: MAIL_FROM
         sync: false
 
-      # Default (server/storage) is fine on the free plan but is wiped on every
-      # deploy/restart. On a paid plan with a persistent disk attached (Render
-      # dashboard -> this service -> Disks), point this at the mount path, e.g.
-      # /var/data/storage - see docs/deploy-guide.md.
-      - key: STORAGE_DIR
-        value: ""
+      # --- Uploaded files: Cloudflare R2 (the free plan's own disk is wiped on every
+      # deploy/restart). See docs/cloudflare-r2-setup.md. ---
+      # Set to r2 in the Render dashboard only AFTER the four R2_* values are filled in
+      # (the server refuses to start with STORAGE_DRIVER=r2 and missing R2 settings).
+      - key: STORAGE_DRIVER
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false

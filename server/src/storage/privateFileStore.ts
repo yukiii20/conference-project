@@ -1,6 +1,4 @@
-import { mkdir, unlink, writeFile } from 'node:fs/promises'
-import path from 'node:path'
-import { PRIVATE_DIR } from './paths.js'
+import { storage } from './driver.js'
 
 /** `${folder}/${kind}-v${version}-${random}.${ext}` — never the original filename, per A3. */
 export function buildPrivatePath(folder: string, kind: string, version: number, ext: string): string {
@@ -9,21 +7,11 @@ export function buildPrivatePath(folder: string, kind: string, version: number, 
 }
 
 export async function savePrivateFile(relativePath: string, buffer: Buffer): Promise<void> {
-  const full = path.join(PRIVATE_DIR, relativePath)
-  await mkdir(path.dirname(full), { recursive: true })
-  await writeFile(full, buffer)
-}
-
-export function privateFileAbsolutePath(relativePath: string): string {
-  return path.join(PRIVATE_DIR, relativePath)
+  await storage().put('private', relativePath, buffer)
 }
 
 /** Best-effort cleanup — a missing file is not an error here. */
 export async function deletePrivateFile(relativePath: string | null | undefined): Promise<void> {
   if (!relativePath) return
-  try {
-    await unlink(path.join(PRIVATE_DIR, relativePath))
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
-  }
+  await storage().delete('private', relativePath)
 }

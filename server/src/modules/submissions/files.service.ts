@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { assertConferencePermission } from '../../middleware/auth.js'
-import { buildPrivatePath, privateFileAbsolutePath, savePrivateFile } from '../../storage/privateFileStore.js'
+import { buildPrivatePath, savePrivateFile } from '../../storage/privateFileStore.js'
 import { insertAuditLog } from '../../utils/audit.js'
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import { MIME_FOR_EXT, resolveAndValidateExtension } from './fileRules.js'
@@ -138,7 +138,7 @@ export async function getDownloadableFile(
   userId: string,
   submissionId: string,
   fileId: string,
-): Promise<{ absolutePath: string; filename: string; mime: string }> {
+): Promise<{ storagePath: string; filename: string; mime: string }> {
   const sub = await loadSubmissionCore(submissionId)
 
   const [fileRows] = await pool.query(
@@ -170,7 +170,7 @@ export async function getDownloadableFile(
   }
 
   return {
-    absolutePath: privateFileAbsolutePath(file.storage_path),
+    storagePath: file.storage_path,
     filename: file.original_filename,
     mime: file.mime_type,
   }
