@@ -18,6 +18,7 @@ import type {
   ListConferencesQuery,
   ListUsersQuery,
 } from './validation.js'
+import { csvCell } from '../../utils/csv.js'
 
 const PAGE_SIZE = 50
 
@@ -1044,11 +1045,6 @@ export async function listAuditLog(filters: AuditLogQuery): Promise<{ entries: A
     [...params, PAGE_SIZE, offset],
   )
   return { entries: rows as AuditLogRow[], page: filters.page }
-}
-
-function csvCell(value: unknown): string {
-  const text = value == null ? '' : typeof value === 'string' ? value : JSON.stringify(value)
-  return `"${text.replace(/"/g, '""')}"`
 }
 
 const AUDIT_LOG_EXPORT_LIMIT = 5000

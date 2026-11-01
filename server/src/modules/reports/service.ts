@@ -1,16 +1,12 @@
 import ExcelJS from 'exceljs'
 import { pool } from '../../db/pool.js'
 import { isPlatformAdmin, getConferencePermissions } from '../auth/service.js'
+import { csvCell } from '../../utils/csv.js'
 
 export async function canReadAllReviews(userId: string, conferenceId: string): Promise<boolean> {
   if (await isPlatformAdmin(userId)) return true
   const permissions = await getConferencePermissions(userId, conferenceId)
   return permissions.has('review.read_all')
-}
-
-function csvCell(value: unknown): string {
-  const text = value === null || value === undefined ? '' : typeof value === 'string' ? value : JSON.stringify(value)
-  return `"${text.replace(/"/g, '""')}"`
 }
 
 function toCsv(header: string[], rows: unknown[][]): string {

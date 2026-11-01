@@ -12,6 +12,7 @@ import { getConferencePermissions, isPlatformAdmin } from '../auth/service.js'
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import type { RegistrationCategoryInput } from './validation.js'
 import { AMOUNT_PAID_SQL, currentFeesByCategory, priceForNewRegistration, pricedCategoryIds, type CurrentFee } from './fees.service.js'
+import { csvCell } from '../../utils/csv.js'
 
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { code?: string }).code === 'ER_DUP_ENTRY')
@@ -386,13 +387,12 @@ export async function listRegistrations(
 export async function exportRegistrationsCsv(conferenceId: string): Promise<string> {
   const rows = await listAllRegistrations(conferenceId, {})
   const header = ['Registration number', 'Name', 'Email', 'Category', 'Status', 'Amount due', 'Amount paid', 'Currency', 'Registered at']
-  // Quote every cell, and prefix cells a spreadsheet would run as a formula (=, +, -, @) with '.
-  const escape = (v: string) => `"${(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`
-  const lines = [header.map(escape).join(',')]
+  // csvCell quotes every cell and neutralises formula-like text (see utils/csv.ts).
+  const lines = [header.map(csvCell).join(',')]
   for (const r of rows) {
     lines.push(
       [r.registration_number, r.full_name, r.email, r.category_name, r.status, r.amount_due, r.amount_paid, r.currency, r.registered_at]
-        .map((v) => escape(String(v)))
+        .map(csvCell)
         .join(','),
     )
   }

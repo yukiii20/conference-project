@@ -413,3 +413,20 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
   - The manual GitHub workflow step.
   - A post-deploy check list and rollback steps.
 - No production change was made. Every item is for the owner to run.
+
+## Phase 10 (part): role matrix + report export tests, CSV injection fix · 1 November 2026 · status: DONE (DB tests need MySQL)
+
+- **Role matrix:** new `server/tests/roleMatrix.test.ts` (13 tests, need DB).
+  - Checks that the role_permissions seed matches the documented matrix.
+  - Checks each role against 19 guarded endpoints (allowed vs 403).
+  - Also covers: outsider 403, other conference's convenor 403, signed-out 401, platform admin
+    allowed everywhere, settings convenor-only.
+- **Security fix:** report, audit-log and suggestion CSV exports did not neutralise formula cells.
+  A public suggestion or a name like `=HYPERLINK(...)` would run as a formula in Excel.
+  - New shared `server/src/utils/csv.ts` (`csvCell`) is now used by all four CSV exporters.
+  - Dates are now written as ISO in every export.
+- **Tests:**
+  - `tests/csv.test.ts`: 5 pass.
+  - New export test in `reports.test.ts` (needs DB): CSV is neutralised, XLSX stores plain text
+    and no formulas.
+- tsc and eslint are clean. The full suite was not finished before this push.

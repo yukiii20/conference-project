@@ -14,6 +14,7 @@ import type {
   SuggestionStatus,
   UpdateSuggestionInput,
 } from './validation.js'
+import { csvCell } from '../../utils/csv.js'
 
 const PAGE_SIZE = 20
 const DIGEST_THROTTLE_MS = 15 * 60 * 1000
@@ -243,15 +244,6 @@ export async function deleteSuggestion(actorUserId: string, id: string, ctx: Aud
       userAgent: ctx.userAgent ?? null,
     })
   })
-}
-
-function csvCell(value: unknown): string {
-  // created_at comes back as a JS Date (mysql2 only stringifies DATE columns,
-  // not DATETIME — see db/pool.ts's dateStrings config), so stringify it to
-  // ISO text directly rather than via JSON.stringify, which would wrap it in
-  // an extra pair of quotes that then get doubled again below.
-  const text = value == null ? '' : value instanceof Date ? value.toISOString() : typeof value === 'string' ? value : JSON.stringify(value)
-  return `"${text.replace(/"/g, '""')}"`
 }
 
 const EXPORT_LIMIT = 5000
