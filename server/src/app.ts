@@ -41,6 +41,7 @@ import { sessionTimerRouter } from './modules/sessionTimer/routes.js'
 import { abstractBookRouter } from './modules/abstractBook/routes.js'
 import { feedbackMeRouter, feedbackRouter } from './modules/feedback/routes.js'
 import { createTickRouter } from './jobs/tick.js'
+import { machineEndpointRateLimit } from './middleware/rateLimit.js'
 import { createBrevoWebhookRouter } from './modules/emailWebhooks/routes.js'
 import { PUBLIC_DIR } from './storage/paths.js'
 import { storage } from './storage/driver.js'
@@ -168,8 +169,8 @@ export function createApp() {
     })
   })
 
-  app.use('/api/webhooks', createBrevoWebhookRouter())
-  app.use('/api/internal', createTickRouter())
+  app.use('/api/webhooks', machineEndpointRateLimit, createBrevoWebhookRouter())
+  app.use('/api/internal', machineEndpointRateLimit, createTickRouter())
   app.use('/api/auth', authRouter)
   // publicExtras is mounted BEFORE the Phase 1 public router: its routes
   // (`/public-deadlines`, `/public-track-count`) are single path segments,

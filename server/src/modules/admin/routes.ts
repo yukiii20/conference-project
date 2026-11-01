@@ -39,6 +39,7 @@ import {
   unlockUser,
   unpublishConference,
 } from './service.js'
+import { emailTriggerRateLimit } from '../../middleware/rateLimit.js'
 
 export const adminRouter = Router()
 
@@ -112,6 +113,7 @@ adminRouter.post(
 adminRouter.post(
   '/conferences/:id/convenor-invite',
   requireAdmin,
+  emailTriggerRateLimit,
   validateBody(convenorInviteSchema),
   async (req, res, next) => {
     try {

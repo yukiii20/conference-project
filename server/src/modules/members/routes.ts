@@ -17,6 +17,7 @@ import {
   setMaxReviewLoadSchema,
   setReviewerTracksSchema,
 } from './validation.js'
+import { emailTriggerRateLimit } from '../../middleware/rateLimit.js'
 
 export const membersRouter = Router()
 const PERM = 'members.manage'
@@ -29,7 +30,7 @@ membersRouter.get('/:id/members', requireConferencePermission(PERM), validateQue
   }
 })
 
-membersRouter.post('/:id/members/invite', requireConferencePermission(PERM), validateBody(inviteMemberSchema), async (req, res, next) => {
+membersRouter.post('/:id/members/invite', requireConferencePermission(PERM), emailTriggerRateLimit, validateBody(inviteMemberSchema), async (req, res, next) => {
   try {
     res.status(201).json(await inviteMember(req.user!.id, req.params.id!, req.body))
   } catch (err) {

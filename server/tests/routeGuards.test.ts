@@ -49,6 +49,8 @@ const PUBLIC_ROUTES = new Set([
   // tests/brevoWebhook.test.ts and tests/tick.test.ts (401 on a missing/wrong token).
   'brevoWebhookRouter POST /brevo',
   'tickRouter POST /tick',
+  // Home page statistics band: platform-wide totals only (no individual data), cache-controlled.
+  'conferencesPublicExtrasRouter GET /public-stats',
   'authRouter POST /register',
   // Proven with the existing account's password; only ever creates a pending role request.
   'authRouter POST /join-conference',

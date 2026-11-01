@@ -81,3 +81,31 @@ export const suggestionDailyRateLimit = rateLimit({
   skip: skipInTest,
   message: SUGGESTION_TOO_MANY_MESSAGE,
 })
+
+/**
+ * Machine endpoints (/api/webhooks, /api/internal): already protected by a long shared secret;
+ * this only caps noise from anyone guessing. Brevo and the 10-minute tick stay far below it.
+ */
+export const MACHINE_ENDPOINT_RATE_LIMIT_CONFIG = { windowMs: 60 * 1000, limit: 60 }
+export const machineEndpointRateLimit = rateLimit({
+  ...MACHINE_ENDPOINT_RATE_LIMIT_CONFIG,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { error: { message: 'Too many requests.' } },
+})
+
+/**
+ * Endpoints that make the server send email on a signed-in user's behalf (member and convenor
+ * invites, bulk-email test/send). Keyed per user, so one misused account can't burn the Brevo
+ * daily quota for every conference. Must run after requireAuth/permission guards.
+ */
+export const EMAIL_TRIGGER_RATE_LIMIT_CONFIG = { windowMs: 15 * 60 * 1000, limit: 30 }
+export const emailTriggerRateLimit = rateLimit({
+  ...EMAIL_TRIGGER_RATE_LIMIT_CONFIG,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  keyGenerator: (req: Request) => (req.user?.id ? `user:${req.user.id}` : `ip:${req.ip ?? 'unknown'}`),
+  message: { error: { message: 'Too many emails sent in a short time. Please wait a few minutes and try again.' } },
+})

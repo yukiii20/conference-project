@@ -388,3 +388,19 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
 - **L6:** every intentional `.catch(() => {})` now has a one-line reason (the forgot-password
   page already had one).
 - **Result:** frontend 80/80, lint and `tsc` clean.
+
+## Phase 9 (part): rate-limit review · 1 November 2026 · status: DONE
+
+- **Already limited:** sign-in, sign-up, join, forgot/reset password, role requests, uploads,
+  suggestions, certificate verification.
+- **Added:**
+  - `machineEndpointRateLimit` on `/api/webhooks` and `/api/internal`: 60 per minute per IP.
+    These are already secret-protected; the limit only caps guessing noise.
+  - `emailTriggerRateLimit` on member invites, convenor invites and bulk-email test/send: 30 per
+    15 minutes per signed-in user, so one misused account can't burn the shared Brevo daily
+    quota.
+- Both are skipped under `NODE_ENV=test`, like the existing limits.
+- **Route-guard test:** now lists the new public `/public-stats` homepage endpoint (totals only,
+  added by a parallel homepage session) with its reason.
+- **Result:** 291/291 route-guard tests; full server suite has 0 failures other than missing
+  MySQL.

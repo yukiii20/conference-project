@@ -13,6 +13,7 @@ import {
   updateDraft,
 } from './service.js'
 import { previewContentSchema, previewRecipientsSchema, saveDraftSchema } from './validation.js'
+import { emailTriggerRateLimit } from '../../middleware/rateLimit.js'
 
 export const bulkEmailRouter = Router()
 const PERM = 'communication.bulk_email'
@@ -95,7 +96,7 @@ bulkEmailRouter.delete('/:id/bulk-email/:bulkEmailId', requireConferencePermissi
   }
 })
 
-bulkEmailRouter.post('/:id/bulk-email/:bulkEmailId/test', requireConferencePermission(PERM), async (req, res, next) => {
+bulkEmailRouter.post('/:id/bulk-email/:bulkEmailId/test', requireConferencePermission(PERM), emailTriggerRateLimit, async (req, res, next) => {
   try {
     await sendTestEmail(req.user!.id, req.params.id!, req.params.bulkEmailId!)
     res.json({ message: 'Test email queued — check your inbox shortly.' })
@@ -104,7 +105,7 @@ bulkEmailRouter.post('/:id/bulk-email/:bulkEmailId/test', requireConferencePermi
   }
 })
 
-bulkEmailRouter.post('/:id/bulk-email/:bulkEmailId/send', requireConferencePermission(PERM), async (req, res, next) => {
+bulkEmailRouter.post('/:id/bulk-email/:bulkEmailId/send', requireConferencePermission(PERM), emailTriggerRateLimit, async (req, res, next) => {
   try {
     res.json(await sendBulkEmail(req.user!.id, req.params.id!, req.params.bulkEmailId!))
   } catch (err) {
