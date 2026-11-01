@@ -162,7 +162,10 @@ export function ConferencePage() {
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+    // The nav only mounts once loading finishes (the loading/error states
+    // return early), so re-run then — with [] this ran once against a null
+    // ref and headerHeight stayed 0, hiding every section heading under the nav.
+  }, [loading, error, conference])
 
   function computeActiveSection(): SectionId {
     const threshold = headerHeight + 8
