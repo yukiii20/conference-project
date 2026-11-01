@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { neutralFilenameFor, stripDocumentMetadata } from './anonymize.js'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { assertConferencePermission } from '../../middleware/auth.js'
@@ -78,7 +79,10 @@ export async function uploadSubmissionFile(
 
   const ext = await resolveAndValidateExtension(file.buffer, kind)
   const mime = MIME_FOR_EXT[ext]!
-  const checksum = createHash('sha256').update(file.buffer).digest('hex')
+  // Remove author names from the document's own properties before it is stored, so a
+  // reviewer can't read them from the file (double-blind). The stored copy is the cleaned one.
+  const stored = (await stripDocumentMetadata(file.buffer, ext)).buffer
+  const checksum = createHash('sha256').update(stored).digest('hex')
   const originalFilename = sanitizeFilename(file.originalname)
 
   return withTransaction(userId, async (conn) => {
@@ -94,13 +98,13 @@ export async function uploadSubmissionFile(
     )
 
     const relativePath = buildPrivatePath(`submissions/${sub.conference_id}/${submissionId}`, kind, version, ext)
-    await savePrivateFile(relativePath, file.buffer)
+    await savePrivateFile(relativePath, stored)
 
     await conn.query(
       `INSERT INTO submission_files
          (submission_id, file_kind, version, storage_path, original_filename, mime_type, size_bytes, checksum_sha256, status, uploaded_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
-      [submissionId, kind, version, relativePath, originalFilename, mime, file.buffer.length, checksum, userId],
+      [submissionId, kind, version, relativePath, originalFilename, mime, stored.length, checksum, userId],
     )
     const [idRows] = await conn.query(
       `SELECT id, uploaded_at FROM submission_files WHERE submission_id = ? AND file_kind = ? AND version = ? LIMIT 1`,
@@ -142,13 +146,14 @@ export async function getDownloadableFile(
   const sub = await loadSubmissionCore(submissionId)
 
   const [fileRows] = await pool.query(
-    `SELECT storage_path, original_filename, mime_type FROM submission_files WHERE id = ? AND submission_id = ? LIMIT 1`,
+    `SELECT storage_path, original_filename, mime_type, file_kind, version FROM submission_files WHERE id = ? AND submission_id = ? LIMIT 1`,
     [fileId, submissionId],
   )
-  const file = (fileRows as Array<{ storage_path: string; original_filename: string; mime_type: string }>)[0]
+  const file = (fileRows as Array<{ storage_path: string; original_filename: string; mime_type: string; file_kind: string; version: number }>)[0]
   if (!file) throw new NotFoundError('This file does not exist.')
 
   const isAuthor = await isAuthorOfSubmission(submissionId, userId, sub.created_by)
+  let isReviewerOnly = false
   if (!isAuthor) {
     let hasReadAll = false
     try {
@@ -166,12 +171,19 @@ export async function getDownloadableFile(
       if ((assignRows as unknown[]).length === 0) {
         throw new ForbiddenError('You do not have permission to download this file.')
       }
+      isReviewerOnly = true
     }
   }
 
   return {
     storagePath: file.storage_path,
-    filename: file.original_filename,
+    // A reviewer gets a neutral name unless the conference runs open review.
+    filename: isReviewerOnly && (await reviewModeOf(sub.conference_id)) !== 'open' ? neutralFilenameFor(file, sub.submission_code) : file.original_filename,
     mime: file.mime_type,
   }
+}
+
+async function reviewModeOf(conferenceId: string): Promise<string> {
+  const [rows] = await pool.query(`SELECT review_mode FROM conference_settings WHERE conference_id = ? LIMIT 1`, [conferenceId])
+  return (rows as Array<{ review_mode: string | null }>)[0]?.review_mode ?? 'double_blind'
 }

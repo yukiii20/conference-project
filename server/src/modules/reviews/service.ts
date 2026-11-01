@@ -1,4 +1,5 @@
 import type { PoolConnection } from 'mysql2/promise'
+import { neutralFilenameFor } from '../submissions/anonymize.js'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { assertConferencePermission } from '../../middleware/auth.js'
@@ -1008,7 +1009,7 @@ export async function getAssignmentDetail(userId: string, assignmentId: string) 
   const assignment = await loadOwnAssignment(pool, userId, assignmentId)
 
   const [subRows] = await pool.query(
-    `SELECT s.id, s.title, s.abstract, s.keywords, s.track_id, t.name AS track_name, c.review_mode
+    `SELECT s.id, s.submission_code, s.title, s.abstract, s.keywords, s.track_id, t.name AS track_name, c.review_mode
      FROM submissions s
      JOIN conference_tracks t ON t.id = s.track_id
      JOIN conferences conf ON conf.id = s.conference_id
@@ -1043,7 +1044,15 @@ export async function getAssignmentDetail(userId: string, assignmentId: string) 
     submission: { id: sub.id, title: sub.title, abstract: sub.abstract, keywords: sub.keywords, track_name: sub.track_name },
     review_mode: reviewMode,
     authors,
-    files: fileRows,
+    // Outside open review the uploader's own filename could name them ("Sharma_final.pdf"),
+    // so reviewers only ever see a neutral one.
+    files:
+      reviewMode === 'open'
+        ? fileRows
+        : (fileRows as Array<{ file_kind: string; version: number; original_filename: string }>).map((f) => ({
+            ...f,
+            original_filename: neutralFilenameFor(f, (sub.submission_code as string | null) ?? null),
+          })),
     review,
   }
 }
