@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, memo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarDays, EyeOff, MapPin, PlayCircle } from 'lucide-react'
+import { ArrowRight, Award, CalendarDays, Check, EyeOff, FileText, MapPin, PlayCircle, Sparkles } from 'lucide-react'
 import { publicImageUrl } from '../../../lib/storage'
 import { DEFAULT_CONFERENCE_COLOR } from '../../../lib/color'
 import { formatDateRange } from '../../../lib/datetime'
@@ -55,11 +55,101 @@ function useParallax<T extends HTMLElement>(strength = 0.12) {
   return ref
 }
 
+/**
+ * Sets the headline's last two words in italic gold with a hand-drawn underline.
+ * Works for any admin-edited headline; a headline of one or two words stays plain.
+ */
+function AccentHeadline({ text }: { text: string }) {
+  const words = text.trim().split(/\s+/)
+  if (words.length < 3) return <>{text}</>
+  const lead = words.slice(0, -2).join(' ')
+  const tail = words.slice(-2).join(' ')
+  return (
+    <>
+      {lead}{' '}
+      <span className="relative inline-block whitespace-nowrap italic text-gold-ink">
+        {tail}
+        <svg
+          className="absolute -bottom-2 left-0 h-3 w-full text-gold sm:-bottom-3 sm:h-4"
+          viewBox="0 0 300 16"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path
+            className="home-ink"
+            d="M3 11C60 4 140 2 297 7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="5"
+            strokeLinecap="round"
+            pathLength={1}
+          />
+        </svg>
+      </span>
+    </>
+  )
+}
+
+const JOURNEY = [
+  { label: 'Abstract submitted', icon: FileText },
+  { label: 'Double-blind review', icon: EyeOff },
+  { label: 'Accepted to programme', icon: Check },
+  { label: 'Certificate issued', icon: Award },
+] as const
+
+/** A paper's path through the platform, stepping forward on a slow loop (fully complete under reduced motion). */
+function JourneyCard() {
+  const [step, setStep] = useState(JOURNEY.length - 1)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    setStep(0)
+    const id = window.setInterval(() => setStep((s) => (s + 1) % (JOURNEY.length + 1)), 1600)
+    return () => window.clearInterval(id)
+  }, [])
+  const shown = Math.min(step, JOURNEY.length - 1)
+  return (
+    <div className="w-[250px] rounded-2xl border border-white/70 bg-white/90 p-4 shadow-pop backdrop-blur-md" aria-hidden="true">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">A paper&rsquo;s journey</p>
+        <span className="font-mono text-[11px] text-text-muted">
+          {shown + 1}/{JOURNEY.length}
+        </span>
+      </div>
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface-muted">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-brand to-indigo transition-all duration-700 ease-out"
+          style={{ width: `${((shown + 1) / JOURNEY.length) * 100}%` }}
+        />
+      </div>
+      <ol className="mt-3 space-y-2.5">
+        {JOURNEY.map((j, i) => {
+          const done = i <= step
+          const Icon = j.icon
+          return (
+            <li key={j.label} className="flex items-center gap-3 text-[13px]">
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-500 ${
+                  done
+                    ? 'scale-100 bg-brand text-on-brand shadow-[0_0_0_4px_rgb(16_28_50/0.08)]'
+                    : 'scale-90 border border-dashed border-border bg-white text-text-muted'
+                }`}
+              >
+                <Icon size={12} strokeWidth={2.5} />
+              </span>
+              <span className={`transition-colors duration-500 ${done ? 'font-medium text-text' : 'text-text-muted'}`}>{j.label}</span>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
+}
+
 function HeroStat({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="flex flex-col-reverse">
+    <div className="flex flex-col-reverse px-4 first:pl-0 last:pr-0 sm:px-6">
       <dt className="mt-1 text-xs leading-tight text-text-muted sm:text-[13px]">{label}</dt>
-      <dd className="font-display text-3xl font-semibold text-text sm:text-4xl">
+      <dd className="font-display text-3xl font-semibold text-brand sm:text-4xl">
         {value === null ? <span className="inline-block h-8 w-10 animate-pulse rounded bg-surface-muted align-middle" /> : <CountUp value={value} />}
       </dd>
     </div>
@@ -158,17 +248,27 @@ export const HomeHero = memo(function HomeHero({
       {/* Quiet editorial backdrop: a hairline grid fading out, and a warm wash behind the photograph. */}
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(to_right,rgb(16_28_50/0.05)_1px,transparent_1px)] [background-size:96px_100%] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
-        <div className="absolute -right-40 top-10 h-[520px] w-[620px] rounded-full bg-gold/20 blur-3xl" />
-        <div className="absolute -left-32 bottom-0 h-[380px] w-[480px] rounded-full bg-indigo/10 blur-3xl" />
+        <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(rgb(16_28_50/0.10)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_15%_35%,black_5%,transparent_55%)]" />
+        <div className="home-aurora absolute -right-40 top-10 h-[520px] w-[620px] rounded-full bg-gold/25 blur-3xl" />
+        <div className="home-aurora absolute -left-32 bottom-0 h-[380px] w-[480px] rounded-full bg-indigo/15 blur-3xl" style={{ animationDelay: '-7s' }} />
       </div>
 
       <div className="mx-auto grid max-w-[1240px] items-center gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:min-h-[calc(100svh-4rem)] lg:grid-cols-[1fr_1.02fr] lg:gap-16 lg:pb-20 lg:pt-10">
         {/* Editorial column */}
         <div className="relative">
-          <div className="home-rise flex items-center gap-3" style={{ animationDelay: '60ms' }}>
-            <span className="home-draw h-px w-10 bg-gold-ink" style={{ animationDelay: '200ms' }} aria-hidden="true" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-ink sm:text-xs">
-              Academic conferences, end to end
+          <div className="home-rise" style={{ animationDelay: '60ms' }}>
+            <p className="inline-flex items-center gap-2 rounded-full border border-gold/50 bg-white/80 py-1 pl-1 pr-3.5 text-xs font-medium text-text shadow-sm backdrop-blur sm:text-[13px]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-on-brand">
+                <Sparkles size={11} aria-hidden="true" /> Live
+              </span>
+              {stats.open !== null && stats.open > 0 ? (
+                <span>
+                  <span className="font-semibold text-brand">{stats.open}</span>{' '}
+                  {stats.open === 1 ? 'conference' : 'conferences'} accepting abstracts now
+                </span>
+              ) : (
+                <span>Academic conferences, end to end</span>
+              )}
             </p>
           </div>
 
@@ -177,7 +277,7 @@ export const HomeHero = memo(function HomeHero({
             className="home-settle mt-6 max-w-[16ch] font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.6rem]"
             style={{ animationDelay: '140ms' }}
           >
-            {headline}
+            <AccentHeadline text={headline} />
           </h1>
 
           <p className="home-settle mt-6 max-w-[34rem] text-[17px] leading-relaxed text-text-muted sm:text-lg" style={{ animationDelay: '260ms' }}>
@@ -210,8 +310,21 @@ export const HomeHero = memo(function HomeHero({
             </button>
           </div>
 
+          <ul
+            className="home-rise mt-7 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[13px] font-medium text-text-muted"
+            style={{ animationDelay: '420ms' }}
+            aria-label="What the platform covers"
+          >
+            {['Calls for papers', 'Peer review', 'Programme', 'Registration', 'Certificates'].map((item, i) => (
+              <li key={item} className="inline-flex items-center gap-2.5">
+                {i > 0 ? <span className="h-1 w-1 rounded-full bg-gold" aria-hidden="true" /> : null}
+                {item}
+              </li>
+            ))}
+          </ul>
+
           <dl
-            className="home-rise mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-brand/10 pt-6"
+            className="home-rise mt-8 grid w-fit grid-cols-3 divide-x divide-brand/10 rounded-2xl border border-white/80 bg-white/65 px-5 py-4 shadow-[0_24px_50px_-30px_rgb(16_28_50/0.45)] backdrop-blur sm:px-6"
             style={{ animationDelay: '480ms' }}
           >
             <HeroStat label="Conferences" value={stats.conferences} />
@@ -222,6 +335,11 @@ export const HomeHero = memo(function HomeHero({
 
         {/* Photograph with the real featured conference laid over it */}
         <div className="relative lg:pl-4">
+          <div
+            className="home-rise absolute -bottom-4 -right-4 left-4 top-4 hidden rounded-[28px] border-2 border-gold/50 sm:block lg:left-8"
+            style={{ animationDelay: '500ms' }}
+            aria-hidden="true"
+          />
           <figure className="home-unveil home-grain relative aspect-[4/3.4] overflow-hidden rounded-[28px] bg-brand shadow-[0_40px_80px_-40px_rgb(16_28_50/0.55)] sm:aspect-[4/3] lg:aspect-[4/4.6]">
             <img
               ref={photoRef}
@@ -250,6 +368,12 @@ export const HomeHero = memo(function HomeHero({
                 <EyeOff size={16} />
               </span>
               Double-blind peer review
+            </div>
+          </div>
+
+          <div className="home-rise absolute -left-14 top-[30%] z-10 hidden xl:block" style={{ animationDelay: '1100ms' }}>
+            <div className="home-drift" style={{ animationDelay: '-4s' }}>
+              <JourneyCard />
             </div>
           </div>
 

@@ -548,6 +548,45 @@ input[type='number']::-webkit-inner-spin-button {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
+/* Hand-drawn underline under the headline accent: the stroke writes itself in once. */
+@keyframes home-ink {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.home-ink {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: home-ink 1100ms 650ms cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+
+/* Slow wandering colour glows behind the hero. */
+@keyframes home-aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-40px, 30px, 0) scale(1.08);
+  }
+}
+
+.home-aurora {
+  animation: home-aurora 16s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-ink,
+  .home-aurora {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-rise,
   .home-settle,
