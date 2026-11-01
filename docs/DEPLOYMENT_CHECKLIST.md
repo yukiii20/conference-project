@@ -19,7 +19,11 @@ once, and none of them deletes data.
 | 2 | `database/2026-11-01-part-2/` | `super_admin` role (one row, no table changes) | same three files |
 
 **Don't run** `batch-3-sql/` or `06_session_conference.sql` separately. They're already inside
-folder 1.
+folder 1. Never run `01_schema.sql` or `test-setup.sql` against Aiven.
+
+Both folders' files select `conference_cms` themselves (`USE conference_cms;`), so they work
+whatever schema your Workbench connection opens on. All of them were run twice in a row on
+MySQL 8.0.45 on 1 November: no errors, every CHECK row `OK`.
 
 **After folder 2:**
 1. Open Super admin → Administrators.

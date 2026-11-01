@@ -463,3 +463,20 @@ permissions. That makes it safe to auto-deploy before any Aiven change.
 - **Server services:** `schedule`, `reviews` and `admin` are left as they are. Their behaviour is
   covered almost entirely by the MySQL tests, which can't run here, so moving them now would be
   unverified.
+
+## Phase 10 + 12: release verification with a real database · 1 November 2026 · status: DONE (owner steps pending)
+
+Full details, results and the release gate: `docs/FINAL_RELEASE_REPORT.md`.
+
+- Installed a private MySQL 8.0.45 for testing (Aiven runs 8.0). First complete run of the
+  server suite and the Playwright suite since the November rebuild.
+- Database: fresh install, upgrade path and test database produce identical schemas and
+  reference data; every run-folder file is idempotent. Added `USE conference_cms;` to the
+  part-2 Aiven and CHECK files.
+- Fixed: Office tracked-change/comment/custom-property author leak (double-blind), console 401
+  on public pages (`GET /auth/session`), native `confirm()`/`prompt()` dialogs, "dirty after
+  save" on Key dates, unlinked form labels (FormField), mobile drawer close button, relative
+  `og:image`, tick workflow committed and fails on job failure.
+- Repaired stale, timezone-dependent and order-dependent tests without weakening them.
+- Docs: feature matrix rewritten from test evidence; this report.
+

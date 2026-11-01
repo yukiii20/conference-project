@@ -5,9 +5,10 @@
 | Doc | What it's for |
 |---|---|
 | `ARCHITECTURE.md` | How the system fits together (frontend, API, database, jobs, storage) |
+| `FINAL_RELEASE_REPORT.md` | **Release candidate status:** test results, GREEN/AMBER/RED gate, deployment and rollback |
 | `PROJECT_AUDIT.md` | Phase 0 audit: every known problem, ranked C/H/M/L |
 | `REFACTORING_PLAN.md` | The phased plan and the owner decisions D1–D7 |
-| `FEATURE_COMPLETION_MATRIX.md` | Each feature: done, partial or missing |
+| `FEATURE_COMPLETION_MATRIX.md` | Each feature's verified status and the tests behind it |
 | `IMPLEMENTATION_PROGRESS.md` | What has been fixed, with test evidence |
 | `progress.md` | Older day-by-day change log |
 | `DEPLOYMENT_CHECKLIST.md` | **Start here before going live:** SQL run order, new env vars, post-deploy checks |

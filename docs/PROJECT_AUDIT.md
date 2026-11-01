@@ -2,6 +2,30 @@
 
 **Date:** 1 November 2026 · **Commit audited:** `cc7e74b` (main) · **Scope:** whole repository
 
+> **Status as of the release candidate (1 November 2026, later the same day).** This is the
+> original Phase 0 snapshot and is kept unchanged below. Where each finding stands now:
+>
+> | Finding | Now |
+> |---|---|
+> | C1 uploads wiped on deploy | Code done (R2 driver). **Owner:** switch R2 on. |
+> | C2 live DB behind code | Run folders verified on MySQL 8.0.45. **Owner:** run them on Aiven. |
+> | H1 double-blind file leak | Fixed (neutral names; PDF/DOCX/PPTX metadata, tracked changes and comments). |
+> | H2 jobs pause while asleep | Fixed in code (`/api/internal/tick` + workflow). **Owner:** add secrets. |
+> | H3 fees/payments tables unused | Fixed: prices + manual payments. Online gateway not built. |
+> | H4 no ESLint | Fixed. |
+> | M1 timezone | Fixed (Nepal time throughout; tests cover the UTC/Nepal midnight boundary). |
+> | M2 delivery confirmation | Fixed in code (Brevo webhook). **Owner:** set the secret. |
+> | M3 frontend headers | Fixed (`vercel.json`); script/style CSP still deferred. |
+> | M4 duplicate validation | Parity test added. |
+> | M5 large files | SuperAdmin, Programme, Certificates split; SubmissionDetail left as is. |
+> | M7 thin role model | Fixed (`super_admin`). |
+> | M6 duplicate design tokens | **Not done** (cosmetic; no user-visible defect). |
+> | M8 logo size | Already small (25 KB); nothing to do. |
+> | L1, L3–L6 | Done (`IMPLEMENTATION_PROGRESS.md`). |
+> | L2 41 MB zip in git history | Left as is (owner decision D5: needs a history rewrite + force-push). |
+>
+> Full evidence: `FINAL_RELEASE_REPORT.md`.
+
 ## How this audit was done (and its limits)
 
 Everything below comes from reading the code, tracing routes from the UI to the API and the

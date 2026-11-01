@@ -1,155 +1,144 @@
-# Feature completion matrix — Phase 0
+# Feature completion matrix
 
-**Date:** 1 November 2026 · **Commit:** `cc7e74b`
+**Updated:** 1 November 2026, release branch `release/production-candidate`.
+Replaces the Phase 0 matrix (commit `cc7e74b`), which was written before any database-backed
+test had ever run and before the R2, anonymisation, payments, super-admin, Brevo-webhook and
+tick work landed.
 
 ## Status key
 
 | Status | Meaning |
 |---|---|
-| **Verified** | Proven working *in this audit*: its tests ran and passed here, or the output was inspected. |
-| **Not verifiable** | Fully implemented end to end (UI → API → DB) and covered by database-backed or end-to-end tests that passed in earlier recorded runs (`docs/progress.md`), but those tests **could not run in this audit** (no database). Treat as "probably working, unproven today". |
-| **Partial** | Some of it is missing or limited (the gap is described). |
+| **Verified** | Proven in this release pass: its automated tests ran against a real MySQL 8.0.45 database (server Vitest) and/or a real browser (Playwright), and passed. |
+| **Verified (code)** | Logic proven by tests that don't need external services (mocked provider, parsed output). The real external service has not been exercised. |
+| **Owner action** | Implemented and tested locally; needs the owner's credentials, account or a physical device before it can be called live. |
+| **Partial** | Works, with a described limitation. |
 | **Not implemented** | No working code path. |
-| **Broken** | Known to fail. |
 
-"Tests" names the files under `server/tests/` (`.test.ts`) and `e2e/` (`.spec.ts`).
-
-Every feature in the **Not verifiable** rows becomes Verified or Broken in Phase 10, once a
-database is available.
+Test names are files in `server/tests/` (`.test.ts`, run against `conference_cms_test`) and
+`e2e/` (`.spec.ts`, Playwright against a seeded test database). Results are in
+`docs/FINAL_RELEASE_REPORT.md`.
 
 ---
 
 ## Accounts and access
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Registration (per conference) | Not verifiable | signup, auth / registration.spec, main.spec | |
-| Login, logout, remember me | Not verifiable | auth, session | Login is per conference since `53af871`. |
-| Forgot / reset password | Not verifiable | passwordReset | |
-| Invitation acceptance + set password | Not verifiable | convenorInvite | |
-| Session expiry + cleanup job | Not verifiable | session | The cleanup job pauses while Render sleeps (audit H2). |
-| Account lockout / unlock | Not verifiable | auth, adminUsers | `users.locked_until` |
-| Profile edit, photo, change password | Not verifiable | me | Photos are re-encoded with sharp. |
-| Pending / suspended / deactivated handling | Not verifiable | adminUsers, roleRequests | |
-| Rate limiting (auth, uploads, public forms) | Not verifiable | security | |
-| Per-conference session binding | Not verifiable | conferenceScope | Needs `06_session_conference.sql` on every database. |
+| Feature | Status | Tests |
+|---|---|---|
+| Registration (per conference), approval | Verified | signup, roleRequests / main.spec |
+| Login, logout, remember me (per-conference sessions) | Verified | auth, session, conferenceScope / main.spec |
+| Signed-in check on public pages without a console 401 (`GET /auth/session`) | Verified | authSession |
+| Forgot / reset password, single-use tokens | Verified | passwordReset |
+| Invitation acceptance + set password | Verified | convenorInvite / adminPortal.spec |
+| Session expiry + cleanup job | Verified | session, tick |
+| Account lockout / unlock | Verified | auth, adminUsers |
+| Profile edit, photo, change password | Verified | me |
+| Pending / suspended / deactivated handling | Verified | adminUsers, roleRequests |
+| Rate limiting (auth, uploads, public forms, machine endpoints, email triggers) | Verified | security |
+| Per-conference session binding (conference isolation) | Verified | conferenceScope, roleMatrix |
 
 ## Platform administration
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Create / edit / soft-delete conferences | Not verifiable | admin, conferenceManage | |
-| Publish / unpublish (conference status) | Not verifiable | conferenceManage | |
-| Branding (logo, banner, colour, tagline) | Not verifiable | conferenceManage | **Files are lost on Render redeploy (audit C1).** |
-| Users: suspend, reactivate, unlock, anonymise | Not verifiable | adminUsers, adminStep2 | |
-| Grant / revoke platform admin | Not verifiable | adminStep2 | |
-| Super admin vs platform admin split | **Partial** | — | Only one platform admin level (`admin`). The seeded `organizer` role is unused (audit M7). |
-| View-as (read-only) | Not verifiable | adminStep2 | Write-blocking is enforced on the server. |
-| System health and platform settings | Not verifiable | adminStep2 | |
-| Platform analytics | Not verifiable | analytics | Date range is calculated in UTC (audit M1). |
-| Suggestion box | Not verifiable | suggestions | |
+| Feature | Status | Tests |
+|---|---|---|
+| Create / edit / soft-delete conferences, publish / unpublish | Verified | admin, conferenceManage / adminPortal.spec |
+| Branding (logo, banner, colour, tagline) | Verified (local storage) | conferenceManage / main.spec. Persistence across Render deploys needs R2 (owner action). |
+| Users: suspend, reactivate, unlock, anonymise | Verified | adminUsers, adminStep2 |
+| Super admin vs platform admin | Verified | superAdmin, adminUsers. Live database needs `database/2026-11-01-part-2/`. |
+| View as admin (read-only) | Verified | adminStep2 / adminPortal.spec. Blocks writes server-side while the view-as header is sent; it is a safety guard, not a privilege boundary (platform admins hold write rights anyway). |
+| System health, platform settings, audit log, email log | Verified | adminStep2, activityLog, emailLogRetry |
+| Platform analytics (Nepal-day buckets) | Verified | analytics, timezone / analytics.spec |
+| Suggestion box | Verified | suggestions / suggestions.spec |
 
 ## Conference setup
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Tracks, deadlines, settings | Not verifiable | tracks, deadlines | |
-| Committees, speakers, supporters | Not verifiable | committees, speakers, supporters | |
-| Members and role requests (approve / reject) | Not verifiable | members, roleRequests / notifications.spec | Raw `{{conference_code}}` in role emails was fixed on 1 Nov. |
-| Locations | Partial | — | A single venue/city per conference, not a list of locations. |
+| Feature | Status | Tests |
+|---|---|---|
+| Tracks, key dates, settings | Verified | tracks, deadlines / main.spec |
+| Committees, speakers, supporters | Verified | committees, speakers, supporters / convenorPortal.spec |
+| Members and role requests | Verified | members, roleRequests / notifications.spec |
+| Locations | Partial | One venue/city per conference, not a list. |
+| Unsaved-changes guard (app dialog, cleared by any successful save) | Verified | convenorPortal.spec, reviewBidding.spec |
 
 ## Submissions
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Abstract draft → submit, keywords, track | Not verifiable | submissions / submissions.spec | |
-| Co-authors (`submission_authors`) | Not verifiable | submissions | |
-| File upload (content-checked) | Not verifiable | submissions | Files are lost on redeploy (C1). |
-| Edit, withdraw | Not verifiable | submissions | |
-| Full paper, revision, camera-ready | Not verifiable | submissions | |
-| Status history | Not verifiable | submissions | Times shown in browser-local time (M1). |
-| Decision notifications | Not verifiable | reviews, emailWorker | |
+| Feature | Status | Tests |
+|---|---|---|
+| Abstract draft → submit, keywords, track, co-authors | Verified | submissions / submissions.spec |
+| File upload (content-checked), edit, withdraw | Verified | submissions |
+| Full paper, revision, camera-ready | Verified | submissions / submissions.spec |
+| Status history, decision notifications | Verified | submissions, reviews, emailWorker |
 
 ## Peer review
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Reviewer invitations / approval | Not verifiable | convenorInvite, roleRequests | |
-| Bidding | Not verifiable | reviewBidding / reviewBidding.spec | |
-| Manual assignment, conflicts of interest | Not verifiable | reviews | |
-| Auto-assign with explanation | Not verifiable | autoAssign, autoAssignRoutes | |
-| Review form, scores, confidential comments | Not verifiable | reviews | |
-| Deadlines, overdue tracking, reminders | Not verifiable | reviewReminders | Reminders pause while Render sleeps (H2). |
-| Editorial decisions | Not verifiable | reviews | |
-| **Double-blind anonymity** | **Partial** | reviews, reviewBidding.spec | Reviewer screens hide authors, but **downloaded files keep their original filename and document metadata** (audit H1). |
+| Feature | Status | Tests |
+|---|---|---|
+| Reviewer invitations / approval | Verified | convenorInvite, roleRequests |
+| Bidding | Verified | reviewBidding / reviewBidding.spec |
+| Manual + auto assignment, conflicts of interest | Verified | reviews, autoAssign, autoAssignRoutes |
+| Review form, scores, confidential comments, decisions | Verified | reviews / submissions.spec |
+| Deadlines, overdue tracking, reminders | Verified | reviewReminders, tick |
+| **Double-blind anonymity** | Verified | reviews, anonymize / reviewBidding.spec. Neutral download names; author metadata stripped from PDF (Info + XMP), DOCX/PPTX core/app/custom properties, and tracked-change, comment and comment-author names. Limits in the release report. |
 
 ## Programme
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Rooms, days, sessions, presentations, chairs | Not verifiable | schedule, programme / programme.spec | |
-| Conflict detection (room / presenter / chair / overlap) | Not verifiable | schedule | Enforced by DB triggers in `03_triggers.sql`. |
-| Copy day; list and grid views | Not verifiable | programme.spec | |
-| Publish; public programme | Not verifiable | schedule | Public queries filter `status='published'` (checked). |
-| Programme PDF, ICS (single + My agenda feed) | Not verifiable | agendaIcs, pdfUtils | |
-| My agenda + calendar feed | Not verifiable | agenda / agenda.spec | Needs the batch-3 SQL. |
-| Session timer | Not verifiable (logic **Verified**) | sessionTimer, `src/lib/sessionTimer.test.ts` | Pure timer logic passed here. |
+| Feature | Status | Tests |
+|---|---|---|
+| Rooms, days, sessions, presentations, chairs; clash detection (DB triggers) | Verified | schedule, programme / programme.spec |
+| Copy day; list and grid views; publishing; public programme | Verified | schedule / programme.spec |
+| Programme PDF, ICS (single + My agenda feed) | Verified | agendaIcs, pdfUtils / agenda.spec |
+| My agenda, starred sessions, calendar feed | Verified | agenda / agenda.spec |
+| Session timer | Verified | sessionTimer / sessionTimer.spec |
 
 ## Registration and on-site
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Attendee registration, status | Not verifiable | registration / registration.spec | |
-| **Registration categories and fees** | **Not implemented** | — | Tables + trigger exist; no code (audit H3). |
-| **Online payment** | **Not implemented** | — | `payments` tables exist, unused. Payment is a manual "confirm" step. |
-| Digital ticket + QR | Not verifiable (decoding **Verified**) | registration, `qrDecode.test.ts` | |
-| Check-in: camera / QR image upload / ticket code / manual | Not verifiable | checkinMethods.spec | Duplicate same-day check-in is refused. |
-| Attendance reports | Not verifiable | reports | |
-| Name badges | Not verifiable | badges / badges.spec | |
+| Feature | Status | Tests |
+|---|---|---|
+| Attendee registration, ticket, QR generation and decoding | Verified | registration, `src/lib/qrDecode.test.ts` / registration.spec |
+| Registration categories, prices with validity windows, overlap prevention | Verified | registrationFees, registrationFeesValidation |
+| Free / paid registration, manual payments (cash, bank, eSewa, Khalti, Fonepay, other), part + full payment, auto-confirm, void, waive | Verified | registrationFees |
+| **Online payment checkout** | Not implemented | Payments are recorded by staff. Recording an eSewa/Khalti payment is *not* gateway integration. |
+| Check-in: QR image upload / ticket code / manual; duplicate same-day check-in refused | Verified | checkinMethods.spec |
+| Check-in by phone camera | Owner action | Needs a real phone over HTTPS (`Permissions-Policy: camera=(self)`). |
+| Attendance reports and exports (CSV formula-safe) | Verified | reports, csv |
+| Name badges | Verified | badges / badges.spec |
 
 ## Certificates
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| PDF rendering and layout | **Verified** | (manual render, 1 Nov) | Sample PDFs rendered and inspected: default and fully customised designs, long names, 1 and 2 signatories. There's no *automated* layout test. |
-| Template editor (all text, colours, font, show/hide, live preview) | Not verifiable | — | Added 1 Nov. Typecheck and build pass; the page needs a database to load. |
-| Background and signature images | Not verifiable | certificates | Lost on redeploy (C1). |
-| Bulk / individual issue, release gating, revoke | Not verifiable | certificates | |
-| Public verification (revoked = invalid) | Not verifiable | certificates | `valid` only when `status='issued'` (checked in code). |
-| Issue-date timezone | **Partial** | — | Printed in UTC (M1). |
+| Feature | Status | Tests |
+|---|---|---|
+| PDF rendering and layout (A4, long names, Nepal issue date) | Verified | certificatePdf |
+| Template editor with live preview, background + signature images | Verified | certificates / convenorPortal.spec |
+| Bulk / individual issue, release gating, revoke | Verified | certificates / registration.spec, portal.spec |
+| Public verification (revoked = invalid) | Verified | certificates |
 
 ## Communication
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Announcements (incl. scheduled) | Not verifiable | announcements | Scheduled publishing pauses while Render sleeps (H2). |
-| Bulk email + recipient groups + quota | Not verifiable | bulkEmail / bulkEmail.spec | |
-| Email templates | Not verifiable | emailTemplates | |
-| Email log, retry, failure handling | Not verifiable | emailLogRetry, emailWorker | |
-| **Provider-confirmed delivery / bounce** | **Not implemented** | — | Statuses exist but no Brevo webhook sets them (M2). |
-| Brevo provider | Not verifiable | brevoProvider | Real delivery has never been tested with a real API key. |
-| In-app notifications | Not verifiable | notifications / notifications.spec | |
-| Feedback survey + invitations | Not verifiable (results maths **Verified**) | feedback, feedbackResults | `feedbackResults` is pure and passed here. |
+| Feature | Status | Tests |
+|---|---|---|
+| Announcements (incl. scheduled) | Verified | announcements, tick |
+| Bulk email, recipient groups, quota | Verified | bulkEmail / bulkEmail.spec |
+| Email templates, log, retry, failure handling | Verified | emailTemplates, emailLogRetry, emailWorker |
+| Brevo delivery webhook (auth, delivered, bounced, duplicates, out-of-order) | Verified (code) | brevoWebhook, brevoWebhookDb. Live: owner sets `BREVO_WEBHOOK_SECRET`. |
+| Real email delivery through Brevo | Owner action | brevoProvider (mocked). Never sent with the real API key in this pass. |
+| In-app notifications | Verified | notifications / notifications.spec |
+| Feedback survey + invitations | Verified | feedback, feedbackResults / feedback.spec |
 
-## Reports and analytics
+## Reports, storage, jobs
 
-| Feature | Status | Tests | Notes |
-|---|---|---|---|
-| Convenor analytics | Not verifiable | analytics / analytics.spec | UTC date range (M1). |
-| Excel / CSV reports | Not verifiable | reports | |
-| Activity log | Not verifiable | activityLog | |
-| Book of abstracts | Not verifiable | abstractBook, abstractBookPdf | Issue date printed in UTC (M1). |
+| Feature | Status | Tests |
+|---|---|---|
+| Convenor analytics, Excel/CSV reports, activity log, book of abstracts | Verified | analytics, reports, activityLog, abstractBook, abstractBookPdf |
+| Local file storage, private download authorisation, streaming, 404 on missing | Verified | storage, submissions |
+| Cloudflare R2 storage driver | Verified (code) | storage (S3 client mocked). Real bucket: owner action. |
+| Background tick endpoint + GitHub workflow | Verified (code) | tick. Workflow runs once the owner adds secrets. |
 
 ## Cross-cutting
 
-| Area | Status | Notes |
-|---|---|---|
-| Typecheck (frontend + server) | **Verified** | Clean |
-| Production build | **Verified** | Succeeds |
-| Frontend unit tests | **Verified** | 75/75 |
-| Server tests without a database | **Verified** | 308 pass |
-| Server tests with a database | Not verifiable | 366 tests across 45 files need MySQL |
-| Playwright end-to-end | Not verifiable | 20 specs. Last recorded: 109–111/111. |
-| Responsive (320–1440 px) | Not verifiable | `responsive.spec`, `usabilityAudit.spec` exist; 1920 px and real devices never tested. |
-| Persistent file storage in production | **Broken** | Audit C1 |
-| Lighthouse / k6 | Not verifiable | Last recorded figures are in `production-readiness.md` |
+| Area | Status |
+|---|---|
+| Database: fresh install = upgrade path = test database (schema and reference data) | Verified on MySQL 8.0.45 |
+| Typecheck, ESLint (frontend + server), production builds | Verified |
+| Frontend unit tests, server tests (with MySQL), Playwright end-to-end | Verified (see release report) |
+| Responsive 320–1440 px | Verified by responsive.spec and usabilityAudit.spec in headless Chromium; real devices: owner action |
+| Lighthouse / k6 | Not run in this pass (need the deployed site) |
