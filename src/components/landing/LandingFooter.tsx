@@ -123,9 +123,10 @@ export function LandingFooter() {
                 Terms
               </Link>
             </span>
-            <span>
-              Project by: <span className="text-white/70">Sonika, Yuki, Prashant, Nabin</span>
-            </span>
+            <Link to="/SYPN" className="group underline-offset-4 hover:text-white">
+              Project by{' '}
+              <span className="font-semibold tracking-[0.12em] text-gold group-hover:underline">SYPN</span>
+            </Link>
           </span>
         </div>
       </div>

@@ -28,6 +28,9 @@ const PrivacyPage = lazy(() =>
 const TermsPage = lazy(() =>
   import("./pages/TermsPage").then((m) => ({ default: m.TermsPage })),
 );
+const TeamPage = lazy(() =>
+  import("./pages/TeamPage").then((m) => ({ default: m.TeamPage })),
+);
 const ConferencePage = lazy(() =>
   import("./pages/ConferencePage").then((m) => ({ default: m.ConferencePage })),
 );
@@ -122,6 +125,7 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
+              <Route path="/SYPN" element={<TeamPage />} />
               <Route path="/c/:slug" element={<ConferencePage />} />
               {/* Each conference's own account pages; a role only works at its own conference. */}
               <Route path="/c/:slug/login" element={<ConferenceLoginPage />} />
