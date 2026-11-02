@@ -270,8 +270,8 @@ export const ConferenceDiscovery = memo(function ConferenceDiscovery({
           </button>
         </div>
       ) : loading ? (
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {[0, 1, 2, 3, 4].map((i) => (
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
@@ -314,7 +314,7 @@ export const ConferenceDiscovery = memo(function ConferenceDiscovery({
           </div>
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           {ordered.map((c, i) => (
             <Reveal key={c.id} delay={Math.min(i, 5) * 70} className="h-full">
               <ConferenceCard conference={c} windows={windows} featured={c.id === spotlight} />

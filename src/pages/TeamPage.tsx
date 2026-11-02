@@ -23,8 +23,6 @@ const BUILT = [
   'Certificates anyone can verify, feedback surveys and analytics',
 ]
 
-const STACK = ['React', 'TypeScript', 'Vite', 'Tailwind CSS', 'Node.js', 'Express', 'MySQL']
-
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -156,7 +154,7 @@ export function TeamPage() {
         {/* Intro */}
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-32 -top-32 h-[420px] w-[420px] rounded-full bg-gold/15 blur-3xl" aria-hidden="true" />
-          <div className="relative mx-auto max-w-[1240px] px-4 pb-12 pt-16 sm:px-6 lg:pt-24">
+          <div className="relative mx-auto max-w-[1240px] px-4 pb-8 pt-8 sm:px-6 lg:pt-10">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-ink">Project by</p>
             <h1 className="mt-3 flex flex-wrap items-baseline gap-x-1 font-display text-7xl font-semibold tracking-[-0.03em] text-brand sm:text-8xl">
               {TEAM.map((m, i) => (
@@ -231,13 +229,6 @@ export function TeamPage() {
               <p className="mt-4 max-w-md leading-relaxed text-white/70">
                 One place to run an academic conference end to end — for organisers, authors, reviewers, staff and attendees.
               </p>
-              <div className="mt-8 flex flex-wrap gap-2">
-                {STACK.map((t) => (
-                  <span key={t} className="rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-sm text-white/85">
-                    {t}
-                  </span>
-                ))}
-              </div>
             </div>
             <ul className="grid gap-3 sm:grid-cols-2">
               {BUILT.map((item) => (

@@ -15,6 +15,7 @@ import { PageLoading } from "./components/PageLoading";
 import { HomePage } from "./pages/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { OLD_PORTAL_REDIRECTS } from "./pages/portal/sidebarConfig";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 // Route-based code splitting for the big, role-gated portals - a visitor who
 // never signs in (or signs in as an attendee) never downloads any of this.
@@ -117,6 +118,7 @@ function OldPortalRedirect({ to }: { to: string }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <ToastProvider>
           <SlowRequestBanner />

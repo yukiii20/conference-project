@@ -40,10 +40,13 @@ export function LandingFooter() {
     <footer className="relative overflow-hidden bg-footer text-white">
       <div className="pointer-events-none absolute -right-40 -top-40 h-[420px] w-[420px] rounded-full bg-indigo/15 blur-3xl" aria-hidden="true" />
       <div className="relative mx-auto max-w-[1240px] px-4 pb-10 pt-16 sm:px-6 lg:pt-20">
-        <div className="flex flex-col gap-8 border-b border-white/10 pb-14 lg:flex-row lg:items-end lg:justify-between">
-          <p className="max-w-2xl font-display text-4xl font-semibold leading-[1.08] tracking-[-0.015em] sm:text-5xl">
-            Where research <span className="italic text-gold">meets</span> the world.
-          </p>
+        <div className="flex flex-col gap-8 border-b border-white/10 pb-12 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-xl">
+            <p className="text-sm font-medium text-gold">Organising a conference?</p>
+            <p className="mt-2 font-display text-2xl font-semibold leading-snug sm:text-3xl">
+              Take it from call for papers to certificates, all in one place.
+            </p>
+          </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <a
               href="/#conferences"
