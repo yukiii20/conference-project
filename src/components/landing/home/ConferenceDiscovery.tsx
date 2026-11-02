@@ -27,7 +27,7 @@ function Media({ conference, past }: { conference: Conference; past: boolean }) 
   const banner = publicImageUrl(conference.banner_path)
   const [failed, setFailed] = useState(false)
   return (
-    <div className={`relative overflow-hidden h-36 ${past ? 'grayscale-[0.55]' : ''}`}>
+    <div className={`relative h-24 overflow-hidden ${past ? 'grayscale-[0.55]' : ''}`}>
       {banner && !failed ? (
         <img
           src={banner}
@@ -43,7 +43,7 @@ function Media({ conference, past }: { conference: Conference; past: boolean }) 
           style={{ backgroundImage: `linear-gradient(135deg, ${accent} 0%, ${darken(accent, 0.45)} 100%)` }}
         >
           <div className="absolute inset-0 opacity-[0.18] [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px]" />
-          <span className="absolute -bottom-6 right-3 select-none font-display text-[6.5rem] font-semibold leading-none text-white/10" aria-hidden="true">
+          <span className="absolute -bottom-6 right-3 select-none font-display text-[4.5rem] font-semibold leading-none text-white/10" aria-hidden="true">
             {conference.short_name || conference.code}
           </span>
         </div>
@@ -70,7 +70,7 @@ function AvailabilityLine({ label, window, kind }: { label: string; window: Dead
     tone = 'text-text-muted'
   }
   return (
-    <p className={`flex items-center gap-2 text-[13px] font-medium ${tone}`}>
+    <p className={`flex items-center gap-2 text-xs font-medium ${tone}`}>
       {kind === 'abstracts' ? (
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${state === 'open' ? 'bg-success' : state === 'upcoming' ? 'bg-gold' : 'bg-border-strong'}`} aria-hidden="true" />
       ) : (
@@ -93,54 +93,54 @@ function ConferenceCard({ conference: c, windows, featured }: { conference: Conf
     <Link
       to={`/c/${c.slug}`}
       aria-label={`${c.name} — view conference`}
-      className="group flex h-full flex-col overflow-hidden rounded-[22px] border border-border-soft bg-surface shadow-card transition duration-300 ease-out hover:-translate-y-1.5 hover:border-border hover:shadow-[0_24px_48px_-24px_rgb(16_28_50/0.35)]"
+      className="group flex h-full flex-col overflow-hidden rounded-[18px] border border-border-soft bg-surface shadow-card transition duration-300 ease-out hover:-translate-y-1.5 hover:border-border hover:shadow-[0_24px_48px_-24px_rgb(16_28_50/0.35)]"
     >
       <div className="relative">
         <Media conference={c} past={past} />
-        <span className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide shadow-sm backdrop-blur ${chipTone}`}>
+        <span className={`absolute left-2.5 top-2.5 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide shadow-sm backdrop-blur ${chipTone}`}>
           {featured ? 'Featured · ' : ''}
           {statusLabel}
         </span>
         {c.code ? (
-          <span className="absolute right-3 top-3 rounded-md bg-black/25 px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide text-white/90 backdrop-blur-sm">
+          <span className="absolute right-2.5 top-2.5 rounded-md bg-black/25 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide text-white/90 backdrop-blur-sm">
             {c.code}
           </span>
         ) : null}
       </div>
 
-      <div className="relative flex flex-1 flex-col px-5 pb-5">
+      <div className="relative flex flex-1 flex-col px-4 pb-4">
         <ConferenceLogo
           conference={c}
-          className="relative z-10 -mt-7 h-14 w-14 rounded-2xl border-4 border-surface text-base shadow-sm"
+          className="relative z-10 -mt-5 h-10 w-10 rounded-xl border-[3px] border-surface text-xs shadow-sm"
         />
-        <h3 className="mt-3 line-clamp-2 font-display text-lg font-semibold leading-snug text-text">{c.name}</h3>
+        <h3 className="mt-2 line-clamp-2 font-display text-base font-semibold leading-snug text-text">{c.name}</h3>
         {c.theme || c.tagline ? (
-          <p className="mt-1 line-clamp-2 text-sm text-text-muted">{c.theme || c.tagline}</p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">{c.theme || c.tagline}</p>
         ) : null}
 
-        <dl className="mt-4 space-y-1.5 text-[13px] text-text-muted">
+        <dl className="mt-3 space-y-1 text-xs text-text-muted">
           <div className="flex items-center gap-2">
             <dt className="sr-only">Dates</dt>
-            <CalendarDays size={14} aria-hidden="true" className="shrink-0 text-brand/70" />
+            <CalendarDays size={13} aria-hidden="true" className="shrink-0 text-brand/70" />
             <dd>{formatDateRange(c.start_date, c.end_date)}</dd>
           </div>
           {where ? (
             <div className="flex items-center gap-2">
               <dt className="sr-only">Location</dt>
-              <MapPin size={14} aria-hidden="true" className="shrink-0 text-brand/70" />
+              <MapPin size={13} aria-hidden="true" className="shrink-0 text-brand/70" />
               <dd className="truncate">{where}</dd>
             </div>
           ) : null}
         </dl>
 
         {!past ? (
-          <div className="mt-4 space-y-1.5 border-t border-border-soft pt-4">
+          <div className="mt-3 space-y-1 border-t border-border-soft pt-3">
             <AvailabilityLine label="Abstracts" window={windows.abstracts.get(c.id)} kind="abstracts" />
             <AvailabilityLine label="Registration" window={windows.registration.get(c.id)} kind="registration" />
           </div>
         ) : null}
 
-        <span className="mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-brand">
+        <span className="mt-auto inline-flex items-center gap-1.5 pt-3 text-[13px] font-semibold text-brand">
           View conference
           <ArrowRight size={15} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />
         </span>
@@ -151,10 +151,10 @@ function ConferenceCard({ conference: c, windows, featured }: { conference: Conf
 
 function SkeletonCard() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-[22px] border border-border-soft bg-surface">
-      <div className="h-36 bg-surface-muted" />
-      <div className="px-5 pb-5">
-        <div className="relative -mt-7 h-14 w-14 rounded-2xl border-4 border-surface bg-surface-muted" />
+    <div className="animate-pulse overflow-hidden rounded-[18px] border border-border-soft bg-surface">
+      <div className="h-24 bg-surface-muted" />
+      <div className="px-4 pb-4">
+        <div className="relative -mt-5 h-10 w-10 rounded-xl border-[3px] border-surface bg-surface-muted" />
         <div className="mt-4 h-5 w-3/4 rounded bg-surface-muted" />
         <div className="mt-2 h-3 w-1/2 rounded bg-surface-muted" />
         <div className="mt-6 h-3 w-2/3 rounded bg-surface-muted" />
@@ -273,8 +273,8 @@ export const ConferenceDiscovery = memo(function ConferenceDiscovery({
           </button>
         </div>
       ) : loading ? (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((i) => (
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
@@ -317,7 +317,7 @@ export const ConferenceDiscovery = memo(function ConferenceDiscovery({
           </div>
         </div>
       ) : (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {ordered.map((c, i) => (
             <Reveal key={c.id} delay={Math.min(i, 5) * 70} className="h-full">
               <ConferenceCard conference={c} windows={windows} featured={c.id === spotlight} />
