@@ -43,3 +43,15 @@ demo-video/assets/music.mp3
 /*.zip
 database/*.zip
 /test.mp3
+
+# Kept locally only - not published to GitHub
+# SQL schema / migrations (contain setup details for the live database)
+database/
+# Internal working notes: old build prompts, audits, progress logs
+docs/archive/
+docs/progress.md
+docs/IMPLEMENTATION_PROGRESS.md
+docs/PROJECT_AUDIT.md
+docs/REFACTORING_PLAN.md
+docs/FINAL_RELEASE_REPORT.md
+docs/FEATURE_COMPLETION_MATRIX.md

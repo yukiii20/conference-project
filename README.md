@@ -17,7 +17,8 @@ cd server && npm install   # backend
 ## 2. Set up MySQL
 
 Requires **MySQL 8.0.16 or newer** (not MariaDB/XAMPP — it's missing
-features this schema needs). From the `database/` folder, run these in
+features this schema needs). The `database/` folder (SQL scripts) is not
+published to GitHub — ask the team for a copy. From that folder, run these in
 order against your MySQL server (MySQL Workbench: File → Open SQL Script,
 then the lightning-bolt "run" icon; or `mysql -u root -p < file.sql`):
 
@@ -122,8 +123,7 @@ npm test
 
 End-to-end (Playwright) tests live in `e2e/` and run against dedicated
 throwaway backend/frontend instances on different ports — see
-`playwright.config.ts` and `docs/archive/phase4-test-steps.md` for how to start
-those.
+`playwright.config.ts` for how to start those.
 
 ## Where things live
 
@@ -193,6 +193,6 @@ those.
 
 ## Security notes
 
-See `docs/deploy.md` for production deployment and `docs/archive/final-test-report.md`
+See `docs/deploy-guide.md` for production deployment and `server/SECURITY.md`
 for the security checks already in place (CSRF defense, rate limiting,
 route guards, private file access control, and more).

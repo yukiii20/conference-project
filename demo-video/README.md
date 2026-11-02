@@ -2,7 +2,7 @@
 
 Self-contained scripts that produce the "See it in action" product video shown
 on the home page. Never imported by `src/` or `server/src/` - see
-`docs/archive/product-video.md` for the full spec and safety rules this pipeline
+the internal product-video spec (kept locally, not on GitHub) for the full spec and safety rules this pipeline
 follows (test database only, dummy data, no real emails, demo accounts'
 password never logged or shown on screen).
 
@@ -85,7 +85,7 @@ hand-editing anything else).
 Put a royalty-free file at `demo-video/assets/music.mp3` (gitignored - not
 committed) and re-run `build.ts`; it's absent by default and the build
 skips music entirely when the file isn't there (never fetches one on its
-own, per `docs/archive/product-video.md`'s safety rules). If added, it's ducked
+own, per the internal product-video spec (kept locally, not on GitHub)'s safety rules). If added, it's ducked
 under the narration automatically.
 
 ## Gitignored (never committed)
