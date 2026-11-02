@@ -112,13 +112,19 @@ export function LandingFooter() {
           <span>
             © {year} {platformName}
           </span>
-          <span className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+          <span className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <span>Banepa, Nepal</span>
+            <span className="flex items-center gap-3">
+              <Link to="/privacy" className="underline-offset-4 hover:text-white hover:underline">
+                Privacy
+              </Link>
+              <span aria-hidden="true">·</span>
+              <Link to="/terms" className="underline-offset-4 hover:text-white hover:underline">
+                Terms
+              </Link>
+            </span>
             <span>
-              Photography via{' '}
-              <a href="https://unsplash.com/license" target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:text-white hover:underline">
-                Unsplash
-              </a>
+              Project by: <span className="text-white/70">Sonika, Yuki, Prashant, Nabin</span>
             </span>
           </span>
         </div>
