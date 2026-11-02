@@ -343,17 +343,17 @@ export const HomeHero = memo(function HomeHero({
           <figure className="home-unveil home-grain relative aspect-[4/3.4] overflow-hidden rounded-[28px] bg-brand shadow-[0_40px_80px_-40px_rgb(16_28_50/0.55)] sm:aspect-[4/3] lg:aspect-[4/4.6]">
             <img
               ref={photoRef}
-              src="/images/home/hero-keynote-1600.webp"
-              srcSet="/images/home/hero-keynote-800.webp 800w, /images/home/hero-keynote-1600.webp 1600w"
+              src="/images/home/hero-audience-1600.webp"
+              srcSet="/images/home/hero-audience-800.webp 800w, /images/home/hero-audience-1600.webp 1600w"
               sizes="(min-width: 1024px) 600px, 100vw"
               width={1600}
               height={1067}
-              alt="A speaker addresses a packed lecture theatre during a conference session"
+              alt="An attentive audience listening during a conference session"
               fetchPriority="high"
               decoding="async"
-              className="h-full w-full scale-[1.08] object-cover object-[60%_center] will-change-transform"
+              className="h-full w-full scale-[1.08] object-cover object-[45%_center] will-change-transform"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-brand/80 via-brand/10 to-transparent" aria-hidden="true" />
+            <div className="absolute inset-0 bg-gradient-to-t from-brand/60 via-transparent to-transparent" aria-hidden="true" />
             <figcaption className="sr-only">Keynote session at an academic conference</figcaption>
           </figure>
 
