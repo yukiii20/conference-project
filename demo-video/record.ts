@@ -184,7 +184,8 @@ async function showCallout(page: Page, locator: Locator, text: string, durationM
 // ---------------------------------------------------------------------------
 
 async function login(page: Page, email: string, role: string): Promise<void> {
-  await page.goto(`${BASE_URL}/login`)
+  // Sign-in is per conference now (/login is only a conference chooser).
+  await page.goto(`${BASE_URL}/c/${DEMO.conferenceSlug}/login`)
   await humanType(page.locator('#si-email'), email)
   await pause()
   await humanType(page.locator('#si-password'), DEMO.password)
@@ -405,8 +406,16 @@ const scene9: SceneFn = async (page) => {
   await page.goto(`${BASE_URL}/portal/ticket?conference=${DEMO.conferenceSlug}`)
   await page.waitForLoadState('networkidle')
   await pause(1000, 1400)
-  const categorySelect = page.locator('select').filter({ hasText: 'General Attendee' })
-  await humanSelect(page, categorySelect, 'General Attendee')
+  // Option labels now carry the fee too ("General Attendee - ..."), so pick by partial text.
+  const categorySelect = page.locator('select[aria-label="Registration category"]')
+  await categorySelect.waitFor({ state: 'visible' })
+  const optionValue = await categorySelect
+    .locator('option', { hasText: 'General Attendee' })
+    .first()
+    .getAttribute('value')
+  await categorySelect.scrollIntoViewIfNeeded()
+  await categorySelect.selectOption(optionValue ?? '')
+  await pause(300, 600)
   await pause()
   await humanClick(page, page.getByRole('button', { name: 'Register to attend' }))
   await page.waitForLoadState('networkidle')
@@ -418,12 +427,17 @@ const scene10: SceneFn = async (page) => {
   await page.goto(`${BASE_URL}/portal/staff?conference=${DEMO.conferenceSlug}`)
   await page.waitForLoadState('networkidle')
   await pause(1000, 1400)
-  const searchInput = page.getByPlaceholder('Name, email or registration number')
+  // New check-in desk: camera / QR upload / ticket code tabs. Use the code tab.
+  await humanClick(page, page.getByRole('tab', { name: 'Enter ticket code' }))
+  const searchInput = page.getByPlaceholder(/Ticket code .*name or email/)
   await humanType(searchInput, 'Demo Attendee')
   await page.waitForTimeout(900) // debounce
   await pause(600, 1000)
-  const resultRow = page.locator('li, tr', { hasText: 'Demo Attendee' }).first()
-  await humanClick(page, resultRow.getByRole('button', { name: 'Check in' }))
+  const resultRow = page.locator('li', { hasText: 'Demo Attendee' }).first()
+  await humanClick(page, resultRow.getByRole('button', { name: 'Select' }))
+  await page.waitForLoadState('networkidle')
+  await pause(800, 1200)
+  await humanClick(page, page.getByRole('button', { name: 'Check in', exact: true }))
   await page.waitForLoadState('networkidle')
   await pause(1500, 2000)
 }

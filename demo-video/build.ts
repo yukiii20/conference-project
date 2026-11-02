@@ -98,9 +98,12 @@ function buildScenes(): void {
     if (s.zoom) {
       // Smooth eased zoom to ~1.35x and back, centred - see Part 3 verification notes.
       const D = (finalDur - pad).toFixed(3) // zoom runs over the pre-hold (real motion) portion only
+      // Shrinking centred crop + fixed scale back to 1080p. (A per-frame
+      // `scale ... eval=frame` segfaults some ffmpeg builds on Windows.)
+      const z = `(1+0.35*sin(PI*min(t\\,${D})/${D}))`
       filters.push(
-        `scale=w='iw*(1+0.35*sin(PI*min(t\\,${D})/${D}))':h='ih*(1+0.35*sin(PI*min(t\\,${D})/${D}))':eval=frame`,
-        `crop=1920:1080:(in_w-1920)/2:(in_h-1080)/2`,
+        `crop=w='trunc(1920/${z}/2)*2':h='trunc(1080/${z}/2)*2':x='(in_w-out_w)/2':y='(in_h-out_h)/2'`,
+        'scale=1920:1080:flags=bicubic',
       )
     }
     if (pad > 0) {
