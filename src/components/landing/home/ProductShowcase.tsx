@@ -20,7 +20,7 @@ import { Reveal } from '../Reveal'
 
 type Story = { id: string; icon: LucideIcon; title: string; description: string; image: string; width: number; height: number; alt: string; context: string }
 
-// Every screen here is a real frame from the product tour (recorded against the demo conference, demo data only).
+// Every screen here is a real screenshot of the app (demo-video/screens.ts, demo conference data only).
 const STORIES: Story[] = [
   {
     id: 'manage',
@@ -28,9 +28,9 @@ const STORIES: Story[] = [
     title: 'Conference management',
     description: 'One dashboard for submissions, reviews, accepted papers and registrations — with what needs attention flagged first.',
     image: '/images/product/convenor-dashboard.webp',
-    width: 1200,
-    height: 609,
-    alt: 'Convenor dashboard showing counts of submissions, pending and completed reviews, accepted papers and registrations',
+    width: 1600,
+    height: 1050,
+    alt: 'Convenor dashboard with submission, registration, review and acceptance totals, the submission pipeline and upcoming deadlines',
     context: 'Convenor dashboard',
   },
   {
@@ -39,8 +39,8 @@ const STORIES: Story[] = [
     title: 'Research submissions',
     description: 'Authors choose a track, write or upload their abstract, add co-authors and get a tracked submission code.',
     image: '/images/product/submission.webp',
-    width: 1200,
-    height: 794,
+    width: 1600,
+    height: 1050,
     alt: 'Author submission form with track, title and abstract fields',
     context: 'Author portal',
   },
@@ -50,9 +50,9 @@ const STORIES: Story[] = [
     title: 'Double-blind peer review',
     description: 'Reviewers see the paper, never the authors, and score it on a structured form with a recommendation.',
     image: '/images/product/review.webp',
-    width: 1200,
-    height: 783,
-    alt: 'Reviewer scoring form for a paper, with originality, quality, relevance and methodology scores',
+    width: 1600,
+    height: 1050,
+    alt: 'Reviewer portal listing assigned papers with their review status and due dates',
     context: 'Reviewer portal',
   },
   {
@@ -61,9 +61,9 @@ const STORIES: Story[] = [
     title: 'Programme scheduling',
     description: 'Rooms, time slots and sessions, published straight to the public conference page.',
     image: '/images/product/programme.webp',
-    width: 1200,
-    height: 947,
-    alt: 'Programme builder with rooms, capacities and time slots',
+    width: 1600,
+    height: 1050,
+    alt: 'Programme builder listing published sessions with their type, track, room and time',
     context: 'Programme builder',
   },
   {
@@ -83,8 +83,8 @@ const STORIES: Story[] = [
     title: 'QR check-in',
     description: 'Staff scan tickets with any phone camera or search by name — the count updates live.',
     image: '/images/product/checkin.webp',
-    width: 1200,
-    height: 704,
+    width: 1600,
+    height: 1050,
     alt: 'Check-in desk showing confirmed registrations, people checked in today and a manual search',
     context: 'Check-in desk',
   },
@@ -94,10 +94,10 @@ const STORIES: Story[] = [
     title: 'Certificates',
     description: 'Generated from a branded template, released on your date, and verifiable by anyone with the link.',
     image: '/images/product/certificates.webp',
-    width: 1200,
-    height: 417,
-    alt: 'Participant certificate list with a Download PDF button and a copyable verification link',
-    context: 'My certificates',
+    width: 1600,
+    height: 1050,
+    alt: 'Issued certificates list with certificate numbers, recipients, type and status',
+    context: 'Certificates',
   },
   {
     id: 'analytics',
@@ -105,8 +105,8 @@ const STORIES: Story[] = [
     title: 'Analytics & oversight',
     description: 'Platform-wide totals, system health and a full activity log for administrators.',
     image: '/images/product/admin.webp',
-    width: 1040,
-    height: 630,
+    width: 1600,
+    height: 1050,
     alt: 'Administrator dashboard with user, submission and registration totals and system health',
     context: 'Administrator',
   },
@@ -237,7 +237,7 @@ export const ProductShowcase = memo(function ProductShowcase() {
               </div>
               <span className="absolute -bottom-3 right-6 rounded-full bg-gold px-3 py-1 text-xs font-semibold text-brand shadow-pop">{story.title}</span>
             </div>
-            <p className="mt-6 text-xs text-white/45">Real screens from the product tour, shown with demo data. Each conference appears in its own brand colour.</p>
+            <p className="mt-6 text-xs text-white/45">Real screens from the app, shown with demo data. Each conference appears in its own brand colour.</p>
           </Reveal>
         </div>
 
