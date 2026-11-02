@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Play } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { LandingHeader } from '../components/landing/LandingHeader'
 import { LandingFooter } from '../components/landing/LandingFooter'
@@ -84,6 +85,8 @@ export function HomePage() {
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const demoSectionRef = useRef<HTMLElement | null>(null)
   const demoVideoRef = useRef<HTMLVideoElement | null>(null)
+  // The cover (a real dashboard screen + play button) shows until the video first plays.
+  const [demoStarted, setDemoStarted] = useState(false)
   const ignoreSpyRef = useRef(false)
   const ignoreSpyTimeoutRef = useRef<number | undefined>(undefined)
   const initialHashHandledRef = useRef(false)
@@ -360,11 +363,44 @@ export function HomePage() {
             </Reveal>
             <Reveal variant="image" delay={120}>
               <div className="mx-auto mt-12 max-w-[1040px] rounded-[26px] bg-white/10 p-2 shadow-[0_50px_100px_-40px_rgb(16_28_50/0.7)] ring-1 ring-white/15 backdrop-blur sm:p-3">
-                <div className="aspect-video overflow-hidden rounded-[18px] bg-brand">
-                  <video ref={demoVideoRef} controls playsInline preload="none" poster="/video/poster.jpg" className="h-full w-full">
+                <div className="relative aspect-video overflow-hidden rounded-[18px] bg-brand">
+                  <video
+                    ref={demoVideoRef}
+                    controls={demoStarted}
+                    playsInline
+                    preload="none"
+                    poster="/images/product/convenor-dashboard.webp"
+                    onPlay={() => setDemoStarted(true)}
+                    className="h-full w-full bg-black"
+                  >
                     <source src="/video/product-video-web.mp4" type="video/mp4" />
                     <track kind="captions" src="/video/demo.vtt" srcLang="en" label="English" default />
                   </video>
+                  {!demoStarted ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDemoStarted(true)
+                        demoVideoRef.current?.play().catch(() => {})
+                      }}
+                      className="group absolute inset-0 flex flex-col items-center justify-center text-white"
+                      aria-label="Play the product tour (2 minutes)"
+                    >
+                      <img
+                        src="/images/product/convenor-dashboard.webp"
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 h-full w-full scale-[1.03] object-cover object-left-top blur-[2px] transition-transform duration-700 group-hover:scale-[1.05]"
+                      />
+                      <span className="absolute inset-0 bg-brand/80 transition group-hover:bg-brand/70" aria-hidden="true" />
+                      <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white text-brand shadow-[0_20px_40px_-12px_rgb(0_0_0/0.5)] transition-transform duration-300 group-hover:scale-105 sm:h-24 sm:w-24">
+                        <Play size={34} fill="currentColor" className="ml-1.5" aria-hidden="true" />
+                      </span>
+                      <span className="relative mt-5 text-lg font-semibold sm:text-xl">Watch the product tour</span>
+                      <span className="relative mt-1 text-sm text-white/75">2:06 · narrated · captions on</span>
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </Reveal>

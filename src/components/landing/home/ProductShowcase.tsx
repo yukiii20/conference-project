@@ -72,9 +72,9 @@ const STORIES: Story[] = [
     title: 'Event registration',
     description: 'Participants register in a minute and get a personal ticket with a scannable QR code.',
     image: '/images/product/ticket.webp',
-    width: 960,
-    height: 580,
-    alt: 'Participant ticket with registration number and QR code',
+    width: 1600,
+    height: 1050,
+    alt: 'My ticket page with the registration number, a check-in QR code and a Download QR button',
     context: 'Participant ticket',
   },
   {
@@ -235,7 +235,6 @@ export const ProductShowcase = memo(function ProductShowcase() {
                   </div>
                 </div>
               </div>
-              <span className="absolute -bottom-3 right-6 rounded-full bg-gold px-3 py-1 text-xs font-semibold text-brand shadow-pop">{story.title}</span>
             </div>
             <p className="mt-6 text-xs text-white/45">Real screens from the app, shown with demo data. Each conference appears in its own brand colour.</p>
           </Reveal>

@@ -19,7 +19,7 @@ export const SITE = {
   hero: {
     headline: 'Where research meets the world.',
     subheadline:
-      'Discover academic conferences, share groundbreaking research, collaborate with scholars and experience every stage of the conference journey in one place.',
+      'Find a conference, send in your abstract, follow its review, register and download your certificate. Organisers run calls for papers, reviews, the programme and check-in from the same place.',
     primaryCta: 'Explore conferences',
     secondaryCta: 'Submit abstract',
   },

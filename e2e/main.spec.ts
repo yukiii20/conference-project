@@ -70,7 +70,9 @@ test.describe('public pages', () => {
     await expect(page.getByRole('heading', { name: 'See it in action' })).toBeVisible()
     const video = page.locator('#demo video')
     await expect(video).toBeVisible()
-    await expect(video).toHaveAttribute('poster', '/video/poster.jpg')
+    await expect(video).toHaveAttribute('poster', '/images/product/convenor-dashboard.webp')
+    // A cover with a play button sits over the video until it first plays.
+    await expect(page.getByRole('button', { name: /Play the product tour/ })).toBeVisible()
     await expect(video).toHaveAttribute('preload', 'none')
     const track = video.locator('track[kind="captions"]')
     await expect(track).toHaveAttribute('src', '/video/demo.vtt')

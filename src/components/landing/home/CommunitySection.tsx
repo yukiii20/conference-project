@@ -6,19 +6,23 @@ import type { PublicStats } from './homeData'
 
 const PILLAR_ICONS: LucideIcon[] = [EyeOff, ShieldCheck, Mail, Globe2]
 
-function Photo({ name, alt, className, sizes }: { name: string; alt: string; className: string; sizes: string }) {
+function Photo({ name, alt, className, sizes, label }: { name: string; alt: string; className: string; sizes: string; label: string }) {
   return (
-    <img
-      src={`/images/home/${name}-800.webp`}
-      srcSet={`/images/home/${name}-800.webp 800w, /images/home/${name}-1600.webp 1600w`}
-      sizes={sizes}
-      width={800}
-      height={533}
-      loading="lazy"
-      decoding="async"
-      alt={alt}
-      className={`h-full w-full object-cover transition-transform duration-[1200ms] ease-out hover:scale-[1.04] ${className}`}
-    />
+    <figure className="relative h-full w-full">
+      <img
+        src={`/images/home/${name}-800.webp`}
+        srcSet={`/images/home/${name}-800.webp 800w, /images/home/${name}-1600.webp 1600w`}
+        sizes={sizes}
+        width={800}
+        height={533}
+        loading="lazy"
+        decoding="async"
+        alt={alt}
+        className={`h-full w-full object-cover transition-transform duration-[1200ms] ease-out hover:scale-[1.04] ${className}`}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent" aria-hidden="true" />
+      <figcaption className="pointer-events-none absolute bottom-3 left-3 right-3 text-[13px] font-medium text-white sm:bottom-4 sm:left-4">{label}</figcaption>
+    </figure>
   )
 }
 
@@ -65,16 +69,16 @@ export const CommunitySection = memo(function CommunitySection({ stats, tracks }
           {/* Editorial photo mosaic */}
           <div className="grid grid-cols-6 grid-rows-[repeat(6,minmax(0,1fr))] gap-3 sm:gap-4" style={{ aspectRatio: '1 / 1.02' }}>
             <Reveal variant="image" className="col-span-4 row-span-4 overflow-hidden rounded-[24px]">
-              <Photo name="lecture-hall" sizes="(min-width: 1024px) 420px, 66vw" alt="Researchers attending a seminar in a lecture room" className="" />
+              <Photo name="lecture-hall" label="Paper sessions" sizes="(min-width: 1024px) 420px, 66vw" alt="Researchers attending a seminar in a lecture room" className="" />
             </Reveal>
             <Reveal variant="image" delay={120} className="col-span-2 row-span-3 overflow-hidden rounded-[24px]">
-              <Photo name="laboratory" sizes="(min-width: 1024px) 220px, 33vw" alt="Laboratory glassware in a research lab" className="object-[30%_center]" />
+              <Photo name="stage-presentation" label="Keynotes" sizes="(min-width: 1024px) 220px, 33vw" alt="A speaker presenting on stage in front of a large screen" className="object-[70%_center]" />
             </Reveal>
             <Reveal variant="image" delay={200} className="col-span-2 row-span-3 overflow-hidden rounded-[24px]">
-              <Photo name="campus" sizes="(min-width: 1024px) 220px, 33vw" alt="A university building across a green lawn" className="object-[45%_center]" />
+              <Photo name="auditorium" label="Plenary hall" sizes="(min-width: 1024px) 220px, 33vw" alt="A full auditorium watching a speaker on stage" className="object-center" />
             </Reveal>
             <Reveal variant="image" delay={280} className="col-span-4 row-span-2 overflow-hidden rounded-[24px]">
-              <Photo name="collaboration" sizes="(min-width: 1024px) 420px, 66vw" alt="Three researchers discussing work around a laptop" className="object-[center_35%]" />
+              <Photo name="collaboration" label="Working on a paper together" sizes="(min-width: 1024px) 420px, 66vw" alt="Three researchers discussing work around a laptop" className="object-[center_35%]" />
             </Reveal>
           </div>
         </div>

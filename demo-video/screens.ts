@@ -91,6 +91,23 @@ const SCREENS: Screen[] = [
     },
   },
   {
+    id: 'register',
+    file: 'ticket',
+    run: async (page) => {
+      // demo-attendee starts unregistered (scene 9 of the video registers live) - register once if needed.
+      await login(page, DEMO.attendeeEmail, 'Author')
+      await open(page, `/portal/ticket?conference=${DEMO.conferenceSlug}`)
+      const register = page.getByRole('button', { name: 'Register to attend' })
+      if (await register.isVisible().catch(() => false)) {
+        await page.locator('select').filter({ hasText: 'General Attendee' }).selectOption({ label: 'General Attendee' })
+        await register.click()
+        await page.waitForLoadState('networkidle')
+        await open(page, `/portal/ticket?conference=${DEMO.conferenceSlug}`)
+      }
+      await page.getByRole('img', { name: /qr/i }).first().waitFor({ state: 'visible' }).catch(() => {})
+    },
+  },
+  {
     id: 'programme',
     file: 'programme',
     run: async (page) => {

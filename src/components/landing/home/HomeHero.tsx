@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, memo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Award, CalendarDays, Check, EyeOff, FileText, MapPin, PlayCircle, Sparkles } from 'lucide-react'
+import { ArrowRight, Award, CalendarDays, Check, EyeOff, FileText, MapPin, PlayCircle } from 'lucide-react'
 import { publicImageUrl } from '../../../lib/storage'
 import { DEFAULT_CONFERENCE_COLOR } from '../../../lib/color'
 import { formatDateRange } from '../../../lib/datetime'
@@ -55,41 +55,6 @@ function useParallax<T extends HTMLElement>(strength = 0.12) {
   return ref
 }
 
-/**
- * Sets the headline's last two words in italic gold with a hand-drawn underline.
- * Works for any admin-edited headline; a headline of one or two words stays plain.
- */
-function AccentHeadline({ text }: { text: string }) {
-  const words = text.trim().split(/\s+/)
-  if (words.length < 3) return <>{text}</>
-  const lead = words.slice(0, -2).join(' ')
-  const tail = words.slice(-2).join(' ')
-  return (
-    <>
-      {lead}{' '}
-      <span className="relative inline-block whitespace-nowrap italic text-gold-ink">
-        {tail}
-        <svg
-          className="absolute -bottom-2 left-0 h-3 w-full text-gold sm:-bottom-3 sm:h-4"
-          viewBox="0 0 300 16"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path
-            className="home-ink"
-            d="M3 11C60 4 140 2 297 7"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="5"
-            strokeLinecap="round"
-            pathLength={1}
-          />
-        </svg>
-      </span>
-    </>
-  )
-}
-
 const JOURNEY = [
   { label: 'Abstract submitted', icon: FileText },
   { label: 'Double-blind review', icon: EyeOff },
@@ -108,16 +73,16 @@ function JourneyCard() {
   }, [])
   const shown = Math.min(step, JOURNEY.length - 1)
   return (
-    <div className="w-[250px] rounded-2xl border border-white/70 bg-white/90 p-4 shadow-pop backdrop-blur-md" aria-hidden="true">
+    <div className="w-[240px] rounded-xl border border-border-soft bg-white p-4 shadow-[0_12px_30px_-18px_rgb(16_28_50/0.45)]" aria-hidden="true">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">A paper&rsquo;s journey</p>
+        <p className="text-xs font-medium text-text-muted">What happens to a paper</p>
         <span className="font-mono text-[11px] text-text-muted">
           {shown + 1}/{JOURNEY.length}
         </span>
       </div>
       <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface-muted">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-brand to-indigo transition-all duration-700 ease-out"
+          className="h-full rounded-full bg-brand transition-all duration-700 ease-out"
           style={{ width: `${((shown + 1) / JOURNEY.length) * 100}%` }}
         />
       </div>
@@ -129,9 +94,7 @@ function JourneyCard() {
             <li key={j.label} className="flex items-center gap-3 text-[13px]">
               <span
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-500 ${
-                  done
-                    ? 'scale-100 bg-brand text-on-brand shadow-[0_0_0_4px_rgb(16_28_50/0.08)]'
-                    : 'scale-90 border border-dashed border-border bg-white text-text-muted'
+                  done ? 'bg-brand text-on-brand' : 'border border-border bg-white text-text-muted'
                 }`}
               >
                 <Icon size={12} strokeWidth={2.5} />
@@ -167,11 +130,11 @@ function FeaturedCard({
   abstractsOpen: boolean
   loading: boolean
 }) {
-  if (loading) return <div className="h-[168px] w-full animate-pulse rounded-2xl bg-white/70 shadow-pop" />
+  if (loading) return <div className="h-[150px] w-full animate-pulse rounded-xl bg-white/70" />
   if (!conference) {
     return (
-      <div className="rounded-2xl border border-white/60 bg-white/85 p-5 shadow-pop backdrop-blur-md">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-ink">Coming soon</p>
+      <div className="rounded-xl border border-border-soft bg-white p-5">
+        <p className="text-xs font-medium text-text-muted">Coming soon</p>
         <p className="mt-2 font-display text-lg font-semibold leading-snug text-text">New conferences are announced here first.</p>
         <p className="mt-1 text-sm text-text-muted">Organising one? We'll set it up for you.</p>
       </div>
@@ -181,16 +144,13 @@ function FeaturedCard({
   return (
     <Link
       to={`/c/${conference.slug}`}
-      className="group block rounded-2xl border border-white/60 bg-white/85 p-5 shadow-pop backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:bg-white/95"
+      className="group block rounded-xl border border-border-soft bg-white p-5 shadow-[0_18px_40px_-24px_rgb(16_28_50/0.5)] transition duration-300 hover:border-border"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-ink">Featured conference</p>
+        <p className="text-xs font-medium text-text-muted">Next up</p>
         {abstractsOpen ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60 motion-reduce:hidden" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-            </span>
+            <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
             {abstracts?.closes_at ? `Abstracts close ${shortDate(abstracts.closes_at)}` : 'Accepting abstracts'}
           </span>
         ) : (
@@ -245,39 +205,37 @@ export const HomeHero = memo(function HomeHero({
 
   return (
     <section className="relative isolate overflow-hidden" aria-labelledby="home-hero-title">
-      {/* Quiet editorial backdrop: a hairline grid fading out, and a warm wash behind the photograph. */}
-      <div className="absolute inset-0 -z-10" aria-hidden="true">
-        <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(to_right,rgb(16_28_50/0.05)_1px,transparent_1px)] [background-size:96px_100%] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
-        <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(rgb(16_28_50/0.10)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_at_15%_35%,black_5%,transparent_55%)]" />
-        <div className="home-aurora absolute -right-40 top-10 h-[520px] w-[620px] rounded-full bg-gold/25 blur-3xl" />
-        <div className="home-aurora absolute -left-32 bottom-0 h-[380px] w-[480px] rounded-full bg-indigo/15 blur-3xl" style={{ animationDelay: '-7s' }} />
-      </div>
+      {/* One flat warm panel behind the photo - nothing animated in the background. */}
+      <div className="absolute inset-y-0 right-0 -z-10 hidden w-[38%] bg-gold-soft/60 lg:block" aria-hidden="true" />
 
       <div className="mx-auto grid max-w-[1240px] items-center gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:min-h-[calc(100svh-4rem)] lg:grid-cols-[1fr_1.02fr] lg:gap-16 lg:pb-20 lg:pt-10">
         {/* Editorial column */}
         <div className="relative">
           <div className="home-rise" style={{ animationDelay: '60ms' }}>
-            <p className="inline-flex items-center gap-2 rounded-full border border-gold/50 bg-white/80 py-1 pl-1 pr-3.5 text-xs font-medium text-text shadow-sm backdrop-blur sm:text-[13px]">
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-on-brand">
-                <Sparkles size={11} aria-hidden="true" /> Live
-              </span>
-              {stats.open !== null && stats.open > 0 ? (
+            {stats.open !== null && stats.open > 0 ? (
+              <button
+                type="button"
+                onClick={onExplore}
+                className="group inline-flex items-center gap-2 text-sm text-text-muted hover:text-brand"
+              >
+                <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
                 <span>
-                  <span className="font-semibold text-brand">{stats.open}</span>{' '}
-                  {stats.open === 1 ? 'conference' : 'conferences'} accepting abstracts now
+                  <span className="font-semibold text-brand">{stats.open}</span> {stats.open === 1 ? 'conference is' : 'conferences are'} taking
+                  abstracts right now
                 </span>
-              ) : (
-                <span>Academic conferences, end to end</span>
-              )}
-            </p>
+                <ArrowRight size={14} aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" />
+              </button>
+            ) : (
+              <p className="text-sm text-text-muted">Academic conferences in Nepal and beyond</p>
+            )}
           </div>
 
           <h1
             id="home-hero-title"
-            className="home-settle mt-6 max-w-[16ch] font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.6rem]"
+            className="home-settle mt-5 max-w-[15ch] font-display text-[2.6rem] font-semibold leading-[1.04] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.4rem]"
             style={{ animationDelay: '140ms' }}
           >
-            <AccentHeadline text={headline} />
+            {headline}
           </h1>
 
           <p className="home-settle mt-6 max-w-[34rem] text-[17px] leading-relaxed text-text-muted sm:text-lg" style={{ animationDelay: '260ms' }}>
@@ -310,21 +268,8 @@ export const HomeHero = memo(function HomeHero({
             </button>
           </div>
 
-          <ul
-            className="home-rise mt-7 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[13px] font-medium text-text-muted"
-            style={{ animationDelay: '420ms' }}
-            aria-label="What the platform covers"
-          >
-            {['Calls for papers', 'Peer review', 'Programme', 'Registration', 'Certificates'].map((item, i) => (
-              <li key={item} className="inline-flex items-center gap-2.5">
-                {i > 0 ? <span className="h-1 w-1 rounded-full bg-gold" aria-hidden="true" /> : null}
-                {item}
-              </li>
-            ))}
-          </ul>
-
           <dl
-            className="home-rise mt-8 grid w-fit grid-cols-3 divide-x divide-brand/10 rounded-2xl border border-white/80 bg-white/65 px-5 py-4 shadow-[0_24px_50px_-30px_rgb(16_28_50/0.45)] backdrop-blur sm:px-6"
+            className="home-rise mt-10 grid w-fit grid-cols-3 divide-x divide-brand/10 border-t border-brand/10 pt-6"
             style={{ animationDelay: '480ms' }}
           >
             <HeroStat label="Conferences" value={stats.conferences} />
@@ -335,12 +280,7 @@ export const HomeHero = memo(function HomeHero({
 
         {/* Photograph with the real featured conference laid over it */}
         <div className="relative lg:pl-4">
-          <div
-            className="home-rise absolute -bottom-4 -right-4 left-4 top-4 hidden rounded-[28px] border-2 border-gold/50 sm:block lg:left-8"
-            style={{ animationDelay: '500ms' }}
-            aria-hidden="true"
-          />
-          <figure className="home-unveil relative aspect-[4/3.4] overflow-hidden rounded-[28px] bg-brand shadow-[0_40px_80px_-40px_rgb(16_28_50/0.55)] sm:aspect-[4/3] lg:aspect-[4/4.6]">
+          <figure className="home-unveil relative aspect-[4/3.4] overflow-hidden rounded-2xl bg-brand sm:aspect-[4/3] lg:aspect-[4/4.6]">
             {/* Portrait crop of a 3:2 photo renders ~1.5x the frame width, so request the retina source. */}
             <img
               ref={photoRef}
@@ -358,24 +298,8 @@ export const HomeHero = memo(function HomeHero({
             <figcaption className="sr-only">Keynote session at an academic conference</figcaption>
           </figure>
 
-          {/* Floating real-feature marker */}
-          <div
-            className="home-rise absolute -top-4 right-4 hidden sm:block lg:-right-4 lg:top-10"
-            style={{ animationDelay: '900ms' }}
-            aria-hidden="true"
-          >
-            <div className="home-drift flex items-center gap-2.5 rounded-full border border-white/70 bg-white/90 py-2 pl-2 pr-4 text-sm font-medium text-text shadow-pop backdrop-blur">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold-soft text-gold-ink">
-                <EyeOff size={16} />
-              </span>
-              Double-blind peer review
-            </div>
-          </div>
-
           <div className="home-rise absolute -left-14 top-[30%] z-10 hidden xl:block" style={{ animationDelay: '1100ms' }}>
-            <div className="home-drift" style={{ animationDelay: '-4s' }}>
-              <JourneyCard />
-            </div>
+            <JourneyCard />
           </div>
 
           <div className="home-rise relative z-10 -mt-24 px-4 sm:absolute sm:bottom-6 sm:left-6 sm:right-auto sm:mt-0 sm:w-[min(420px,85%)] sm:px-0 lg:-left-10" style={{ animationDelay: '700ms' }}>

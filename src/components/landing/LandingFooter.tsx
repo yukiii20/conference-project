@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, Mail } from 'lucide-react'
+import { ArrowRight, CalendarCheck, Mail, MapPin } from 'lucide-react'
 import { SITE } from '../../content/site'
 import { usePlatformSettings } from '../../lib/platformSettings'
 import { LogoMark } from './LandingHeader'
@@ -37,60 +37,74 @@ export function LandingFooter() {
   }
 
   return (
-    <footer className="relative overflow-hidden bg-footer text-white">
-      <div className="pointer-events-none absolute -right-40 -top-40 h-[420px] w-[420px] rounded-full bg-indigo/15 blur-3xl" aria-hidden="true" />
-      <div className="relative mx-auto max-w-[1240px] px-4 pb-10 pt-16 sm:px-6 lg:pt-20">
-        <div className="flex flex-col gap-8 border-b border-white/10 pb-12 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-xl">
-            <p className="text-sm font-medium text-gold">Organising a conference?</p>
-            <p className="mt-2 font-display text-2xl font-semibold leading-snug sm:text-3xl">
-              Take it from call for papers to certificates, all in one place.
-            </p>
+    <footer className="bg-footer text-white">
+      <div className="mx-auto max-w-[1240px] px-4 pb-8 pt-14 sm:px-6 lg:pt-16">
+        {/* Organiser call-to-action, as its own panel */}
+        <div className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-white/[0.04] p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gold/15 text-gold sm:flex" aria-hidden="true">
+              <CalendarCheck size={22} />
+            </span>
+            <div>
+              <p className="font-display text-xl font-semibold sm:text-2xl">Organising a conference?</p>
+              <p className="mt-1 max-w-lg text-sm leading-relaxed text-white/65">
+                We'll set it up for you: call for papers, reviewers, programme, registration and certificates.
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:shrink-0">
+            <a
+              href="/#contact"
+              onClick={(e) => handleSectionLink(e, '#contact')}
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-gold"
+            >
+              Get in touch
+              <ArrowRight size={16} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />
+            </a>
             <a
               href="/#conferences"
               onClick={(e) => handleSectionLink(e, '#conferences')}
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand transition hover:bg-gold"
+              className="inline-flex items-center justify-center rounded-full border border-white/20 px-5 py-2.5 text-sm font-medium text-white transition hover:border-white/50"
             >
-              Explore conferences
-              <ArrowRight size={16} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />
+              Browse conferences
             </a>
-            <Link
-              to="/signup"
-              className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3 text-sm font-medium text-white transition hover:border-white/50"
-            >
-              Create an account
-            </Link>
           </div>
         </div>
 
-        <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div>
-            <div className="flex items-center gap-2.5 font-semibold">
+            <Link to="/" className="inline-flex items-center gap-2.5 font-semibold">
               <LogoMark size={32} onDark />
               <span>{platformName}</span>
-            </div>
+            </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/60">{footerText}</p>
-            <a
-              href={gmailComposeHref(contactEmail)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 break-all text-sm text-white/80 hover:text-white"
-            >
-              <Mail size={16} aria-hidden="true" className="shrink-0" />
-              {contactEmail}
-            </a>
+            <ul className="mt-5 space-y-2 text-sm">
+              <li>
+                <a
+                  href={gmailComposeHref(contactEmail)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 break-all text-white/80 hover:text-white"
+                >
+                  <Mail size={15} aria-hidden="true" className="shrink-0 text-gold" />
+                  {contactEmail}
+                </a>
+              </li>
+              <li className="inline-flex items-center gap-2 text-white/60">
+                <MapPin size={15} aria-hidden="true" className="shrink-0 text-gold" />
+                Banepa, Nepal
+              </li>
+            </ul>
           </div>
 
           {columns.map((col) => (
             <div key={col.heading}>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/60">{col.heading}</p>
+              <p className="text-sm font-semibold text-white">{col.heading}</p>
               <ul className="mt-4 space-y-2.5 text-sm">
                 {col.links.map((link) =>
                   'to' in link ? (
                     <li key={link.label}>
-                      <Link to={link.to} className="text-white/70 transition-colors hover:text-white">
+                      <Link to={link.to} className="text-white/60 transition-colors hover:text-white">
                         {link.label}
                       </Link>
                     </li>
@@ -99,7 +113,7 @@ export function LandingFooter() {
                       <a
                         href={`/${link.href}`}
                         onClick={(e) => handleSectionLink(e, link.href)}
-                        className="text-white/70 transition-colors hover:text-white"
+                        className="text-white/60 transition-colors hover:text-white"
                       >
                         {link.label}
                       </a>
@@ -111,26 +125,15 @@ export function LandingFooter() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-2 border-t border-white/10 pt-6 text-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
           <span>
             © {year} {platformName}
           </span>
-          <span className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-            <span>Banepa, Nepal</span>
-            <span className="flex items-center gap-3">
-              <Link to="/privacy" className="underline-offset-4 hover:text-white hover:underline">
-                Privacy
-              </Link>
-              <span aria-hidden="true">·</span>
-              <Link to="/terms" className="underline-offset-4 hover:text-white hover:underline">
-                Terms
-              </Link>
-            </span>
-            <Link to="/SYPN" className="group underline-offset-4 hover:text-white">
-              Project by{' '}
-              <span className="font-semibold tracking-[0.12em] text-gold group-hover:underline">SYPN</span>
-            </Link>
-          </span>
+          <Link to="/SYPN" className="group inline-flex flex-wrap items-center gap-x-1.5 hover:text-white">
+            Made by
+            <span className="font-semibold tracking-[0.1em] text-gold">SYPN</span>
+            <span className="text-white/35 group-hover:text-white/70">— Sonika, Yuki, Prashant &amp; Nabin</span>
+          </Link>
         </div>
       </div>
     </footer>

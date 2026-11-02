@@ -25,7 +25,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
     'A platform for running academic conferences — calls for papers, peer review, programme and participants.',
   hero_headline: 'Where research meets the world.',
   hero_subheadline:
-    'Discover academic conferences, share groundbreaking research, collaborate with scholars and experience every stage of the conference journey in one place.',
+    'Find a conference, send in your abstract, follow its review, register and download your certificate. Organisers run calls for papers, reviews, the programme and check-in from the same place.',
   faq_items: [
     {
       q: 'How do I submit an abstract?',
