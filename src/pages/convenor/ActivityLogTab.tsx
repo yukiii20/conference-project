@@ -92,7 +92,7 @@ export function ActivityLogTab({ conferenceId }: { conferenceId: string }) {
   return (
     <div className="mt-6 max-w-4xl">
       <PageHeader title="Activity log" subtitle="A record of actions taken across this conference." />
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" data-no-dirty>
         <Select
           value={actor}
           onChange={(e) => {

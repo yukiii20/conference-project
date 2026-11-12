@@ -54,7 +54,7 @@ function PortalPageInner() {
   const [searchParams] = useSearchParams()
   const preselectedSlug = searchParams.get('conference')?.trim() || null
   const { user, roles } = useAuth()
-  const { markDirty, clearDirty, confirmLeave } = useDirtyGuard()
+  const { beginEdit, markDirty, confirmLeave } = useDirtyGuard()
   const base = '/portal'
   const location = useLocation()
 
@@ -128,7 +128,14 @@ function PortalPageInner() {
       search={searchItems}
       beforeNavigate={confirmLeave}
     >
-      <main className="min-w-0" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
+      <main
+          className="min-w-0"
+          onFocusCapture={beginEdit}
+          onPointerDownCapture={beginEdit}
+          onKeyDownCapture={beginEdit}
+          onChangeCapture={markDirty}
+          onInputCapture={markDirty}
+        >
             <Routes>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route

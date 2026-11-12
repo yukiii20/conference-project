@@ -80,7 +80,7 @@ export function AnalyticsTab({ conferenceId }: { conferenceId: string }) {
       <PageHeader title="Analytics" subtitle="Submissions, reviews, registrations, and attendance for this conference." />
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-wrap items-end gap-2" data-no-dirty>
         {PRESETS.map((p) => (
           <Button
             key={p.label}

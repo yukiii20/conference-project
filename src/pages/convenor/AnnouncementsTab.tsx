@@ -4,7 +4,8 @@ import { api, ApiError } from '../../lib/api'
 import { ANNOUNCEMENT_AUDIENCES, announcementSchema, type AnnouncementInput } from '../../lib/validation'
 import { PageHeader, Card, Badge, Button, Input, Textarea, Checkbox, Alert, Spinner } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
-import { formatKathmandu } from '../../lib/datetime'
+import { formatKathmandu, fromKathmanduInputValue } from '../../lib/datetime'
+import { useToast } from '../../components/ui/Toast'
 
 type Announcement = {
   id: string
@@ -35,6 +36,7 @@ const STATUS_LABELS: Record<Announcement['status'], string> = {
 const EMPTY: AnnouncementInput = { title: '', body: '', audience: ['all'], status: 'draft', publish_at: '', send_email: false }
 
 export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
+  const { showToast } = useToast()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -77,17 +79,19 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
       setFormError(parsed.error.issues[0]?.message ?? 'Please check the form.')
       return
     }
-    if (status === 'scheduled' && !parsed.data.publish_at) {
-      setFormError('Set a publish date for a scheduled announcement.')
+    if (status === 'scheduled' && (!parsed.data.publish_at || !fromKathmanduInputValue(parsed.data.publish_at))) {
+      setFormError('Set a publish date and time (Nepal time) for a scheduled announcement.')
       return
     }
     setSaving(true)
     try {
       await api.post(`/conferences/${conferenceId}/announcements`, {
         ...parsed.data,
-        publish_at: parsed.data.publish_at ? new Date(parsed.data.publish_at).toISOString() : undefined,
+        // The field is Nepal wall-clock time (like every other date in the portal), not the browser's own zone.
+        publish_at: parsed.data.publish_at ? (fromKathmanduInputValue(parsed.data.publish_at) ?? undefined) : undefined,
       })
       setForm(EMPTY)
+      showToast(status === 'published' ? 'Announcement published.' : status === 'scheduled' ? 'Announcement scheduled.' : 'Draft saved.', 'success')
       await load()
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Could not save this announcement.')
@@ -100,9 +104,11 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
     setBusyId(a.id)
     try {
       await api.post(`/conferences/${conferenceId}/announcements/${a.id}/publish`)
+      showToast('Announcement published.', 'success')
       await load()
-    } catch {
-      // Row stays as-is; the convenor can retry.
+    } catch (err) {
+      // Row stays as-is; the convenor can retry - but never silently.
+      showToast(err instanceof ApiError ? err.message : 'Could not publish this announcement.', 'error')
     } finally {
       setBusyId(null)
     }
@@ -112,9 +118,11 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
     setBusyId(a.id)
     try {
       await api.post(`/conferences/${conferenceId}/announcements/${a.id}/archive`)
+      showToast('Announcement published.', 'success')
       await load()
-    } catch {
-      // Row stays as-is; the convenor can retry.
+    } catch (err) {
+      // Row stays as-is; the convenor can retry - but never silently.
+      showToast(err instanceof ApiError ? err.message : 'Could not publish this announcement.', 'error')
     } finally {
       setBusyId(null)
     }
@@ -124,9 +132,11 @@ export function AnnouncementsTab({ conferenceId }: { conferenceId: string }) {
     setBusyId(a.id)
     try {
       await api.del(`/conferences/${conferenceId}/announcements/${a.id}`)
+      showToast('Announcement published.', 'success')
       await load()
-    } catch {
-      // Row stays as-is; the convenor can retry.
+    } catch (err) {
+      // Row stays as-is; the convenor can retry - but never silently.
+      showToast(err instanceof ApiError ? err.message : 'Could not publish this announcement.', 'error')
     } finally {
       setBusyId(null)
     }

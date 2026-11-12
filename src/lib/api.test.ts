@@ -66,3 +66,31 @@ describe('api GET cache', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('api GET cache vs. a save (date saved once must stay saved)', () => {
+  it('never caches or shares a GET that started before a write finished', async () => {
+    let releaseStaleGet: (() => void) | null = null
+    let serverValue = 'old-date'
+    const fetchMock = vi.fn(async (_url: string, init?: { method?: string }) => {
+      if (init?.method && init.method !== 'GET') {
+        serverValue = 'new-date'
+        return jsonResponse({ ok: true })
+      }
+      const answer = serverValue
+      // The first GET is slow (e.g. Render waking up): it answers after the save.
+      if (fetchMock.mock.calls.length === 1) await new Promise<void>((resolve) => (releaseStaleGet = resolve))
+      return jsonResponse({ date: answer })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const staleGet = api.get<{ date: string }>('/conferences/c1/details')
+    await api.patch('/conferences/c1', { start_date: 'new-date' })
+    // A tab mounting right after the save must not join the old in-flight request...
+    const afterSave = api.get<{ date: string }>('/conferences/c1/details')
+    releaseStaleGet!()
+    expect((await staleGet).date).toBe('old-date')
+    expect((await afterSave).date).toBe('new-date')
+    // ...and the old answer must not have been put back into the cache.
+    expect((await api.get<{ date: string }>('/conferences/c1/details')).date).toBe('new-date')
+  })
+})

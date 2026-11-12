@@ -178,7 +178,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
             placeholder="Search by name or email"
             className="w-auto text-sm"
           />
-          <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-auto text-sm">
+          <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-auto text-sm" data-no-dirty>
             <option value="">All roles</option>
             {Object.entries(ROLE_LABELS).map(([code, label]) => (
               <option key={code} value={code}>

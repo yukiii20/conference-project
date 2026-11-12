@@ -214,6 +214,8 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
     const parsed = conferenceDetailsSchema.safeParse(form as ConferenceDetailsInput)
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error))
+      // Never a silent failure: say so even when the highlighted field is scrolled out of view.
+      showToast('Please fix the highlighted fields.', 'error')
       return
     }
     setErrors({})
@@ -221,11 +223,22 @@ export function ConferenceDetailsTab({ conferenceId }: { conferenceId: string })
 
     try {
       await api.patch(`/conferences/${conferenceId}`, parsed.data)
-      showToast('Saved.', 'success')
+      showToast('Conference details saved.', 'success')
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Could not save this.'
       setFormError(message)
       showToast(message, 'error')
+      setSaving(false)
+      return
+    }
+    // Reload what the server actually stored and make it the new form baseline.
+    try {
+      const res = await api.get<{ conference: ConferenceDetailsData & { code: string } }>(`/conferences/${conferenceId}/details`)
+      setData(res.conference)
+      setCode(res.conference.code ?? '')
+      setForm(toFormState(res.conference))
+    } catch {
+      // The save itself succeeded; the next visit reloads anyway.
     } finally {
       setSaving(false)
     }

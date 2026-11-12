@@ -130,3 +130,37 @@ describe('kathmanduToday', () => {
     expect(kathmanduToday(30, late)).toBe('2026-12-02')
   })
 })
+
+describe('Kathmandu input helpers: edge cases (one shared helper for every date field)', () => {
+  it('midnight Nepal time is 18:15 UTC the day before, and round-trips', () => {
+    expect(fromKathmanduInputValue('2026-11-15T00:00')).toBe('2026-11-14T18:15:00.000Z')
+    expect(toKathmanduInputValue('2026-11-14T18:15:00.000Z')).toBe('2026-11-15T00:00')
+  })
+
+  it('end of day (23:59) stays on the same Nepal date', () => {
+    expect(fromKathmanduInputValue('2026-11-15T23:59')).toBe('2026-11-15T18:14:00.000Z')
+    expect(toKathmanduDateInputValue('2026-11-15T18:14:00.000Z')).toBe('2026-11-15')
+  })
+
+  it('a date-only value means midnight Nepal time', () => {
+    expect(fromKathmanduDateInputValue('2026-11-15')).toBe('2026-11-14T18:15:00.000Z')
+    expect(fromKathmanduDateInputValue('')).toBeNull()
+  })
+
+  it('has no daylight saving: the same +5:45 offset in January and July', () => {
+    expect(fromKathmanduInputValue('2026-01-15T12:00')).toBe('2026-01-15T06:15:00.000Z')
+    expect(fromKathmanduInputValue('2026-07-15T12:00')).toBe('2026-07-15T06:15:00.000Z')
+  })
+
+  it('round-trips every quarter hour of a day without drifting', () => {
+    for (let minutes = 0; minutes < 24 * 60; minutes += 15) {
+      const local = `2026-03-29T${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+      expect(toKathmanduInputValue(fromKathmanduInputValue(local))).toBe(local)
+    }
+  })
+
+  it('rejects a half-typed value', () => {
+    expect(fromKathmanduInputValue('2026-11-15')).toBeNull()
+    expect(fromKathmanduInputValue('')).toBeNull()
+  })
+})

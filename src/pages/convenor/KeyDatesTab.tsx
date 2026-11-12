@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, Save } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
-import { fromKathmanduInputValue, formatKathmandu, toKathmanduInputValue } from '../../lib/datetime'
+import { formatKathmandu, toKathmanduInputValue } from '../../lib/datetime'
+import { buildKeyDatesPayload } from './keyDatesPayload'
 import { useToast } from '../../components/ui/Toast'
 import { toneBannerClasses } from '../../lib/status'
 import { PageHeader, Card, FormField, Input, Checkbox, Button, Alert, Spinner } from '../../components/ui'
@@ -32,20 +33,20 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Fields holding a half-typed date/time: the browser reports those as '' (see buildKeyDatesPayload).
+  const [incomplete, setIncomplete] = useState<Set<string>>(new Set())
   const { showToast } = useToast()
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      setLoading(true)
+  const load = useCallback(
+    async (isCancelled: () => boolean = () => false, showSpinner = true) => {
+      if (showSpinner) setLoading(true)
       try {
         // Independent - run together rather than one after the other.
         const [data, details] = await Promise.all([
           api.get<{ deadlines: DeadlineRow[] }>(`/conferences/${conferenceId}/deadlines`),
           api.get<{ conference: { start_date: string; end_date: string } }>(`/conferences/${conferenceId}/details`),
         ])
-        if (cancelled) return
+        if (isCancelled()) return
 
         setDeadlineRows(data.deadlines)
         setConferenceDates({ start_date: details.conference.start_date, end_date: details.conference.end_date })
@@ -60,20 +61,25 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
             : { ...EMPTY_ROW }
         }
         setRows(nextRows)
+        setIncomplete(new Set())
         setError(null)
       } catch (err) {
-        if (cancelled) return
+        if (isCancelled()) return
         setError(err instanceof ApiError ? err.message : 'Could not load key dates.')
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!isCancelled()) setLoading(false)
       }
-    }
+    },
+    [conferenceId],
+  )
 
-    load()
+  useEffect(() => {
+    let cancelled = false
+    load(() => cancelled)
     return () => {
       cancelled = true
     }
-  }, [conferenceId])
+  }, [load])
 
   /**
    * Catches the two mistakes that quietly break the event: abstract
@@ -100,47 +106,36 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
     setRows((prev) => ({ ...prev, [code]: { ...prev[code], ...patch } }))
   }
 
+  /** onChange for a date/time field: remembers whether the browser is holding a half-typed value. */
+  function updateDateField(code: string, field: 'opens_at' | 'closes_at', input: HTMLInputElement) {
+    const key = `${code}.${field}`
+    const isIncomplete = input.value === '' && input.validity.badInput
+    setIncomplete((prev) => {
+      if (prev.has(key) === isIncomplete) return prev
+      const next = new Set(prev)
+      if (isIncomplete) next.add(key)
+      else next.delete(key)
+      return next
+    })
+    update(code, { [field]: input.value })
+  }
+
   async function handleSave() {
     setError(null)
-
-    const payload: Array<{
-      deadline_type: string
-      opens_at: string
-      closes_at: string | null
-      is_public: boolean
-    }> = []
-
-    for (const t of deadlineRows) {
-      const row = rows[t.code]
-      if (!row) continue
-
-      if (t.is_window) {
-        if (!row.opens_at) continue // not set yet — leave it alone
-        const opensIso = fromKathmanduInputValue(row.opens_at)
-        const closesIso = row.closes_at ? fromKathmanduInputValue(row.closes_at) : null
-        if (!opensIso) continue
-        if (closesIso && closesIso < opensIso) {
-          setError(`${t.name}: the closing date must be on or after the opening date.`)
-          return
-        }
-        payload.push({ deadline_type: t.code, opens_at: opensIso, closes_at: closesIso, is_public: row.is_public })
-      } else {
-        if (!row.closes_at) continue
-        const iso = fromKathmanduInputValue(row.closes_at)
-        if (!iso) continue
-        payload.push({ deadline_type: t.code, opens_at: iso, closes_at: iso, is_public: row.is_public })
-      }
-    }
-
-    if (payload.length === 0) {
-      setError('Set at least one date before saving.')
+    const built = buildKeyDatesPayload(deadlineRows, rows, incomplete)
+    if ('error' in built) {
+      setError(built.error)
+      showToast(built.error, 'error')
       return
     }
+    const payload = built.payload
 
     setSaving(true)
     try {
       await api.put(`/conferences/${conferenceId}/deadlines`, { deadlines: payload })
-      showToast('Saved.', 'success')
+      showToast('Key dates saved.', 'success')
+      // Show exactly what the server stored (and reset the form to it).
+      await load(undefined, false)
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Could not save key dates.'
       setError(message)
@@ -187,14 +182,18 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
                     <Input
                       type="datetime-local"
                       value={row.opens_at}
-                      onChange={(e) => update(t.code, { opens_at: e.target.value })}
+                      onChange={(e) => updateDateField(t.code, 'opens_at', e.currentTarget)}
+                      onBlur={(e) => updateDateField(t.code, 'opens_at', e.currentTarget)}
+                      error={incomplete.has(`${t.code}.opens_at`)}
                     />
                   </FormField>
                   <FormField label="Closes">
                     <Input
                       type="datetime-local"
                       value={row.closes_at}
-                      onChange={(e) => update(t.code, { closes_at: e.target.value })}
+                      onChange={(e) => updateDateField(t.code, 'closes_at', e.currentTarget)}
+                      onBlur={(e) => updateDateField(t.code, 'closes_at', e.currentTarget)}
+                      error={incomplete.has(`${t.code}.closes_at`)}
                     />
                   </FormField>
                 </div>
@@ -204,7 +203,9 @@ export function KeyDatesTab({ conferenceId }: { conferenceId: string }) {
                     <Input
                       type="datetime-local"
                       value={row.closes_at}
-                      onChange={(e) => update(t.code, { closes_at: e.target.value })}
+                      onChange={(e) => updateDateField(t.code, 'closes_at', e.currentTarget)}
+                      onBlur={(e) => updateDateField(t.code, 'closes_at', e.currentTarget)}
+                      error={incomplete.has(`${t.code}.closes_at`)}
                     />
                   </FormField>
                 </div>

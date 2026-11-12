@@ -79,7 +79,7 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3" data-no-dirty>
         <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
           <option value="">All statuses</option>
           {Object.entries(SUBMISSION_STATUS_LABELS)

@@ -225,7 +225,8 @@ export function DataTable<T>({
   const showToolbar = hasSearch || filterColumns.length > 0 || columns.some((c) => c.hideable !== false) || toolbar
 
   return (
-    <section aria-label={label} className="overflow-hidden rounded-xl border border-border-soft bg-surface shadow-card">
+    // data-no-dirty: searching, filtering and ticking rows only change the view, never unsaved work.
+    <section aria-label={label} data-no-dirty className="overflow-hidden rounded-xl border border-border-soft bg-surface shadow-card">
       {showToolbar ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-border-soft px-3 py-2.5 sm:px-4">
           {hasSearch ? (

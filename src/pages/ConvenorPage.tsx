@@ -44,7 +44,7 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
   const [searchParams] = useSearchParams()
   const preselectedSlug = searchParams.get('conference')?.trim() || null
   const { roles } = useAuth()
-  const { markDirty, clearDirty, confirmLeave } = useDirtyGuard()
+  const { beginEdit, markDirty, confirmLeave } = useDirtyGuard()
   const isManagerPortal = !viewAs && location.pathname.startsWith('/manager')
   const base = viewAs ? `/super-admin/view-as/${viewAs.conferenceId}` : isManagerPortal ? '/manager' : '/convenor'
 
@@ -225,7 +225,14 @@ function ConvenorPageInner({ viewAs }: { viewAs?: ViewAsInfo }) {
           </div>
         ) : null}
 
-          <main className="min-w-0" onChangeCapture={markDirty} onInputCapture={markDirty} onSubmitCapture={clearDirty}>
+          <main
+          className="min-w-0"
+          onFocusCapture={beginEdit}
+          onPointerDownCapture={beginEdit}
+          onKeyDownCapture={beginEdit}
+          onChangeCapture={markDirty}
+          onInputCapture={markDirty}
+        >
             {/* In "view as admin" mode this disables every input/select/textarea/button inside —
                 the real enforcement is server-side (blockWritesInAdminViewAsMode), this just keeps
                 the admin from clicking a save button that would only fail anyway. */}

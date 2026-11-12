@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
 import { api, ApiError } from './api'
 import type { MeUser, MyRoleRow, SessionConference } from './types'
+import { forgetAdminSession } from '../components/superAdminGuard'
 
 export type MeResponse = {
   user: MeUser
@@ -11,6 +12,12 @@ export type MeResponse = {
   /** The conference this session is bound to; null for a platform-admin session. */
   conference: SessionConference | null
 }
+
+export type SessionCheck =
+  | { status: 'signed_in'; data: MeResponse }
+  | { status: 'signed_out' }
+  /** Every attempt failed for a non-auth reason. `lastKnown` is the last good answer, if there was one. */
+  | { status: 'unreachable'; lastKnown: MeResponse | null }
 
 type SwitchResponse = {
   user: MeUser
@@ -35,6 +42,12 @@ type AuthState = {
    * render its children — doesn't have to wait for a re-render.
    */
   refresh: () => Promise<MeResponse | null>
+  /**
+   * Same request as refresh(), but tells the caller WHY there is no session: the server said
+   * "signed out", or the server could not be reached at all (Render waking up, a 502, no network).
+   * Route guards use this so a temporary failure is never shown as "access denied".
+   */
+  checkSession: () => Promise<SessionCheck>
   /**
    * Calls POST /api/auth/logout, then clears the shared state. Resolves to the
    * slug of the conference the session was bound to (so the caller can return
@@ -80,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setConference(null)
   }, [])
 
-  const refresh = useCallback(async (): Promise<MeResponse | null> => {
+  const checkSession = useCallback(async (): Promise<SessionCheck> => {
     try {
       for (let attempt = 0; ; attempt++) {
         try {
@@ -88,25 +101,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const data = await api.get<MeResponse | (Omit<MeResponse, 'user'> & { user: null })>('/auth/session')
           if (!data.user) {
             clear()
-            return null
+            return { status: 'signed_out' }
           }
-          lastGoodRef.current = data
-          setUser(data.user)
-          setRoles(data.roles)
-          setIsAdmin(data.isAdmin)
-          setIsSuperAdmin(data.isSuperAdmin ?? data.isAdmin)
-          setConference(data.conference ?? null)
-          return data
+          const me = data as MeResponse
+          lastGoodRef.current = me
+          setUser(me.user)
+          setRoles(me.roles)
+          setIsAdmin(me.isAdmin)
+          setIsSuperAdmin(me.isSuperAdmin ?? me.isAdmin)
+          setConference(me.conference ?? null)
+          return { status: 'signed_in', data: me }
         } catch (err) {
           if (isSignedOutError(err)) {
             clear()
-            return null
+            return { status: 'signed_out' }
           }
           if (attempt >= ME_RETRY_DELAYS_MS.length) {
             // Server still unreachable: keep the person signed in with what we
             // last knew rather than bouncing them to the login page. The next
             // real request will tell us if the session actually ended.
-            return lastGoodRef.current
+            return { status: 'unreachable', lastKnown: lastGoodRef.current }
           }
           await sleep(ME_RETRY_DELAYS_MS[attempt]!)
         }
@@ -116,9 +130,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clear])
 
+  const refresh = useCallback(async (): Promise<MeResponse | null> => {
+    const result = await checkSession()
+    if (result.status === 'signed_in') return result.data
+    return result.status === 'unreachable' ? result.lastKnown : null
+  }, [checkSession])
+
   const signOut = useCallback(async (): Promise<string | null> => {
     const data = await api.post<{ conference_slug?: string | null }>('/auth/logout').catch(() => null)
     clear()
+    // A deliberate sign-out is not an "expired session": /super-admin goes back to its masked not-found page.
+    forgetAdminSession()
     return data?.conference_slug ?? null
   }, [clear])
 
@@ -133,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, roles, isAdmin, isSuperAdmin, conference, loading, refresh, signOut, switchConference }}>
+    <AuthContext.Provider value={{ user, roles, isAdmin, isSuperAdmin, conference, loading, refresh, checkSession, signOut, switchConference }}>
       {children}
     </AuthContext.Provider>
   )

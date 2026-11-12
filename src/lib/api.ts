@@ -29,8 +29,16 @@ const getCache = new Map<string, { data: unknown; expiresAt: number }>()
 // the one request already in flight instead of each firing their own.
 const pendingGets = new Map<string, Promise<unknown>>()
 
+// Bumped on every write. A GET that started before a write may carry the pre-save answer, so
+// it must neither be cached nor shared with callers that start after the write. (Without
+// this, a GET still in flight when "Save" finished re-filled the cache with the old values
+// for 20 s, so a freshly saved date looked unsaved until it was saved a second time.)
+let writeGeneration = 0
+
 function clearGetCache(): void {
+  writeGeneration++
   getCache.clear()
+  pendingGets.clear()
 }
 
 export class ApiError extends Error {
@@ -159,13 +167,14 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     return pending as Promise<T>
   }
 
-  const request = performFetch(url, method, options)
+  const startedAt = writeGeneration
+  const request: Promise<unknown> = performFetch(url, method, options)
     .then((data) => {
-      getCache.set(url, { data, expiresAt: Date.now() + GET_CACHE_TTL_MS })
+      if (startedAt === writeGeneration) getCache.set(url, { data, expiresAt: Date.now() + GET_CACHE_TTL_MS })
       return data
     })
     .finally(() => {
-      pendingGets.delete(url)
+      if (pendingGets.get(url) === request) pendingGets.delete(url)
     })
   pendingGets.set(url, request)
   return request as Promise<T>
@@ -191,6 +200,7 @@ async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
   }
 
   clearGetCache()
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(API_SAVED_EVENT))
   return data as T
 }
 

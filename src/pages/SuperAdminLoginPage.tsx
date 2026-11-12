@@ -224,6 +224,14 @@ export function SuperAdminLoginPage() {
           <h1 className="sa-login__heading">Sign in</h1>
           <p className="sa-login__subheading">Use your administrator account.</p>
 
+          {searchParams.get('expired') === '1' && !formError && !locked ? (
+            <div className="sa-login__notices">
+              <div role="status" className="sa-login__notice">
+                Your admin session expired after a period of inactivity. Sign in again to return to where you were.
+              </div>
+            </div>
+          ) : null}
+
           {formError || locked ? (
             <div className="sa-login__notices">
               {formError ? (
