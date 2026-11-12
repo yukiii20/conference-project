@@ -1,4 +1,5 @@
 import { publicImageUrl } from '../lib/storage'
+import { SafeImage } from './SafeImage'
 
 export function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -17,12 +18,11 @@ export function Avatar({
   size?: string
 }) {
   const url = publicImageUrl(photoPath ?? null)
-  if (url) {
-    return <img src={url} alt="" className={`${size} shrink-0 rounded-full object-cover`} />
-  }
-  return (
+  const initials = (
     <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-surface-muted text-xs font-medium text-brand`}>
       {getInitials(name)}
     </span>
   )
+  // A photo that is missing from storage falls back to the initials, never a broken image.
+  return <SafeImage src={url} alt="" className={`${size} shrink-0 rounded-full object-cover`} fallback={initials} />
 }

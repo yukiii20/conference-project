@@ -25,6 +25,7 @@ import {
   EyeIcon,
 } from '../../components/ui'
 import { FileViewerModal } from '../../components/FileViewerModal'
+import { useToast } from '../../components/ui/Toast'
 
 type Track = { id: string; name: string }
 
@@ -103,6 +104,7 @@ export function SubmissionDetail({
   maxAbstractWords: number
   onSaved: (id: string) => void
 }) {
+  const { showToast } = useToast()
   const [id, setId] = useState<string | null>(submissionId)
   const [core, setCore] = useState(EMPTY_CORE)
   const [keywords, setKeywords] = useState<string[]>([])
@@ -421,9 +423,10 @@ export function SubmissionDetail({
     await load(id)
   }
 
-  function handleDownload(fileId: string) {
+  async function handleDownload(fileId: string) {
     if (!id) return
-    downloadSubmissionFile(id, fileId)
+    const error = await downloadSubmissionFile(id, fileId)
+    if (error) showToast(error, 'error')
   }
 
   if (loading) {

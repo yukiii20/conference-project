@@ -1,4 +1,5 @@
 import { api, ApiError } from './api'
+import { downloadFile } from './download'
 
 export type FileKind = 'abstract' | 'full_paper' | 'camera_ready' | 'supplementary' | 'slides'
 
@@ -83,12 +84,11 @@ export function submissionFileDownloadUrl(submissionId: string, fileId: string):
   return `/api/submissions/${submissionId}/files/${fileId}/download`
 }
 
-/** Triggers a browser download of a private submission file without navigating away. */
-export function downloadSubmissionFile(submissionId: string, fileId: string): void {
-  const a = document.createElement('a')
-  a.href = submissionFileDownloadUrl(submissionId, fileId)
-  a.rel = 'noopener'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
+/**
+ * Downloads a private submission file without navigating away. Resolves to an error message
+ * to show (e.g. "This file is missing from storage. Please ask the author to upload it again."),
+ * or null on success.
+ */
+export function downloadSubmissionFile(submissionId: string, fileId: string): Promise<string | null> {
+  return downloadFile(submissionFileDownloadUrl(submissionId, fileId), 'submission-file')
 }

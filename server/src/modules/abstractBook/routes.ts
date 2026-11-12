@@ -49,7 +49,9 @@ abstractBookRouter.patch(
 abstractBookRouter.get('/:id/abstract-book/download', requireConferencePermission(PERM), async (req, res, next) => {
   try {
     const { storagePath, filename } = await bookFile(req.params.id!, { publicOnly: false })
-    await sendPrivateFile(res, storagePath, filename)
+    await sendPrivateFile(res, storagePath, filename, undefined, {
+      missingMessage: 'This book of abstracts is missing from storage. Please generate it again.',
+    })
   } catch (err) {
     next(err)
   }
@@ -67,7 +69,9 @@ abstractBookRouter.get('/:id/abstract-book/public', async (req, res, next) => {
 abstractBookRouter.get('/:id/abstract-book/public.pdf', async (req, res, next) => {
   try {
     const { storagePath, filename } = await bookFile(req.params.id!, { publicOnly: true })
-    await sendPrivateFile(res, storagePath, filename)
+    await sendPrivateFile(res, storagePath, filename, undefined, {
+      missingMessage: 'The book of abstracts is not available right now. Please ask the organisers to publish it again.',
+    })
   } catch (err) {
     next(err)
   }

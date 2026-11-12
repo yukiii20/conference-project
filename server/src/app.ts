@@ -43,7 +43,6 @@ import { feedbackMeRouter, feedbackRouter } from './modules/feedback/routes.js'
 import { createTickRouter } from './jobs/tick.js'
 import { machineEndpointRateLimit } from './middleware/rateLimit.js'
 import { createBrevoWebhookRouter } from './modules/emailWebhooks/routes.js'
-import { PUBLIC_DIR } from './storage/paths.js'
 import { storage } from './storage/driver.js'
 import { publicFileHandler } from './storage/send.js'
 
@@ -145,13 +144,9 @@ export function createApp() {
   app.use(requireMatchingOrigin)
   app.use(blockWritesInAdminViewAsMode)
 
-  // Public uploads keep the same URL whichever storage driver is active: local disk is served
-  // straight from the folder; R2 objects are streamed through this backend.
-  if (storage().name === 'local') {
-    app.use('/files/public', express.static(PUBLIC_DIR, { maxAge: '7d', immutable: true }))
-  } else {
-    app.get('/files/public/*', publicFileHandler)
-  }
+  // Public uploads keep the same URL whichever storage driver is active (local disk or an
+  // S3-compatible bucket): always streamed through this handler, with a short cache + ETag.
+  app.get('/files/public/*', publicFileHandler)
 
   const startedAt = Date.now()
 

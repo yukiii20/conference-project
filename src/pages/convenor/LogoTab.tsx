@@ -36,8 +36,8 @@ function LivePreview({
   code,
   tagline,
   color,
-  logoUrl,
-  bannerUrl,
+  logoUrl: rawLogoUrl,
+  bannerUrl: rawBannerUrl,
 }: {
   name: string
   code: string
@@ -46,6 +46,12 @@ function LivePreview({
   logoUrl: string | null
   bannerUrl: string | null
 }) {
+  // A picture that can't be loaded (e.g. missing from storage) is previewed as if absent,
+  // never as a broken image.
+  const [failedUrls, setFailedUrls] = useState<string[]>([])
+  const markFailed = (url: string) => setFailedUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
+  const logoUrl = rawLogoUrl && !failedUrls.includes(rawLogoUrl) ? rawLogoUrl : null
+  const bannerUrl = rawBannerUrl && !failedUrls.includes(rawBannerUrl) ? rawBannerUrl : null
   const accent = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : DEFAULT_CONFERENCE_COLOR
   const textColor = bannerUrl ? '#ffffff' : getAccessibleTextColor(accent)
 
@@ -57,13 +63,13 @@ function LivePreview({
       >
         {bannerUrl ? (
           <>
-            <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={bannerUrl} alt="" onError={() => markFailed(bannerUrl)} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0" style={{ backgroundColor: hexToRgba(darken(accent, 0.75), 0.65) }} />
           </>
         ) : null}
         <div className="relative flex items-center gap-3">
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded bg-white/90 object-contain p-0.5" />
+            <img src={logoUrl} alt="" onError={() => markFailed(logoUrl)} className="h-9 w-9 shrink-0 rounded bg-white/90 object-contain p-0.5" />
           ) : (
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-white/90 text-xs font-semibold"

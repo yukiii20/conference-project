@@ -6,31 +6,30 @@
  *                          server/storage) into the bucket. Files already in the bucket are skipped,
  *                          so it is safe to run more than once. Nothing local is deleted.
  *
- * Needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET in server/.env.
+ * Needs S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY (or the older R2_* set) in server/.env.
+ * For a dry run before copying, prefer `npm run migrate-storage` (scripts/migrate-storage.ts).
  * STORAGE_DRIVER itself can stay 'local' while you run this.
  */
 import 'dotenv/config'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { R2Driver, type StorageArea } from '../storage/driver.js'
+import { S3Driver, s3OptionsFromEnv, type StorageArea } from '../storage/driver.js'
 import { PRIVATE_DIR, PUBLIC_DIR } from '../storage/paths.js'
 
-const REQUIRED = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'] as const
-
-function driverFromEnv(): R2Driver {
-  const missing = REQUIRED.filter((k) => !process.env[k])
-  if (missing.length) {
-    console.error(`Missing in server/.env: ${missing.join(', ')}`)
+function driverFromEnv(): S3Driver {
+  const options = s3OptionsFromEnv(process.env)
+  if (!options) {
+    console.error('Missing in server/.env: S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY and S3_ENDPOINT (or the older R2_* set).')
     process.exit(1)
   }
-  return new R2Driver(process.env.R2_ACCOUNT_ID!, process.env.R2_ACCESS_KEY_ID!, process.env.R2_SECRET_ACCESS_KEY!, process.env.R2_BUCKET!)
+  return new S3Driver(options)
 }
 
 async function check() {
   const r2 = driverFromEnv()
   const key = `_healthcheck/${Date.now()}.txt`
   const body = Buffer.from(`R2 check ${new Date().toISOString()}`)
-  process.stdout.write(`Bucket "${process.env.R2_BUCKET}": upload... `)
+  process.stdout.write(`Bucket "${process.env.S3_BUCKET || process.env.R2_BUCKET}": upload... `)
   await r2.put('private', key, body, 'text/plain')
   process.stdout.write('read... ')
   const back = await r2.get('private', key)
@@ -38,7 +37,7 @@ async function check() {
   process.stdout.write('delete... ')
   await r2.delete('private', key)
   if (await r2.exists('private', key)) throw new Error('The test file was not deleted.')
-  console.log('OK. R2 is ready.')
+  console.log('OK. The bucket is ready.')
 }
 
 async function* walk(dir: string): AsyncGenerator<string> {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { downloadSubmissionFile } from '../../lib/submissionFiles'
 import { FileViewerModal } from '../../components/FileViewerModal'
+import { useToast } from '../../components/ui/Toast'
 import { RECOMMENDATIONS, reviewFormSchema, type ReviewFormInput } from '../../lib/validation'
 import { FILE_KIND_LABELS } from '../../lib/submissionDisplay'
 import { Alert, Button, Card, ConfirmDialog, FormField, Select, SkeletonText, Textarea } from '../../components/ui'
@@ -38,6 +39,7 @@ const EMPTY_FORM = {
 }
 
 export function ReviewForm({ assignmentId, submissionId }: { assignmentId: string; submissionId: string }) {
+  const { showToast } = useToast()
   const [submission, setSubmission] = useState<AssignmentDetail['submission'] | null>(null)
   const [files, setFiles] = useState<AssignmentDetail['files']>([])
   const [viewingFile, setViewingFile] = useState<AssignmentDetail['files'][number] | null>(null)
@@ -87,8 +89,9 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
     setSaved(false)
   }
 
-  function handleDownload(fileId: string) {
-    downloadSubmissionFile(submissionId, fileId)
+  async function handleDownload(fileId: string) {
+    const error = await downloadSubmissionFile(submissionId, fileId)
+    if (error) showToast(error, 'error')
   }
 
   async function persist(mode: 'draft' | 'submitted'): Promise<boolean> {

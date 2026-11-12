@@ -67,11 +67,20 @@ const envSchema = z
     // server/src/storage/paths.ts.
     STORAGE_DIR: z.string().optional(),
 
-    // Where uploaded files live. 'local' = the STORAGE_DIR folder above (development,
-    // tests). 'r2' = a Cloudflare R2 bucket (production on Render's free plan, whose disk
-    // is wiped on every deploy). Paths saved in the database are the same for both, so
-    // switching never changes a URL. See docs/cloudflare-r2-setup.md.
-    STORAGE_DRIVER: z.enum(['local', 'r2']).default('local'),
+    // Where uploaded files live. 'local' = the STORAGE_DIR folder above (development, tests;
+    // on Render's free plan every deploy or restart WIPES it). 's3' = any S3-compatible bucket
+    // (Cloudflare R2, Backblaze B2, AWS S3) - use this in production. 'r2' is the older name
+    // for the same driver and still works. Paths saved in the database are identical for every
+    // driver, so switching never changes a URL. See docs/cloudflare-r2-setup.md.
+    STORAGE_DRIVER: z.enum(['local', 's3', 'r2']).default('local'),
+    S3_ENDPOINT: z.string().url().optional().or(z.literal('').transform(() => undefined)),
+    S3_REGION: z.string().optional(),
+    S3_BUCKET: z.string().optional(),
+    S3_ACCESS_KEY_ID: z.string().optional(),
+    S3_SECRET_ACCESS_KEY: z.string().optional(),
+    // 'true'/'false'. Left unset: path-style whenever S3_ENDPOINT is set (works for R2, B2 and MinIO).
+    S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).optional().or(z.literal('').transform(() => undefined)),
+    // Older Cloudflare-only settings, still accepted when the S3_* ones are not set.
     R2_ACCOUNT_ID: z.string().optional(),
     R2_ACCESS_KEY_ID: z.string().optional(),
     R2_SECRET_ACCESS_KEY: z.string().optional(),
@@ -102,9 +111,18 @@ const envSchema = z
       }
     }
 
-    if (data.STORAGE_DRIVER === 'r2') {
-      for (const key of ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'] as const) {
-        if (!data[key]) ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when STORAGE_DRIVER=r2.` })
+    if (data.STORAGE_DRIVER === 's3' || data.STORAGE_DRIVER === 'r2') {
+      const s3Complete = Boolean(data.S3_BUCKET && data.S3_ACCESS_KEY_ID && data.S3_SECRET_ACCESS_KEY)
+      const r2Complete = Boolean(data.R2_ACCOUNT_ID && data.R2_BUCKET && data.R2_ACCESS_KEY_ID && data.R2_SECRET_ACCESS_KEY)
+      if (!s3Complete && !r2Complete) {
+        for (const key of ['S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
+          if (!data[key]) {
+            ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when STORAGE_DRIVER=${data.STORAGE_DRIVER}.` })
+          }
+        }
+      }
+      if (s3Complete && !data.S3_ENDPOINT && !data.S3_REGION) {
+        ctx.addIssue({ code: 'custom', path: ['S3_REGION'], message: 'Set S3_ENDPOINT (R2, B2, MinIO) or S3_REGION (AWS S3).' })
       }
     }
 
@@ -160,4 +178,23 @@ if (isProduction && env.EMAIL_MODE === 'console') {
       '(password resets, invitations, notifications all just log to this console). ' +
       'Set EMAIL_MODE=smtp with SMTP_HOST/SMTP_USER/SMTP_PASS/MAIL_FROM before going live. ***',
   )
+}
+
+// Render's free plan has no persistent disk: with the local driver every upload (logos,
+// photos, abstracts, papers, certificates) disappears on the next deploy or restart, while
+// the database still points at it. Loud on purpose - this was the cause of "pictures only
+// show for the person who uploaded them" and "file is no longer available".
+// (A persistent disk mounted at STORAGE_DIR would survive, but the free plan has none.)
+export const LOCAL_STORAGE_PRODUCTION_WARNING = [
+  '',
+  '**************************************************************************************',
+  '*** WARNING: STORAGE_DRIVER=local in production.                                   ***',
+  "*** Uploaded files are written to this server's own disk and WILL BE LOST on the   ***",
+  '*** next deploy or restart. Set STORAGE_DRIVER=s3 and the S3_* variables.          ***',
+  '**************************************************************************************',
+  '',
+].join('\n')
+
+if (isProduction && env.STORAGE_DRIVER === 'local') {
+  console.warn(LOCAL_STORAGE_PRODUCTION_WARNING)
 }

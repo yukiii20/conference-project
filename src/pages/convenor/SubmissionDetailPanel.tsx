@@ -3,6 +3,7 @@ import { api, ApiError } from '../../lib/api'
 import { Avatar } from '../../components/Avatar'
 import { downloadSubmissionFile } from '../../lib/submissionFiles'
 import { FileViewerModal } from '../../components/FileViewerModal'
+import { useToast } from '../../components/ui/Toast'
 import { assignReviewerSchema, decisionSchema, DECISIONS, DECISION_STAGES, type DecisionInput } from '../../lib/validation'
 import {
   DECISION_LABELS,
@@ -83,6 +84,7 @@ function defaultDueDate() {
 }
 
 export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferenceId: string; submissionId: string }) {
+  const { showToast } = useToast()
   const [submission, setSubmission] = useState<Submission | null>(null)
   const [authors, setAuthors] = useState<Author[]>([])
   const [files, setFiles] = useState<FileRow[]>([])
@@ -159,8 +161,9 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
     setAssigning(false)
   }
 
-  function handleDownload(fileId: string) {
-    downloadSubmissionFile(submissionId, fileId)
+  async function handleDownload(fileId: string) {
+    const error = await downloadSubmissionFile(submissionId, fileId)
+    if (error) showToast(error, 'error')
   }
 
   function handleDecision(e: React.FormEvent) {

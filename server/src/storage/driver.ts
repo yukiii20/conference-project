@@ -19,10 +19,17 @@ import { PRIVATE_DIR, PUBLIC_DIR } from './paths.js'
  */
 export type StorageArea = 'public' | 'private'
 
-export type StoredObject = { stream: Readable; size: number | null; contentType: string | null }
+export type StoredObject = {
+  stream: Readable
+  size: number | null
+  contentType: string | null
+  /** Quoted entity tag for HTTP caching (If-None-Match), when known. */
+  etag?: string | null
+  lastModified?: Date | null
+}
 
 export interface StorageDriver {
-  readonly name: 'local' | 'r2'
+  readonly name: 'local' | 's3'
   put(area: StorageArea, key: string, body: Buffer, contentType?: string): Promise<void>
   /** null when the file does not exist. */
   get(area: StorageArea, key: string): Promise<Buffer | null>
@@ -45,6 +52,7 @@ const CONTENT_TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   webp: 'image/webp',
+  gif: 'image/gif',
   svg: 'image/svg+xml',
   pdf: 'application/pdf',
   doc: 'application/msword',
@@ -94,7 +102,14 @@ export class LocalDriver implements StorageDriver {
     const full = this.full(area, key)
     try {
       const info = await stat(full)
-      return { stream: createReadStream(full), size: info.size, contentType: contentTypeFor(key) }
+      return {
+        stream: createReadStream(full),
+        size: info.size,
+        contentType: contentTypeFor(key),
+        // Same shape as express.static's weak ETag: changes whenever the file is replaced.
+        etag: `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`,
+        lastModified: info.mtime,
+      }
     } catch (err) {
       if (isNotFound(err)) return null
       throw err
@@ -120,31 +135,43 @@ export class LocalDriver implements StorageDriver {
   }
 }
 
-// ---------------------------------------------------------------------------------- Cloudflare R2
+// ---------------------------------------------------------------------------------- S3-compatible
+
+export type S3DriverOptions = {
+  /** e.g. https://<account>.r2.cloudflarestorage.com or https://s3.us-west-004.backblazeb2.com. Omit for AWS S3. */
+  endpoint?: string
+  region: string
+  bucket: string
+  accessKeyId: string
+  secretAccessKey: string
+  /** Path-style URLs (https://endpoint/bucket/key). Defaults to true whenever a custom endpoint is set. */
+  forcePathStyle?: boolean
+}
 
 /**
- * Cloudflare R2 through its S3-compatible API. One private bucket holds both areas under
- * "public/" and "private/" prefixes; the bucket itself is never made public - public files
- * are still served by this backend at /files/public/..., so existing URLs keep working.
+ * Any S3-compatible bucket (Cloudflare R2, Backblaze B2, AWS S3, MinIO...). One private bucket
+ * holds both areas under "public/" and "private/" prefixes - the same layout as the local
+ * storage folder (storage/public/..., storage/private/...), so a key is exactly the relative
+ * path saved in the database. The bucket itself is never made public: public files are still
+ * served by this backend at /files/public/..., so existing URLs keep working, and private files
+ * are only streamed by routes that have checked permission first.
  */
-export class R2Driver implements StorageDriver {
-  readonly name = 'r2' as const
-  private readonly client: S3Client
+export class S3Driver implements StorageDriver {
+  readonly name = 's3' as const
+  protected readonly client: S3Client
+  protected readonly bucket: string
 
-  constructor(
-    accountId: string,
-    accessKeyId: string,
-    secretAccessKey: string,
-    private readonly bucket: string,
-  ) {
+  constructor(options: S3DriverOptions) {
+    this.bucket = options.bucket
     this.client = new S3Client({
-      region: 'auto',
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId, secretAccessKey },
+      region: options.region,
+      ...(options.endpoint ? { endpoint: options.endpoint } : {}),
+      forcePathStyle: options.forcePathStyle ?? Boolean(options.endpoint),
+      credentials: { accessKeyId: options.accessKeyId, secretAccessKey: options.secretAccessKey },
     })
   }
 
-  private key(area: StorageArea, key: string): string {
+  protected key(area: StorageArea, key: string): string {
     assertSafeKey(key)
     return `${area}/${key}`
   }
@@ -167,7 +194,13 @@ export class R2Driver implements StorageDriver {
     try {
       const out = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: this.key(area, key) }))
       if (!out.Body) return null
-      return { stream: out.Body as Readable, size: out.ContentLength ?? null, contentType: out.ContentType ?? contentTypeFor(key) }
+      return {
+        stream: out.Body as Readable,
+        size: out.ContentLength ?? null,
+        contentType: out.ContentType ?? contentTypeFor(key),
+        etag: out.ETag ?? null,
+        lastModified: out.LastModified ?? null,
+      }
     } catch (err) {
       if (isNotFound(err)) return null
       throw err
@@ -185,8 +218,15 @@ export class R2Driver implements StorageDriver {
   }
 
   async delete(area: StorageArea, key: string): Promise<void> {
-    // S3/R2 DeleteObject succeeds for a missing key, matching "missing is not an error".
+    // DeleteObject succeeds for a missing key, matching "missing is not an error".
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: this.key(area, key) }))
+  }
+}
+
+/** Cloudflare R2 shorthand (kept for the older R2_* settings): an S3Driver pointed at the account's R2 endpoint. */
+export class R2Driver extends S3Driver {
+  constructor(accountId: string, accessKeyId: string, secretAccessKey: string, bucket: string) {
+    super({ endpoint: `https://${accountId}.r2.cloudflarestorage.com`, region: 'auto', bucket, accessKeyId, secretAccessKey })
   }
 }
 
@@ -194,9 +234,38 @@ export class R2Driver implements StorageDriver {
 
 let driver: StorageDriver | null = null
 
+/** S3 settings from the environment: the generic S3_* variables, or the older R2_* ones. */
+type S3EnvKeys =
+  | 'S3_ENDPOINT' | 'S3_REGION' | 'S3_BUCKET' | 'S3_ACCESS_KEY_ID' | 'S3_SECRET_ACCESS_KEY' | 'S3_FORCE_PATH_STYLE'
+  | 'R2_ACCOUNT_ID' | 'R2_ACCESS_KEY_ID' | 'R2_SECRET_ACCESS_KEY' | 'R2_BUCKET'
+
+export function s3OptionsFromEnv(source: Partial<Record<S3EnvKeys, string | undefined>> = env): S3DriverOptions | null {
+  if (source.S3_BUCKET && source.S3_ACCESS_KEY_ID && source.S3_SECRET_ACCESS_KEY) {
+    return {
+      endpoint: source.S3_ENDPOINT || undefined,
+      region: source.S3_REGION || 'auto',
+      bucket: source.S3_BUCKET,
+      accessKeyId: source.S3_ACCESS_KEY_ID,
+      secretAccessKey: source.S3_SECRET_ACCESS_KEY,
+      forcePathStyle: source.S3_FORCE_PATH_STYLE ? source.S3_FORCE_PATH_STYLE === 'true' : undefined,
+    }
+  }
+  if (source.R2_ACCOUNT_ID && source.R2_BUCKET && source.R2_ACCESS_KEY_ID && source.R2_SECRET_ACCESS_KEY) {
+    return {
+      endpoint: `https://${source.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      region: 'auto',
+      bucket: source.R2_BUCKET,
+      accessKeyId: source.R2_ACCESS_KEY_ID,
+      secretAccessKey: source.R2_SECRET_ACCESS_KEY,
+    }
+  }
+  return null
+}
+
 export function createDriverFromEnv(): StorageDriver {
-  if (env.STORAGE_DRIVER === 'r2') {
-    return new R2Driver(env.R2_ACCOUNT_ID!, env.R2_ACCESS_KEY_ID!, env.R2_SECRET_ACCESS_KEY!, env.R2_BUCKET!)
+  if (env.STORAGE_DRIVER === 's3' || env.STORAGE_DRIVER === 'r2') {
+    // env.ts has already refused to start without a complete set, so this is never null here.
+    return new S3Driver(s3OptionsFromEnv()!)
   }
   return new LocalDriver()
 }

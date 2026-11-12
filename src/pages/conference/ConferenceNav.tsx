@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { publicImageUrl } from '../../lib/storage'
 import { formatDateRange, formatKathmandu, formatKathmanduTime } from '../../lib/datetime'
 import { DEADLINE_LABELS, type Conference, type Deadline, type ScheduleRow, type Supporter, type Track } from './types'
+import { SafeImage } from '../../components/SafeImage'
 
 export const SECTIONS = [
   { id: 'home', label: 'Home' },
@@ -108,12 +109,14 @@ function SupportersPanel({ supporters, accent, onJump }: { supporters: Supporter
       <div className="flex flex-wrap items-center gap-3">
         {preview.map((s) => {
           const url = publicImageUrl(s.logo_path)
-          return url ? (
-            <img key={s.id} src={url} alt={s.name} className="h-8 max-w-[72px] object-contain" />
-          ) : (
-            <span key={s.id} className="text-xs text-ink/70">
-              {s.name}
-            </span>
+          return (
+            <SafeImage
+              key={s.id}
+              src={url}
+              alt={s.name}
+              className="h-8 max-w-[72px] object-contain"
+              fallback={<span className="text-xs text-ink/70">{s.name}</span>}
+            />
           )
         })}
       </div>

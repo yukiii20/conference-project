@@ -23,6 +23,7 @@ import {
   type Supporter,
   type Track,
 } from './conference/types'
+import { SafeImage } from '../components/SafeImage'
 
 const TIER_LABELS: Record<SupporterTier, string> = {
   organizer: 'Organizers',
@@ -544,13 +545,16 @@ export function ConferencePage() {
               const photoUrl = publicImageUrl(s.photo_path)
               return (
                 <div key={s.id} className="rounded-xl border border-border-soft bg-surface shadow-card p-4 text-center">
-                  {photoUrl ? (
-                    <img src={photoUrl} alt={s.full_name} className="mx-auto h-20 w-20 rounded-full object-cover" />
-                  ) : (
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-background text-xl font-semibold text-ink/40">
-                      {s.full_name.charAt(0)}
-                    </div>
-                  )}
+                  <SafeImage
+                    src={photoUrl}
+                    alt={s.full_name}
+                    className="mx-auto h-20 w-20 rounded-full object-cover"
+                    fallback={
+                      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-background text-xl font-semibold text-ink/40">
+                        {s.full_name.charAt(0)}
+                      </div>
+                    }
+                  />
                   <p className="mt-3 font-medium text-ink">{s.full_name}</p>
                   {s.designation ? <p className="text-xs text-ink/60">{s.designation}</p> : null}
                   {s.affiliation ? <p className="text-xs text-ink/50">{s.affiliation}</p> : null}
@@ -583,10 +587,14 @@ export function ConferencePage() {
                 <div className="mt-3 flex flex-wrap items-center gap-6">
                   {group.items.map((s) => {
                     const url = publicImageUrl(s.logo_path)
-                    const content = url ? (
-                      <img src={url} alt={s.name} className="h-16 max-w-[160px] object-contain" />
-                    ) : (
-                      <span className="text-ink/70">{s.name}</span>
+                    // A logo missing from storage falls back to the supporter's name.
+                    const content = (
+                      <SafeImage
+                        src={url}
+                        alt={s.name}
+                        className="h-16 max-w-[160px] object-contain"
+                        fallback={<span className="text-ink/70">{s.name}</span>}
+                      />
                     )
                     return s.website_url ? (
                       <a key={s.id} href={s.website_url} target="_blank" rel="noopener noreferrer" title={s.name} className="opacity-90 transition hover:opacity-100">
