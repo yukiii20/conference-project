@@ -11,6 +11,7 @@ export type SpeakerRow = {
   designation: string | null
   affiliation: string | null
   bio: string | null
+  research_topics: string | null
   photo_path: string | null
   speaker_type: string
   display_order: number
@@ -19,7 +20,7 @@ export type SpeakerRow = {
 
 export async function listSpeakers(conferenceId: string): Promise<SpeakerRow[]> {
   const [rows] = await pool.query(
-    `SELECT id, full_name, designation, affiliation, bio, photo_path, speaker_type, display_order, is_public
+    `SELECT id, full_name, designation, affiliation, bio, research_topics, photo_path, speaker_type, display_order, is_public
      FROM conference_speakers WHERE conference_id = ? ORDER BY display_order`,
     [conferenceId],
   )
@@ -39,14 +40,15 @@ export async function createSpeaker(
     const nextOrder = ((orderRows as Array<{ max_order: number | null }>)[0]?.max_order ?? -1) + 1
 
     await conn.query(
-      `INSERT INTO conference_speakers (conference_id, full_name, designation, affiliation, bio, speaker_type, is_public, display_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO conference_speakers (conference_id, full_name, designation, affiliation, bio, research_topics, speaker_type, is_public, display_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         conferenceId,
         input.full_name,
         input.designation ?? null,
         input.affiliation ?? null,
         input.bio ?? null,
+        input.research_topics ?? null,
         input.speaker_type,
         input.is_public,
         nextOrder,
@@ -73,7 +75,7 @@ export async function createSpeaker(
 
 async function loadSpeakerForUpdate(conn: PoolConnection, conferenceId: string, speakerId: string): Promise<SpeakerRow> {
   const [rows] = await conn.query(
-    `SELECT id, full_name, designation, affiliation, bio, photo_path, speaker_type, display_order, is_public
+    `SELECT id, full_name, designation, affiliation, bio, research_topics, photo_path, speaker_type, display_order, is_public
      FROM conference_speakers WHERE id = ? AND conference_id = ? LIMIT 1 FOR UPDATE`,
     [speakerId, conferenceId],
   )
@@ -95,7 +97,7 @@ export async function updateSpeaker(
     const values: unknown[] = []
     const oldValues: Record<string, unknown> = {}
     const newValues: Record<string, unknown> = {}
-    for (const key of ['full_name', 'designation', 'affiliation', 'bio', 'speaker_type', 'is_public'] as const) {
+    for (const key of ['full_name', 'designation', 'affiliation', 'bio', 'research_topics', 'speaker_type', 'is_public'] as const) {
       if (!(key in input)) continue
       const value = (input as Record<string, unknown>)[key]
       if (value === current[key]) continue

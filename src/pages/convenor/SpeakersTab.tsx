@@ -13,13 +13,14 @@ type Speaker = {
   designation: string | null
   affiliation: string | null
   bio: string | null
+  research_topics?: string | null
   photo_path: string | null
   speaker_type: (typeof SPEAKER_TYPES)[number]
   display_order: number
   is_public: boolean
 }
 
-type EditState = { full_name: string; designation: string; affiliation: string; bio: string; speaker_type: SpeakerInput['speaker_type'] }
+type EditState = { full_name: string; designation: string; affiliation: string; bio: string; research_topics: string; speaker_type: SpeakerInput['speaker_type'] }
 
 function toEditState(s: Speaker): EditState {
   return {
@@ -27,11 +28,12 @@ function toEditState(s: Speaker): EditState {
     designation: s.designation ?? '',
     affiliation: s.affiliation ?? '',
     bio: s.bio ?? '',
+    research_topics: s.research_topics ?? '',
     speaker_type: s.speaker_type,
   }
 }
 
-const EMPTY_NEW: EditState = { full_name: '', designation: '', affiliation: '', bio: '', speaker_type: 'invited' }
+const EMPTY_NEW: EditState = { full_name: '', designation: '', affiliation: '', bio: '', research_topics: '', speaker_type: 'invited' }
 
 const TYPE_LABELS: Record<SpeakerInput['speaker_type'], string> = {
   keynote: 'Keynote',
@@ -237,6 +239,13 @@ export function SpeakersTab({ conferenceId }: { conferenceId: string }) {
                       onChange={(e) => updateEdit(speaker.id, { bio: e.target.value })}
                       placeholder="Bio"
                       rows={2}
+                    />
+                    <Input
+                      value={edit.research_topics}
+                      onChange={(e) => updateEdit(speaker.id, { research_topics: e.target.value })}
+                      placeholder="Research topics (optional, shown to the Audience)"
+                      aria-label="Research topics"
+                      maxLength={500}
                     />
                   </div>
                 </div>

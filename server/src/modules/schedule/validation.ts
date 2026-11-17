@@ -72,6 +72,8 @@ export const SESSION_TYPES = [
   'break',
 ] as const
 
+export const DELIVERY_MODES = ['in_person', 'online', 'hybrid'] as const
+
 export const sessionSchema = z
   .object({
     title: z.string().trim().min(3, 'Title must be at least 3 characters.').max(300),
@@ -83,10 +85,25 @@ export const sessionSchema = z
     starts_at: z.string().trim().refine((v) => !Number.isNaN(new Date(v).getTime()), 'Enter a valid start time.'),
     ends_at: z.string().trim().refine((v) => !Number.isNaN(new Date(v).getTime()), 'Enter a valid end time.'),
     status: z.enum(SESSION_STATUSES),
+    /** In person (default), online or hybrid. Online/hybrid need a private https link. */
+    delivery_mode: z.enum(DELIVERY_MODES).default('in_person'),
+    /** Private: only registered Audience get it, from 15 minutes before the start until the end. */
+    online_url: z
+      .string()
+      .trim()
+      .max(1000, 'The link must be 1000 characters or fewer.')
+      .transform((v) => (v === '' ? null : v))
+      .nullable()
+      .optional()
+      .refine((v) => v == null || /^https:\/\/\S+$/i.test(v), 'The link must start with https://'),
+    online_instructions: optionalText(1000, 'Joining instructions'),
   })
   .superRefine((data, ctx) => {
     if (new Date(data.ends_at).getTime() <= new Date(data.starts_at).getTime()) {
       ctx.addIssue({ code: 'custom', message: 'End time must be after the start time.', path: ['ends_at'] })
+    }
+    if (data.delivery_mode !== 'in_person' && !data.online_url) {
+      ctx.addIssue({ code: 'custom', message: 'Add the online meeting link for an online or hybrid session.', path: ['online_url'] })
     }
   })
 export type SessionInput = z.infer<typeof sessionSchema>

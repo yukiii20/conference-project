@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { api, ApiError } from '../../../lib/api'
 import { fromKathmanduInputValue, formatKathmandu, formatKathmanduTime, kathmanduDateKey, toKathmanduInputValue } from '../../../lib/datetime'
-import { SESSION_STATUSES, SESSION_TYPES, sessionSchema, type SessionInput } from '../../../lib/validation'
+import { SESSION_STATUSES, SESSION_TYPES, sessionSchema, type SessionInput, DELIVERY_MODES, DELIVERY_MODE_LABELS } from '../../../lib/validation'
 import { Alert, Button, ConfirmDialog, EmptyState, Input, Select, SkeletonText, StatusChip, Tabs, Textarea } from '../../../components/ui'
 import { EMPTY_SESSION_FORM, SESSION_TYPE_STYLES, findClashes, trackColor, type Room, type ScheduleSlot, type SessionRow, type Track } from './shared'
 import { WarningsPanel } from './WarningsPanel'
@@ -92,6 +92,9 @@ export function SessionsSection({
       starts_at: toKathmanduInputValue(session.starts_at),
       ends_at: toKathmanduInputValue(session.ends_at),
       status: session.status,
+      delivery_mode: session.delivery_mode ?? 'in_person',
+      online_url: session.online_url ?? '',
+      online_instructions: session.online_instructions ?? '',
     })
     setFormError(null)
   }
@@ -134,6 +137,9 @@ export function SessionsSection({
       starts_at: startsIso,
       ends_at: endsIso,
       status: parsed.data.status,
+      delivery_mode: parsed.data.delivery_mode,
+      online_url: parsed.data.delivery_mode === 'in_person' ? null : parsed.data.online_url || null,
+      online_instructions: parsed.data.delivery_mode === 'in_person' ? null : parsed.data.online_instructions || null,
     }
 
     try {
@@ -417,6 +423,47 @@ export function SessionsSection({
             ))}
           </Select>
         </div>
+
+        <fieldset className="space-y-2 rounded-md border border-border-soft p-3">
+          <legend className="px-1 text-xs font-medium text-text-muted">How people attend</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {DELIVERY_MODES.map((mode) => (
+              <label key={mode} className="flex min-h-10 items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="delivery_mode"
+                  value={mode}
+                  checked={form.delivery_mode === mode}
+                  onChange={() => setForm((p) => ({ ...p, delivery_mode: mode }))}
+                />
+                {DELIVERY_MODE_LABELS[mode]}
+              </label>
+            ))}
+          </div>
+          {form.delivery_mode !== 'in_person' ? (
+            <>
+              <Input
+                type="url"
+                inputMode="url"
+                value={form.online_url}
+                onChange={(e) => setForm((p) => ({ ...p, online_url: e.target.value }))}
+                placeholder="https://… meeting link (kept private)"
+                aria-label="Online meeting link"
+              />
+              <Textarea
+                value={form.online_instructions}
+                onChange={(e) => setForm((p) => ({ ...p, online_instructions: e.target.value }))}
+                placeholder="Joining instructions, e.g. passcode (optional)"
+                aria-label="Joining instructions"
+                rows={2}
+              />
+              <p className="text-xs text-text-muted">
+                Only registered Audience members see the link, from 15 minutes before the start until the session ends. It never appears
+                on the public programme.
+              </p>
+            </>
+          ) : null}
+        </fieldset>
 
         {slots.length > 0 ? (
           <div>

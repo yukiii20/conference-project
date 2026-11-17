@@ -435,3 +435,31 @@ export async function createSessionDirect(
   return (rows as Array<{ id: string }>)[0]!.id
 }
 
+/**
+ * An Audience member of one conference: the active 'attendee' membership plus a registration
+ * (confirmed by default) in a "General" category, inserted directly. Returns ids + a session
+ * cookie bound to that conference.
+ */
+export async function createAudienceMember(
+  conferenceId: string,
+  email: string,
+  opts: { registrationStatus?: 'pending' | 'confirmed' | 'waitlisted' | 'cancelled'; fullName?: string } = {},
+): Promise<{ userId: string; registrationId: string; cookie: string }> {
+  const userId = await createUser({ email, password: 'Str0ng!Pass', fullName: opts.fullName ?? 'Audience Member' })
+  await addConferenceMember(conferenceId, userId, 'attendee')
+  await pool.query(
+    `INSERT IGNORE INTO registration_categories (conference_id, code, name, is_active) VALUES (?, 'general', 'General', TRUE)`,
+    [conferenceId],
+  )
+  const [catRows] = await pool.query(`SELECT id FROM registration_categories WHERE conference_id = ? AND code = 'general'`, [conferenceId])
+  const categoryId = (catRows as Array<{ id: string }>)[0]!.id
+  const number = `AUD-${Math.random().toString(36).slice(2, 10)}`
+  await pool.query(
+    `INSERT INTO registrations (conference_id, user_id, category_id, registration_number, status, amount_due, currency, qr_token)
+     VALUES (?, ?, ?, ?, ?, 0, 'NPR', ?)`,
+    [conferenceId, userId, categoryId, number, opts.registrationStatus ?? 'confirmed', generateToken().slice(0, 48)],
+  )
+  const [regRows] = await pool.query('SELECT id FROM registrations WHERE registration_number = ?', [number])
+  const registrationId = (regRows as Array<{ id: string }>)[0]!.id
+  return { userId, registrationId, cookie: await createDirectSession(userId, conferenceId) }
+}

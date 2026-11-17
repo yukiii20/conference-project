@@ -11,6 +11,8 @@ import {
   MessageSquareHeart,
   QrCode,
   Ticket,
+  Mic,
+  ListChecks,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -27,6 +29,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   'session-chair': CalendarDays,
   staff: QrCode,
   ticket: Ticket,
+  programme: ListChecks,
+  speakers: Mic,
   certificates: Award,
   feedback: MessageSquareHeart,
   notifications: Bell,

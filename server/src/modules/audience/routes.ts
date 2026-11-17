@@ -1,8 +1,9 @@
 import { Router } from 'express'
-import { requireAuth } from '../../middleware/auth.js'
+import { requireAuth, requireConferencePermission } from '../../middleware/auth.js'
 import { assertConferenceInSession } from '../../middleware/sessionScope.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { NotFoundError } from '../../utils/errors.js'
+import { getAudienceProgramme, getAudienceSpeakers, joinOnline } from './programme.js'
 import { resendTicketEmail } from './ticket.js'
 import { getMyTicket } from './ticketService.js'
 
@@ -35,3 +36,34 @@ audienceRouter.post('/:id/my-ticket/email', requireAuth, async (req, res, next) 
   }
 })
 
+// ------------------------------------------------------------------ Programme & speakers
+audienceRouter.get('/:id/audience/programme', requireConferencePermission('audience.view_content'), async (req, res, next) => {
+  try {
+    res.json(await getAudienceProgramme(req.params.id!, req.user!.id))
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.get('/:id/audience/speakers', requireConferencePermission('audience.view_content'), async (req, res, next) => {
+  try {
+    res.json({ speakers: await getAudienceSpeakers(req.params.id!) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// "Join online": returns the private link (never cached) and records online attendance.
+audienceRouter.post(
+  '/:id/audience/sessions/:sessionId/join-online',
+  requireConferencePermission('audience.view_content'),
+  async (req, res, next) => {
+    try {
+      const result = await joinOnline(req.params.id!, req.params.sessionId!, req.user!.id)
+      res.setHeader('Cache-Control', 'no-store')
+      res.json(result)
+    } catch (err) {
+      next(err)
+    }
+  },
+)

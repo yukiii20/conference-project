@@ -15,6 +15,8 @@ export type PortalSectionId =
   | 'session-chair'
   | 'staff'
   | 'profile'
+  | 'programme'
+  | 'speakers'
 
 export type PortalSectionConfig = {
   id: PortalSectionId
@@ -38,6 +40,9 @@ export const PORTAL_SECTIONS: PortalSectionConfig[] = [
   // Has its own conference list: anyone who checked in, chaired or presented, with or without a conference role.
   { id: 'feedback', label: 'Give feedback', requiresRole: null, crossConference: true },
   { id: 'notifications', label: 'Notifications', requiresRole: null, crossConference: true },
+  // Audience role ('attendee') sections - the server guards each with an audience.* permission.
+  { id: 'programme', label: 'Programme', requiresRole: 'attendee' },
+  { id: 'speakers', label: 'Speakers', requiresRole: 'attendee' },
   { id: 'profile', label: 'Profile', requiresRole: 'attendee' },
 ]
 
@@ -49,7 +54,8 @@ export const PORTAL_SECTIONS: PortalSectionConfig[] = [
 export const AUDIENCE_SECTION_IDS: PortalSectionId[] = [
   'dashboard',
   'ticket',
-  'agenda',
+  'programme',
+  'speakers',
   'feedback',
   'notifications',
   'certificates',

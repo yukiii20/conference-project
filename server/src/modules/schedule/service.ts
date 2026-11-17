@@ -332,13 +332,17 @@ export type SessionRow = {
   starts_at: string
   ends_at: string
   status: string
+  delivery_mode: 'in_person' | 'online' | 'hybrid'
+  online_url: string | null
+  online_instructions: string | null
 }
 
 export type ChairRow = { user_id: string; full_name: string; chair_role: 'chair' | 'co_chair' }
 
 export async function listSessions(conferenceId: string): Promise<SessionRow[]> {
   const [rows] = await pool.query(
-    `SELECT id, title, session_type, description, track_id, room_id, slot_id, starts_at, ends_at, status
+    `SELECT id, title, session_type, description, track_id, room_id, slot_id, starts_at, ends_at, status,
+            delivery_mode, online_url, online_instructions
      FROM conference_sessions WHERE conference_id = ? ORDER BY starts_at`,
     [conferenceId],
   )
@@ -391,6 +395,11 @@ async function assertWithinConferenceDates(
   }
 }
 
+/** The private meeting link is never copied into the audit log (only whether one is set). */
+function maskOnlineUrl<T extends { online_url?: string | null }>(value: T): T {
+  return { ...value, online_url: value.online_url ? '(set)' : null }
+}
+
 export async function createSession(
   actorUserId: string,
   conferenceId: string,
@@ -400,8 +409,9 @@ export async function createSession(
     await assertWithinConferenceDates(conn, conferenceId, input.starts_at, input.ends_at)
 
     await conn.query(
-      `INSERT INTO conference_sessions (conference_id, room_id, track_id, slot_id, title, session_type, description, starts_at, ends_at, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO conference_sessions (conference_id, room_id, track_id, slot_id, title, session_type, description, starts_at, ends_at, status,
+                                        delivery_mode, online_url, online_instructions)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         conferenceId,
         input.room_id,
@@ -413,6 +423,9 @@ export async function createSession(
         new Date(input.starts_at),
         new Date(input.ends_at),
         input.status,
+        input.delivery_mode,
+        input.delivery_mode === 'in_person' ? null : input.online_url ?? null,
+        input.online_instructions ?? null,
       ],
     )
     const [rows] = await conn.query(
@@ -428,7 +441,7 @@ export async function createSession(
       action: 'session.create',
       entityType: 'conference_sessions',
       entityId: id,
-      newValues: input,
+      newValues: maskOnlineUrl(input),
     })
     return { id }
   })
@@ -436,7 +449,8 @@ export async function createSession(
 
 async function loadSession(conn: PoolConnection, conferenceId: string, sessionId: string): Promise<SessionRow> {
   const [rows] = await conn.query(
-    `SELECT id, title, session_type, description, track_id, room_id, slot_id, starts_at, ends_at, status
+    `SELECT id, title, session_type, description, track_id, room_id, slot_id, starts_at, ends_at, status,
+            delivery_mode, online_url, online_instructions
      FROM conference_sessions WHERE id = ? AND conference_id = ? LIMIT 1 FOR UPDATE`,
     [sessionId, conferenceId],
   )
@@ -524,7 +538,8 @@ export async function updateSession(
 
     await conn.query(
       `UPDATE conference_sessions
-       SET room_id = ?, track_id = ?, slot_id = ?, title = ?, session_type = ?, description = ?, starts_at = ?, ends_at = ?, status = ?
+       SET room_id = ?, track_id = ?, slot_id = ?, title = ?, session_type = ?, description = ?, starts_at = ?, ends_at = ?, status = ?,
+           delivery_mode = ?, online_url = ?, online_instructions = ?
        WHERE id = ?`,
       [
         input.room_id,
@@ -536,6 +551,9 @@ export async function updateSession(
         new Date(input.starts_at),
         new Date(input.ends_at),
         input.status,
+        input.delivery_mode,
+        input.delivery_mode === 'in_person' ? null : input.online_url ?? null,
+        input.online_instructions ?? null,
         sessionId,
       ],
     )
@@ -553,8 +571,8 @@ export async function updateSession(
       action: 'session.update',
       entityType: 'conference_sessions',
       entityId: sessionId,
-      oldValues: current,
-      newValues: input,
+      oldValues: maskOnlineUrl(current),
+      newValues: maskOnlineUrl(input),
     })
   })
 }
@@ -1115,15 +1133,24 @@ export type PublicSessionRow = {
   starts_at: string
   ends_at: string
   status: string
+  delivery_mode: 'in_person' | 'online' | 'hybrid'
+  /** Organiser views only (convenor editor, chair view). */
+  online_url?: string | null
+  online_instructions?: string | null
   room: { id: string; name: string; room_number: string | null; building: string | null } | null
   track: { id: string; name: string } | null
   chairs: ChairRow[]
   presentations: PublicPresentationRow[]
 }
 
-async function assembleSessions(sessionFilter: string, params: unknown[]): Promise<PublicSessionRow[]> {
+async function assembleSessions(
+  sessionFilter: string,
+  params: unknown[],
+  options: { includeOnlineLink?: boolean } = {},
+): Promise<PublicSessionRow[]> {
   const [sessionRows] = await pool.query(
     `SELECT s.id, s.title, s.session_type, s.description, s.starts_at, s.ends_at, s.status,
+            s.delivery_mode, s.online_url, s.online_instructions,
             r.id AS room_id, r.name AS room_name, r.room_number, r.building,
             t.id AS track_id, t.name AS track_name
      FROM conference_sessions s
@@ -1141,6 +1168,9 @@ async function assembleSessions(sessionFilter: string, params: unknown[]): Promi
     starts_at: string
     ends_at: string
     status: string
+    delivery_mode: 'in_person' | 'online' | 'hybrid'
+    online_url: string | null
+    online_instructions: string | null
     room_id: string
     room_name: string
     room_number: string | null
@@ -1195,6 +1225,10 @@ async function assembleSessions(sessionFilter: string, params: unknown[]): Promi
     starts_at: s.starts_at,
     ends_at: s.ends_at,
     status: s.status,
+    delivery_mode: s.delivery_mode,
+    // The private link only goes to organiser views; the Audience gets it from its own
+    // time-gated endpoint (modules/audience) and the public programme never sees it.
+    ...(options.includeOnlineLink ? { online_url: s.online_url, online_instructions: s.online_instructions } : {}),
     room: { id: s.room_id, name: s.room_name, room_number: s.room_number, building: s.building },
     track: s.track_id ? { id: s.track_id, name: s.track_name! } : null,
     chairs: chairsBySession.get(s.id) ?? [],
@@ -1215,13 +1249,18 @@ export async function getPublicSchedule(conferenceId: string): Promise<PublicSes
   return assembleSessions(`s.conference_id = ? AND s.status = 'published'`, [conferenceId])
 }
 
+/** Audience programme: published + cancelled sessions (cancelled shown as cancelled), never drafts or the private link. */
+export async function getAudienceSchedule(conferenceId: string): Promise<PublicSessionRow[]> {
+  return assembleSessions(`s.conference_id = ? AND s.status IN ('published', 'cancelled')`, [conferenceId])
+}
+
 export async function getConvenorSchedule(conferenceId: string): Promise<PublicSessionRow[]> {
-  return assembleSessions(`s.conference_id = ? AND s.status <> 'cancelled'`, [conferenceId])
+  return assembleSessions(`s.conference_id = ? AND s.status <> 'cancelled'`, [conferenceId], { includeOnlineLink: true })
 }
 
 /** One session with its room/track/chairs/presentations — used by both the convenor editor and the session-chair attendance view. */
 export async function getSessionDetail(conferenceId: string, sessionId: string): Promise<PublicSessionRow | null> {
-  const rows = await assembleSessions('s.id = ? AND s.conference_id = ?', [sessionId, conferenceId])
+  const rows = await assembleSessions('s.id = ? AND s.conference_id = ?', [sessionId, conferenceId], { includeOnlineLink: true })
   return rows[0] ?? null
 }
 

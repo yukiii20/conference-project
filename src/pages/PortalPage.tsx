@@ -10,6 +10,8 @@ import { GiveFeedbackTab } from './portal/GiveFeedbackTab'
 import { MyCertificatesTab } from './portal/MyCertificatesTab'
 import { MyTicketTab } from './portal/MyTicketTab'
 import { NotificationsTab } from './portal/NotificationsTab'
+import { ProgrammeTab } from './portal/audience/ProgrammeTab'
+import { AudienceSpeakersTab } from './portal/audience/SpeakersTab'
 import { AuthorSection } from './portal/sections/AuthorSection'
 import { ReviewerSection } from './portal/sections/ReviewerSection'
 import { SessionChairSection } from './portal/sections/SessionChairSection'
@@ -33,6 +35,8 @@ const PORTAL_SEARCH_KEYWORDS: Record<string, string[]> = {
   feedback: ['survey'],
   notifications: ['alerts', 'messages'],
   profile: ['account', 'name', 'password'],
+  programme: ['sessions', 'schedule', 'online', 'join', 'my agenda'],
+  speakers: ['speaker', 'keynote', 'research'],
 }
 
 type PortalConference = { id: string; name: string; slug: string }
@@ -187,6 +191,8 @@ function PortalPageInner() {
               <Route path="agenda" element={<MyAgendaTab conferenceId={conferenceId} />} />
               <Route path="feedback" element={<GiveFeedbackTab />} />
               <Route path="ticket" element={<MyTicketTab conferenceId={conferenceId} />} />
+              <Route path="programme" element={<ProgrammeTab conferenceId={conferenceId} />} />
+              <Route path="speakers" element={<AudienceSpeakersTab conferenceId={conferenceId} />} />
               <Route path="certificates" element={<MyCertificatesTab />} />
               <Route path="notifications" element={<NotificationsTab />} />
               <Route path="profile" element={<Navigate to="/profile" />} />

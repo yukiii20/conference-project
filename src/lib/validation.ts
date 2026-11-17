@@ -333,6 +333,13 @@ export const SESSION_TYPES = [
 ] as const
 export const SESSION_STATUSES = ['draft', 'published', 'cancelled'] as const
 
+export const DELIVERY_MODES = ['in_person', 'online', 'hybrid'] as const
+export const DELIVERY_MODE_LABELS: Record<(typeof DELIVERY_MODES)[number], string> = {
+  in_person: 'In person',
+  online: 'Online',
+  hybrid: 'Hybrid (in person + online)',
+}
+
 export const sessionSchema = z
   .object({
     title: z
@@ -347,8 +354,18 @@ export const sessionSchema = z
     starts_at: z.string().min(1, 'Start time is required.'),
     ends_at: z.string().min(1, 'End time is required.'),
     status: z.enum(SESSION_STATUSES),
+    delivery_mode: z.enum(DELIVERY_MODES).default('in_person'),
+    online_url: z.string().trim().max(1000, 'The link must be 1000 characters or fewer.').default(''),
+    online_instructions: z.string().trim().max(1000, 'Joining instructions must be 1000 characters or fewer.').default(''),
   })
   .superRefine((data, ctx) => {
+    if (data.delivery_mode !== 'in_person') {
+      if (!data.online_url) {
+        ctx.addIssue({ code: 'custom', message: 'Add the online meeting link for an online or hybrid session.', path: ['online_url'] })
+      } else if (!/^https:\/\/\S+$/i.test(data.online_url)) {
+        ctx.addIssue({ code: 'custom', message: 'The online link must start with https://', path: ['online_url'] })
+      }
+    }
     if (data.ends_at <= data.starts_at) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -782,6 +799,7 @@ export const speakerSchema = z.object({
   designation: optionalTrimmed(200, 'Designation'),
   affiliation: optionalTrimmed(300, 'Affiliation'),
   bio: optionalTrimmed(5000, 'Bio'),
+  research_topics: optionalTrimmed(500, 'Research topics'),
   speaker_type: z.enum(SPEAKER_TYPES),
   is_public: z.boolean(),
 })

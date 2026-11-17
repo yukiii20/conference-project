@@ -16,6 +16,8 @@ export const createSpeakerSchema = z.object({
   designation: optionalTrimmed(200),
   affiliation: optionalTrimmed(300),
   bio: optionalTrimmed(5000),
+  /** Optional, shown to the Audience: e.g. "Hydrology, climate adaptation". */
+  research_topics: optionalTrimmed(500),
   speaker_type: z.enum(SPEAKER_TYPES).default('invited'),
   is_public: z.boolean().default(true),
 })
@@ -26,6 +28,7 @@ export const updateSpeakerSchema = z.object({
   designation: optionalTrimmed(200),
   affiliation: optionalTrimmed(300),
   bio: optionalTrimmed(5000),
+  research_topics: optionalTrimmed(500),
   speaker_type: z.enum(SPEAKER_TYPES).optional(),
   is_public: z.boolean().optional(),
 })

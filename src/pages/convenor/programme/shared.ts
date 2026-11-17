@@ -1,4 +1,4 @@
-import { SESSION_STATUSES, SESSION_TYPES } from '../../../lib/validation'
+import { DELIVERY_MODES, SESSION_STATUSES, SESSION_TYPES } from '../../../lib/validation'
 
 export const TRACK_COLORS = ['#DCEEFB', '#FDE7D8', '#E3F2DF', '#F3E3F5', '#FFF4CC', '#E2E8F0'] as const
 
@@ -35,6 +35,9 @@ export type SessionRow = {
   starts_at: string
   ends_at: string
   status: (typeof SESSION_STATUSES)[number]
+  delivery_mode?: (typeof DELIVERY_MODES)[number]
+  online_url?: string | null
+  online_instructions?: string | null
 }
 
 export type ChairInfo = { user_id: string; full_name: string; chair_role: 'chair' | 'co_chair' }
@@ -76,6 +79,9 @@ export const EMPTY_SESSION_FORM = {
   starts_at: '',
   ends_at: '',
   status: 'draft' as (typeof SESSION_STATUSES)[number],
+  delivery_mode: 'in_person' as (typeof DELIVERY_MODES)[number],
+  online_url: '',
+  online_instructions: '',
 }
 
 export const EMPTY_SLOT_FORM = { label: '', starts_at: '', ends_at: '' }
