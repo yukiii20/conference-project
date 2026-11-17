@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_FILTERS, filterSessions, joinState, programmeDays, type AudienceSession } from './audienceProgramme'
+import { EMPTY_FILTERS, filterSessions, joinState, pickDefaultSession, programmeDays, type AudienceSession } from './audienceProgramme'
 
 function session(overrides: Partial<AudienceSession>): AudienceSession {
   return {
@@ -58,5 +58,19 @@ describe('join online label', () => {
   it('is none for in-person or cancelled sessions', () => {
     expect(joinState(session({}))).toBe('none')
     expect(joinState(session({ status: 'cancelled', online_window: window }))).toBe('none')
+  })
+})
+
+describe('Q&A default session', () => {
+  const list = [
+    session({ id: 'past', starts_at: '2026-11-20T03:00:00Z', ends_at: '2026-11-20T04:00:00Z' }),
+    session({ id: 'live', starts_at: '2026-11-20T04:15:00Z', ends_at: '2026-11-20T05:15:00Z' }),
+    session({ id: 'next', starts_at: '2026-11-20T06:00:00Z', ends_at: '2026-11-20T07:00:00Z' }),
+  ]
+  it('picks the session in progress, else the next one, else the last one', () => {
+    expect(pickDefaultSession(list, Date.parse('2026-11-20T04:30:00Z'))).toBe('live')
+    expect(pickDefaultSession(list, Date.parse('2026-11-20T05:30:00Z'))).toBe('next')
+    expect(pickDefaultSession(list, Date.parse('2026-11-21T00:00:00Z'))).toBe('next')
+    expect(pickDefaultSession([], Date.now())).toBe('')
   })
 })

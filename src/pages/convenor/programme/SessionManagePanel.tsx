@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, ApiError } from '../../../lib/api'
 import { SessionTimerFields } from '../SessionTimerSettings'
 import { formatKathmandu } from '../../../lib/datetime'
-import { Alert, Button, ConfirmDialog, Input, Modal, Select } from '../../../components/ui'
+import { Alert, Button, ConfirmDialog, Input, Modal, Select, buttonClasses } from '../../../components/ui'
 import { type ChairCandidate, type SchedulableSubmission, type SessionDetail, type Speaker } from './shared'
 
 export function SessionManagePanel({
@@ -146,9 +147,14 @@ export function SessionManagePanel({
     <Modal open={true} onClose={onClose} size="lg">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-text">{detail?.title ?? 'Session'}</h3>
-        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-          Close
-        </Button>
+        <div className="flex gap-2">
+          <Link to={`/moderate/${conferenceId}/${sessionId}`} target="_blank" className={buttonClasses('secondary', 'sm')}>
+            Moderate Q&amp;A
+          </Link>
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
       </div>
       {error ? <Alert variant="danger">{error}</Alert> : null}
 

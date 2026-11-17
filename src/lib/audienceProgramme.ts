@@ -67,3 +67,11 @@ export function joinState(s: AudienceSession, now = new Date()): 'none' | 'soon'
   if (now > new Date(s.online_window.closes_at)) return 'ended'
   return 'open'
 }
+
+/** The session whose Q&A is most likely wanted now: one in progress, else the next, else the last. */
+export function pickDefaultSession(sessions: AudienceSession[], now = Date.now()): string {
+  const live = sessions.filter((s) => s.status !== 'cancelled')
+  const current = live.find((s) => new Date(s.starts_at).getTime() <= now && new Date(s.ends_at).getTime() >= now)
+  const next = live.find((s) => new Date(s.starts_at).getTime() > now)
+  return (current ?? next ?? live[live.length - 1])?.id ?? ''
+}

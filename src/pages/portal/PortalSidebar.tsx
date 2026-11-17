@@ -13,6 +13,7 @@ import {
   Ticket,
   Mic,
   ListChecks,
+  MessageCircleQuestion,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -31,6 +32,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   ticket: Ticket,
   programme: ListChecks,
   speakers: Mic,
+  qa: MessageCircleQuestion,
   certificates: Award,
   feedback: MessageSquareHeart,
   notifications: Bell,

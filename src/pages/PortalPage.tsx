@@ -12,6 +12,7 @@ import { MyTicketTab } from './portal/MyTicketTab'
 import { NotificationsTab } from './portal/NotificationsTab'
 import { ProgrammeTab } from './portal/audience/ProgrammeTab'
 import { AudienceSpeakersTab } from './portal/audience/SpeakersTab'
+import { QaTab } from './portal/audience/QaTab'
 import { AuthorSection } from './portal/sections/AuthorSection'
 import { ReviewerSection } from './portal/sections/ReviewerSection'
 import { SessionChairSection } from './portal/sections/SessionChairSection'
@@ -37,6 +38,7 @@ const PORTAL_SEARCH_KEYWORDS: Record<string, string[]> = {
   profile: ['account', 'name', 'password'],
   programme: ['sessions', 'schedule', 'online', 'join', 'my agenda'],
   speakers: ['speaker', 'keynote', 'research'],
+  qa: ['questions', 'ask', 'vote'],
 }
 
 type PortalConference = { id: string; name: string; slug: string }
@@ -193,6 +195,7 @@ function PortalPageInner() {
               <Route path="ticket" element={<MyTicketTab conferenceId={conferenceId} />} />
               <Route path="programme" element={<ProgrammeTab conferenceId={conferenceId} />} />
               <Route path="speakers" element={<AudienceSpeakersTab conferenceId={conferenceId} />} />
+              <Route path="qa" element={<QaTab conferenceId={conferenceId} />} />
               <Route path="certificates" element={<MyCertificatesTab />} />
               <Route path="notifications" element={<NotificationsTab />} />
               <Route path="profile" element={<Navigate to="/profile" />} />

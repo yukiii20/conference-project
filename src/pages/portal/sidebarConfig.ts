@@ -17,6 +17,7 @@ export type PortalSectionId =
   | 'profile'
   | 'programme'
   | 'speakers'
+  | 'qa'
 
 export type PortalSectionConfig = {
   id: PortalSectionId
@@ -43,6 +44,7 @@ export const PORTAL_SECTIONS: PortalSectionConfig[] = [
   // Audience role ('attendee') sections - the server guards each with an audience.* permission.
   { id: 'programme', label: 'Programme', requiresRole: 'attendee' },
   { id: 'speakers', label: 'Speakers', requiresRole: 'attendee' },
+  { id: 'qa', label: 'Q&A', requiresRole: 'attendee' },
   { id: 'profile', label: 'Profile', requiresRole: 'attendee' },
 ]
 
@@ -56,6 +58,7 @@ export const AUDIENCE_SECTION_IDS: PortalSectionId[] = [
   'ticket',
   'programme',
   'speakers',
+  'qa',
   'feedback',
   'notifications',
   'certificates',

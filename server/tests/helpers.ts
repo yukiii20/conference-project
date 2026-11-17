@@ -463,3 +463,24 @@ export async function createAudienceMember(
   const registrationId = (regRows as Array<{ id: string }>)[0]!.id
   return { userId, registrationId, cookie: await createDirectSession(userId, conferenceId) }
 }
+
+/** Sets the Audience columns of conference_settings (creating the settings row first if needed). */
+export async function setAudienceSettings(
+  conferenceId: string,
+  values: Partial<{
+    qa_minutes_after_end: number
+    audience_feedback_closes_at: Date | null
+    schedule_change_emails: boolean
+    audience_abstracts_enabled: boolean
+    public_abstracts_enabled: boolean
+  }>,
+): Promise<void> {
+  const [rows] = await pool.query('SELECT 1 FROM conference_settings WHERE conference_id = ? LIMIT 1', [conferenceId])
+  if ((rows as unknown[]).length === 0) await upsertConferenceSettings(conferenceId)
+  const keys = Object.keys(values)
+  if (keys.length === 0) return
+  await pool.query(
+    `UPDATE conference_settings SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE conference_id = ?`,
+    [...keys.map((k) => (values as Record<string, unknown>)[k]), conferenceId],
+  )
+}

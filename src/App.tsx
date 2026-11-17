@@ -32,6 +32,10 @@ const TermsPage = lazy(() =>
 const TeamPage = lazy(() =>
   import("./pages/TeamPage").then((m) => ({ default: m.TeamPage })),
 );
+// The chair's live Q&A moderation view (phone at the lectern).
+const QaModeratePage = lazy(() =>
+  import("./pages/QaModeratePage").then((m) => ({ default: m.QaModeratePage })),
+);
 // The Audience QR ticket: tiny and standalone so it opens fast on a phone at the desk.
 const TicketPage = lazy(() =>
   import("./pages/TicketPage").then((m) => ({ default: m.TicketPage })),
@@ -135,6 +139,16 @@ export default function App() {
               <Route path="/c/:slug" element={<ConferencePage />} />
               {/* Each conference's own account pages; a role only works at its own conference. */}
               <Route path="/c/:slug/ticket" element={<TicketPage />} />
+              <Route
+                path="/moderate/:conferenceId/:sessionId"
+                element={
+                  <ProtectedRoute kind="authenticated">
+                    <Suspense fallback={<PageLoading />}>
+                      <QaModeratePage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/c/:slug/login" element={<ConferenceLoginPage />} />
               <Route
                 path="/c/:slug/signup"

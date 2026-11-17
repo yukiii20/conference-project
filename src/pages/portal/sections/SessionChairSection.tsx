@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Timer } from 'lucide-react'
+import { MessageCircleQuestion, Timer } from 'lucide-react'
 import { api, ApiError } from '../../../lib/api'
 import { formatKathmandu } from '../../../lib/datetime'
 import { Alert, Button, EmptyState, PageHeader, SkeletonText, buttonClasses } from '../../../components/ui'
@@ -212,6 +212,9 @@ export function SessionChairSection() {
               <div className="flex flex-wrap gap-2">
                 <Link to={`/timer/${s.conference_id}/${s.session_id}`} className={buttonClasses('primary', 'md')}>
                   <Timer aria-hidden className="h-4 w-4" /> Start timer
+                </Link>
+                <Link to={`/moderate/${s.conference_id}/${s.session_id}`} className={buttonClasses('secondary', 'md')}>
+                  <MessageCircleQuestion aria-hidden className="h-4 w-4" /> Live Q&amp;A
                 </Link>
                 <Button type="button" variant="secondary" onClick={() => setOpen({ conferenceId: s.conference_id, sessionId: s.session_id })}>
                   Mark attendance

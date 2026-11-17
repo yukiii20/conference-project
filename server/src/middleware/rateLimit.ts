@@ -109,3 +109,28 @@ export const emailTriggerRateLimit = rateLimit({
   keyGenerator: (req: Request) => (req.user?.id ? `user:${req.user.id}` : `ip:${req.ip ?? 'unknown'}`),
   message: { error: { message: 'Too many emails sent in a short time. Please wait a few minutes and try again.' } },
 })
+
+/**
+ * Audience Q&A, keyed per signed-in user (runs after the permission guard). The service also
+ * enforces 5 questions per session and 15 seconds between questions in the database, so these
+ * are only a coarse flood stop for scripted clients.
+ */
+export const qaAskRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  keyGenerator: (req: Request) => `user:${req.user?.id ?? req.ip ?? 'unknown'}`,
+  message: { error: { message: 'Too many questions in a short time. Please wait a few minutes.' } },
+})
+
+export const qaVoteRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  keyGenerator: (req: Request) => `user:${req.user?.id ?? req.ip ?? 'unknown'}`,
+  message: { error: { message: 'Too many votes in a short time. Please wait a few minutes.' } },
+})
