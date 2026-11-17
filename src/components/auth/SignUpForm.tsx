@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api'
-import { SIGNUP_ROLE_CODES, getRoleDefinition } from '../../lib/roles'
+import { useAuth } from '../../lib/authContext'
+import { AUDIENCE_ROLE, SIGNUP_ROLE_CODES, SIGNUP_ROLE_HINTS, getRoleDefinition } from '../../lib/roles'
+import { AudienceCategoryPicker } from './AudienceCategoryPicker'
 import { nameSchema, emailSchema, phoneSchema, signupSchema, getPasswordChecklist } from '../../lib/validation'
 import { Alert, Badge, Button, Checkbox, FormField, Input, PasswordInput } from '../ui'
 
@@ -64,6 +66,18 @@ export function SignUpForm({
   const [joinNotice, setJoinNotice] = useState<string | null>(null)
   const [joinedMessage, setJoinedMessage] = useState<string | null>(null)
   const [joining, setJoining] = useState(false)
+  // Audience: also registers for the conference in the same step.
+  const [categoryId, setCategoryId] = useState('')
+  const [canRegister, setCanRegister] = useState(true)
+  const isAudience = role === AUDIENCE_ROLE
+  const { refresh } = useAuth()
+  const navigate = useNavigate()
+
+  /** After an Audience sign-up the server has already signed the person in: go straight to the QR ticket. */
+  async function openTicket(slug: string | undefined) {
+    await refresh()
+    navigate(slug ? `/c/${encodeURIComponent(slug)}/ticket?welcome=1` : '/portal/ticket')
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -135,6 +149,11 @@ export function SignUpForm({
       return
     }
 
+    if (isAudience && !categoryId) {
+      setErrors((prev) => ({ ...prev, category_id: 'Choose a registration category.' }))
+      return
+    }
+
     const candidate = { ...form, role, conference_id: conferenceId }
     const parsed = signupSchema.safeParse(candidate)
 
@@ -153,14 +172,19 @@ export function SignUpForm({
 
     setSubmitting(true)
     try {
-      await api.post('/auth/register', {
+      const data = await api.post<{ signed_in?: boolean }>('/auth/register', {
         full_name: parsed.data.full_name,
         email: parsed.data.email,
         phone: parsed.data.phone,
         password: parsed.data.password,
         requested_role: parsed.data.role,
         conference_id: parsed.data.conference_id,
+        ...(isAudience ? { category_id: categoryId } : {}),
       })
+      if (data.signed_in) {
+        await openTicket(conferences.find((c) => c.id === conferenceId)?.slug ?? preselectedConference?.slug)
+        return
+      }
       setSuccess(true)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'account_exists') {
@@ -192,17 +216,25 @@ export function SignUpForm({
     const conference = conferences.find((c) => c.id === conferenceId)
     setJoining(true)
     try {
-      const data = await api.post<{ message: string }>('/auth/join-conference', {
+      const data = await api.post<{ message: string; signed_in?: boolean }>('/auth/join-conference', {
         email: form.email.trim(),
         password: joinPassword,
         requested_role: role,
         conference: conference?.slug ?? conferenceId,
+        ...(isAudience ? { category_id: categoryId } : {}),
       })
+      if (data.signed_in) {
+        await openTicket(conference?.slug ?? preselectedConference?.slug)
+        return
+      }
       setJoinedMessage(data.message)
       setSuccess(true)
     } catch (err) {
-      if (err instanceof ApiError && (err.code === 'role_request_pending' || err.code === 'role_already_active')) {
-        // Already asked / already a member here: say so plainly, nothing to retry.
+      if (
+        err instanceof ApiError &&
+        (err.code === 'role_request_pending' || err.code === 'role_already_active' || err.code === 'already_registered')
+      ) {
+        // Already asked / already a member / already registered here: say so plainly, nothing to retry.
         setJoinNotice(err.message)
       } else if (err instanceof ApiError) {
         setJoinError(err.message)
@@ -241,8 +273,8 @@ export function SignUpForm({
           <h2 className="font-display text-xl font-semibold text-text">You already have an account</h2>
           <p className="mt-2 text-sm text-text-muted">
             <span className="font-medium text-text">{form.email.trim()}</span> already has an account on this platform.
-            Enter its current password to ask for the{' '}
-            <span className="font-medium text-text">{getRoleDefinition(role)?.label ?? role}</span> role
+            Enter its current password to {isAudience ? 'join the' : 'ask for the'}{' '}
+            <span className="font-medium text-text">{getRoleDefinition(role)?.label ?? role}</span> {isAudience ? 'and register' : 'role'}
             {selectedConference?.name ? (
               <>
                 {' '}at <span className="font-medium text-text">{selectedConference.name}</span>
@@ -278,7 +310,7 @@ export function SignUpForm({
             Use another email
           </Button>
           <Button type="submit" loading={joining}>
-            {joining ? 'Sending…' : 'Join this conference'}
+            {joining ? 'Sending…' : isAudience ? 'Register and get my ticket' : 'Join this conference'}
           </Button>
         </div>
 
@@ -318,17 +350,19 @@ export function SignUpForm({
               {errors.role}
             </p>
           ) : null}
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SIGNUP_ROLE_CODES.map((code) => (
               <button
                 key={code}
                 type="button"
+                aria-pressed={role === code}
                 onClick={() => setRole(code)}
-                className={`rounded-lg border p-3 text-left text-sm ${
+                className={`min-h-12 rounded-lg border p-3 text-left text-sm ${
                   role === code ? 'border-button ring-2 ring-button/30' : 'border-border hover:border-button/50'
-                }`}
+                } ${code === AUDIENCE_ROLE ? 'sm:col-span-2' : ''}`}
               >
-                {getRoleDefinition(code)?.label}
+                <span className="block font-medium text-text">{getRoleDefinition(code)?.label}</span>
+                <span className="mt-0.5 block text-xs text-text-muted">{SIGNUP_ROLE_HINTS[code]}</span>
               </button>
             ))}
           </div>
@@ -391,6 +425,18 @@ export function SignUpForm({
 
       {step === 3 ? (
         <div className="mt-4 space-y-4">
+          {isAudience && conferenceId ? (
+            <AudienceCategoryPicker
+              conferenceId={conferenceId}
+              value={categoryId}
+              onChange={(id) => {
+                setCategoryId(id)
+                setErrors((prev) => ({ ...prev, category_id: '' }))
+              }}
+              error={errors.category_id}
+              onAvailability={setCanRegister}
+            />
+          ) : null}
           <FormField label="Full name" htmlFor="su-full_name" error={errors.full_name}>
             <Input
               id="su-full_name"
@@ -473,8 +519,8 @@ export function SignUpForm({
             <Button type="button" variant="secondary" onClick={goBack}>
               Back
             </Button>
-            <Button type="button" onClick={handleSubmit} loading={submitting}>
-              {submitting ? 'Creating…' : 'Create account'}
+            <Button type="button" onClick={handleSubmit} loading={submitting} disabled={isAudience && !canRegister}>
+              {submitting ? 'Creating…' : isAudience ? 'Create account and register' : 'Create account'}
             </Button>
           </div>
         </div>

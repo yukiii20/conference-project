@@ -14,6 +14,7 @@ export type PortalSectionId =
   | 'reviewer'
   | 'session-chair'
   | 'staff'
+  | 'profile'
 
 export type PortalSectionConfig = {
   id: PortalSectionId
@@ -37,7 +38,30 @@ export const PORTAL_SECTIONS: PortalSectionConfig[] = [
   // Has its own conference list: anyone who checked in, chaired or presented, with or without a conference role.
   { id: 'feedback', label: 'Give feedback', requiresRole: null, crossConference: true },
   { id: 'notifications', label: 'Notifications', requiresRole: null, crossConference: true },
+  { id: 'profile', label: 'Profile', requiresRole: 'attendee' },
 ]
+
+/**
+ * What an Audience-only person sees, in this order (and nothing else): the Audience role
+ * ('attendee') never opens author, reviewer, staff, manager, convenor or admin sections. The
+ * server enforces the same with permissions; this only keeps the menu honest.
+ */
+export const AUDIENCE_SECTION_IDS: PortalSectionId[] = [
+  'dashboard',
+  'ticket',
+  'agenda',
+  'feedback',
+  'notifications',
+  'certificates',
+  'profile',
+]
+
+const AUDIENCE_LABELS: Partial<Record<PortalSectionId, string>> = { feedback: 'Feedback' }
+
+/** True when every role the person holds is the Audience role (no author/reviewer/... role anywhere). */
+export function isAudienceOnly(rolesAnywhere: Set<string>): boolean {
+  return rolesAnywhere.size > 0 && [...rolesAnywhere].every((r) => r === 'attendee')
+}
 
 /**
  * Which sections this visitor should see. Most sections are gated on the
@@ -47,6 +71,11 @@ export const PORTAL_SECTIONS: PortalSectionConfig[] = [
  * selected in the switcher.
  */
 export function visibleSections(rolesInConference: Set<string>, rolesAnywhere: Set<string>): PortalSectionConfig[] {
+  if (isAudienceOnly(rolesAnywhere)) {
+    return AUDIENCE_SECTION_IDS.map((id) => PORTAL_SECTIONS.find((s) => s.id === id)!)
+      .filter((s) => s.requiresRole === null || rolesInConference.has(s.requiresRole))
+      .map((s) => (AUDIENCE_LABELS[s.id] ? { ...s, label: AUDIENCE_LABELS[s.id]! } : s))
+  }
   return PORTAL_SECTIONS.filter((s) => {
     if (s.requiresRole === null) return true
     return s.crossConference ? rolesAnywhere.has(s.requiresRole) : rolesInConference.has(s.requiresRole)

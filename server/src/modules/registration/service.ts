@@ -13,6 +13,7 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '.
 import type { RegistrationCategoryInput } from './validation.js'
 import { AMOUNT_PAID_SQL, currentFeesByCategory, priceForNewRegistration, pricedCategoryIds, type CurrentFee } from './fees.service.js'
 import { csvCell } from '../../utils/csv.js'
+import { queueTicketEmail } from '../audience/ticket.js'
 
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { code?: string }).code === 'ER_DUP_ENTRY')
@@ -67,6 +68,43 @@ export async function listCategories(conferenceId: string): Promise<CategoryRow[
       priced: priced.has(c.id),
     }
   })
+}
+
+export type PublicRegistrationOptions = {
+  /** True while the Key dates "Participant registration" window is open (no window set = closed, as for POST my-registration). */
+  open: boolean
+  opens_at: string | null
+  closes_at: string | null
+  categories: Array<Pick<CategoryRow, 'id' | 'name' | 'description' | 'current_fee' | 'priced'>>
+}
+
+/**
+ * What the public "Sign up as Audience" form needs before anyone has an account: whether
+ * registration is open (Key dates) and the ACTIVE categories with today's price. Only for a
+ * published, non-deleted conference; null otherwise (the route answers 404).
+ */
+export async function getPublicRegistrationOptions(conferenceId: string): Promise<PublicRegistrationOptions | null> {
+  const [confRows] = await pool.query(
+    `SELECT id FROM conferences WHERE id = ? AND deleted_at IS NULL AND status <> 'draft' LIMIT 1`,
+    [conferenceId],
+  )
+  if ((confRows as unknown[]).length === 0) return null
+  const window = await loadDeadlineWindow(conferenceId, 'registration')
+  const categories = (await listCategories(conferenceId))
+    .filter((c) => c.is_active)
+    .map(({ id, name, description, current_fee, priced }) => ({ id, name, description, current_fee, priced }))
+  return {
+    open: isWindowOpen(window),
+    opens_at: window ? toIso(window.opens_at) : null,
+    closes_at: window?.closes_at ? toIso(window.closes_at) : null,
+    categories,
+  }
+}
+
+function toIso(value: unknown): string | null {
+  if (value == null) return null
+  const d = value instanceof Date ? value : new Date(String(value))
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
 export async function createCategory(
@@ -189,13 +227,59 @@ export async function getMyRegistrationQrToken(conferenceId: string, userId: str
   return (rows as Array<{ qr_token: string }>)[0]?.qr_token ?? null
 }
 
+export type NewRegistration = { id: string; registration_number: string; status: string; amount_due: number; currency: string }
+
 export async function register(
   conferenceId: string,
   userId: string,
   categoryId: string,
   ctx: AuditContext = {},
-): Promise<{ id: string; registration_number: string; status: string; amount_due: number; currency: string }> {
-  return withTransaction(userId, async (conn) => {
+): Promise<NewRegistration> {
+  return withTransaction(userId, (conn) => registerInTransaction(conn, conferenceId, userId, categoryId, ctx))
+}
+
+/**
+ * Gives `userId` the Audience role ('attendee') in this conference, active at once (no
+ * approval). Never reactivates a membership the organisers removed: their decision stands.
+ * Returns true when a new membership was created.
+ */
+export async function ensureAudienceMembership(
+  conn: PoolConnection,
+  conferenceId: string,
+  userId: string,
+  ctx: AuditContext = {},
+  source: 'registration' | 'signup' = 'registration',
+): Promise<boolean> {
+  const [result] = await conn.query(
+    `INSERT IGNORE INTO conference_members (conference_id, user_id, role_code, status, added_by)
+     VALUES (?, ?, 'attendee', 'active', ?)`,
+    [conferenceId, userId, userId],
+  )
+  const created = (result as { affectedRows: number }).affectedRows > 0
+  if (created) {
+    await insertAuditLog(conn, {
+      actorUserId: userId,
+      conferenceId,
+      action: 'member.audience_granted',
+      entityType: 'users',
+      entityId: userId,
+      newValues: { role_code: 'attendee', status: 'active', source },
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    })
+  }
+  return created
+}
+
+/** The registration itself, inside the caller's transaction (sign-up as Audience runs it with the account creation). */
+export async function registerInTransaction(
+  conn: PoolConnection,
+  conferenceId: string,
+  userId: string,
+  categoryId: string,
+  ctx: AuditContext = {},
+): Promise<NewRegistration> {
+  {
     const window = await loadDeadlineWindow(conferenceId, 'registration')
     if (!isWindowOpen(window)) {
       throw new ConflictError('Registration is not open right now.')
@@ -269,8 +353,12 @@ export async function register(
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
     })
+    // Registering makes the person a member of the conference's Audience (self-service role),
+    // and the ticket (number + link to the QR page) goes out by email at once.
+    await ensureAudienceMembership(conn, conferenceId, userId, ctx)
+    await queueTicketEmail(conn, conferenceId, userId)
     return { id, registration_number: registrationNumber, status, amount_due: price.amount, currency: price.currency }
-  })
+  }
 }
 
 export async function cancelMyRegistration(conferenceId: string, userId: string, ctx: AuditContext = {}): Promise<void> {
@@ -312,15 +400,26 @@ export type AdminRegistrationRow = {
   amount_paid: string
   currency: string
   registered_at: string
+  /** 1 when the person holds the active Audience role here (only on the paginated list). */
+  is_audience?: number | boolean
 }
 
 // Deliberately selects every column except qr_token — it must never appear
 // in a list response (only the owner's own QR-image endpoint reads it).
 const REGISTRATIONS_PAGE_SIZE = 50
 
-function registrationWhere(conferenceId: string, filter: { search?: string; status?: string; categoryId?: string }) {
+export type RegistrationFilter = { search?: string; status?: string; categoryId?: string; audience?: 'only' | 'without' }
+
+function registrationWhere(conferenceId: string, filter: RegistrationFilter) {
   const conditions = ['r.conference_id = ?']
   const params: unknown[] = [conferenceId]
+  if (filter.audience) {
+    // "Audience" = holds the active Audience role in this conference.
+    conditions.push(
+      `${filter.audience === 'without' ? 'NOT ' : ''}EXISTS (SELECT 1 FROM conference_members am
+         WHERE am.conference_id = r.conference_id AND am.user_id = r.user_id AND am.role_code = 'attendee' AND am.status = 'active')`,
+    )
+  }
   if (filter.status) {
     conditions.push('r.status = ?')
     params.push(filter.status)
@@ -340,7 +439,7 @@ function registrationWhere(conferenceId: string, filter: { search?: string; stat
 /** Unpaginated - only for exportRegistrationsCsv, which needs every matching row. */
 async function listAllRegistrations(
   conferenceId: string,
-  filter: { search?: string; status?: string; categoryId?: string },
+  filter: RegistrationFilter,
 ): Promise<AdminRegistrationRow[]> {
   const { where, params } = registrationWhere(conferenceId, filter)
   const [rows] = await pool.query(
@@ -358,7 +457,7 @@ async function listAllRegistrations(
 
 export async function listRegistrations(
   conferenceId: string,
-  filter: { search?: string; status?: string; categoryId?: string; page?: number } = {},
+  filter: RegistrationFilter & { page?: number } = {},
 ): Promise<{ registrations: AdminRegistrationRow[]; page: number; page_size: number; total: number }> {
   const page = filter.page ?? 1
   const { where, params } = registrationWhere(conferenceId, filter)
@@ -367,7 +466,9 @@ export async function listRegistrations(
   const [[rows], [countRows]] = await Promise.all([
     pool.query(
       `SELECT r.id, r.registration_number, u.full_name, u.email, c.name AS category_name,
-              r.status, r.amount_due, ${AMOUNT_PAID_SQL} AS amount_paid, r.currency, r.registered_at
+              r.status, r.amount_due, ${AMOUNT_PAID_SQL} AS amount_paid, r.currency, r.registered_at,
+              EXISTS (SELECT 1 FROM conference_members am WHERE am.conference_id = r.conference_id AND am.user_id = r.user_id
+                        AND am.role_code = 'attendee' AND am.status = 'active') AS is_audience
        FROM registrations r
        JOIN users u ON u.id = r.user_id
        JOIN registration_categories c ON c.id = r.category_id

@@ -7,7 +7,8 @@ import { emailSchema, nameSchema, phoneSchema } from '../auth/validation.js'
  * (e.g. through "Invite member"). Changing an existing author's role is blocked in changeMemberRole.
  */
 export const ASSIGNABLE_ROLES = ['author', 'reviewer', 'session_chair', 'staff', 'manager'] as const
-export const MEMBER_ROLE_FILTER = ['author', 'reviewer', 'session_chair', 'staff', 'manager', 'convenor'] as const
+// 'attendee' is the Audience role (self-service, from registration) - listed, never assigned here.
+export const MEMBER_ROLE_FILTER = ['author', 'reviewer', 'session_chair', 'staff', 'manager', 'convenor', 'attendee'] as const
 
 export const listMembersQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),

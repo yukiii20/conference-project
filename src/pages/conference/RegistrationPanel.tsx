@@ -57,7 +57,9 @@ export function RegistrationPanel({
   /** Shown as a "who to contact" line while a registration is pending — omitted (not every caller has it) just drops that line. */
   contactEmail?: string | null
 }) {
-  const { user, loading: authLoading, refresh } = useAuth()
+  const { user, loading: authLoading, refresh, conference: sessionConference } = useAuth()
+  // The phone ticket page lives at /c/:slug/ticket; the portal passes no slug, so use the session's conference.
+  const ticketSlug = conferenceSlug ?? (sessionConference?.id === conferenceId ? sessionConference.slug : null)
   const [registration, setRegistration] = useState<MyRegistration | null>(null)
   const [certificates, setCertificates] = useState<MyCertificate[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -230,6 +232,15 @@ export function RegistrationPanel({
                 className="h-36 w-36 rounded-md border border-line"
               />
               <div className="space-y-2">
+                {ticketSlug ? (
+                  <Link
+                    to={`/c/${encodeURIComponent(ticketSlug)}/ticket`}
+                    style={{ backgroundColor: accent }}
+                    className="block rounded-md px-3 py-1.5 text-center text-sm font-medium text-white hover:opacity-90"
+                  >
+                    Open ticket (print, save, email)
+                  </Link>
+                ) : null}
                 <a
                   href={`${API_BASE}/conferences/${conferenceId}/my-registration/qr.png`}
                   download="ticket-qr.png"

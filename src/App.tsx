@@ -32,6 +32,10 @@ const TermsPage = lazy(() =>
 const TeamPage = lazy(() =>
   import("./pages/TeamPage").then((m) => ({ default: m.TeamPage })),
 );
+// The Audience QR ticket: tiny and standalone so it opens fast on a phone at the desk.
+const TicketPage = lazy(() =>
+  import("./pages/TicketPage").then((m) => ({ default: m.TicketPage })),
+);
 const ConferencePage = lazy(() =>
   import("./pages/ConferencePage").then((m) => ({ default: m.ConferencePage })),
 );
@@ -130,6 +134,7 @@ export default function App() {
               <Route path="/SYPN" element={<TeamPage />} />
               <Route path="/c/:slug" element={<ConferencePage />} />
               {/* Each conference's own account pages; a role only works at its own conference. */}
+              <Route path="/c/:slug/ticket" element={<TicketPage />} />
               <Route path="/c/:slug/login" element={<ConferenceLoginPage />} />
               <Route
                 path="/c/:slug/signup"

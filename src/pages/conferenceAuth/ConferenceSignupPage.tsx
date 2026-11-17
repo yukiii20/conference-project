@@ -3,8 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { useAuth } from '../../lib/authContext'
-import { SIGNUP_ROLE_CODES, getRoleDefinition } from '../../lib/roles'
+import { AUDIENCE_ROLE, SIGNUP_ROLE_CODES, SIGNUP_ROLE_HINTS, getRoleDefinition } from '../../lib/roles'
 import { SignUpForm } from '../../components/auth/SignUpForm'
+import { AudienceCategoryPicker } from '../../components/auth/AudienceCategoryPicker'
 import { ConferenceAuthShell, WithConference, type BrandedConference } from '../../components/auth/ConferenceAuthShell'
 import { Alert, Button, Skeleton } from '../../components/ui'
 
@@ -91,6 +92,10 @@ function RequestRoleAsSignedIn({
   const [done, setDone] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [categoryId, setCategoryId] = useState('')
+  const [categoryError, setCategoryError] = useState<string | null>(null)
+  const [canRegister, setCanRegister] = useState(true)
+  const isAudience = role === AUDIENCE_ROLE
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -101,12 +106,23 @@ function RequestRoleAsSignedIn({
       return
     }
     setRoleError(null)
+    if (isAudience && !categoryId) {
+      setCategoryError('Choose a registration category.')
+      return
+    }
     setSubmitting(true)
     try {
-      const data = await api.post<{ message: string }>('/auth/request-role', { requested_role: role, conference: conference.slug })
+      const data = await api.post<{ message: string }>('/auth/request-role', {
+        requested_role: role,
+        conference: conference.slug,
+        ...(isAudience ? { category_id: categoryId } : {}),
+      })
       setDone(data.message)
     } catch (err) {
-      if (err instanceof ApiError && (err.code === 'role_request_pending' || err.code === 'role_already_active')) {
+      if (
+        err instanceof ApiError &&
+        (err.code === 'role_request_pending' || err.code === 'role_already_active' || err.code === 'already_registered')
+      ) {
         setNotice(err.message)
       } else {
         setError(err instanceof ApiError ? err.message : "Can't reach the server. Check your connection.")
@@ -120,7 +136,7 @@ function RequestRoleAsSignedIn({
     return (
       <div className="text-center">
         <CheckCircle2 size={36} className="mx-auto text-success" aria-hidden="true" />
-        <h2 className="mt-3 font-display text-xl font-semibold text-text">Request sent</h2>
+        <h2 className="mt-3 font-display text-xl font-semibold text-text">{isAudience ? 'You are registered' : 'Request sent'}</h2>
         <p className="mt-2 text-sm text-text-muted">{done}</p>
         <Link
           to={`/c/${encodeURIComponent(conference.slug)}`}
@@ -168,14 +184,34 @@ function RequestRoleAsSignedIn({
                 }}
                 className="accent-[var(--color-button)]"
               />
-              {getRoleDefinition(code)?.label ?? code}
+              <span>
+                <span className="block">{getRoleDefinition(code)?.label ?? code}</span>
+                <span className="block text-xs text-text-muted">{SIGNUP_ROLE_HINTS[code]}</span>
+              </span>
             </label>
           ))}
         </div>
       </fieldset>
 
-      <Button type="submit" loading={submitting} className="w-full">
-        {submitting ? 'Sending…' : `Request role at ${conference.short_name || conference.name}`}
+      {isAudience ? (
+        <AudienceCategoryPicker
+          conferenceId={conference.id}
+          value={categoryId}
+          onChange={(id) => {
+            setCategoryId(id)
+            setCategoryError(null)
+          }}
+          error={categoryError ?? undefined}
+          onAvailability={setCanRegister}
+        />
+      ) : null}
+
+      <Button type="submit" loading={submitting} disabled={isAudience && !canRegister} className="w-full">
+        {submitting
+          ? 'Sending…'
+          : isAudience
+            ? `Register for ${conference.short_name || conference.name}`
+            : `Request role at ${conference.short_name || conference.name}`}
       </Button>
 
       <p className="text-center text-sm text-text-muted">

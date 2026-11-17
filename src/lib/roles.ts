@@ -1,4 +1,8 @@
-export type RoleCode = 'author' | 'reviewer' | 'session_chair' | 'staff' | 'manager' | 'convenor' | 'admin'
+// 'attendee' is the Audience role (shown as "Audience"; the code predates the label).
+export type RoleCode = 'author' | 'reviewer' | 'session_chair' | 'staff' | 'manager' | 'convenor' | 'admin' | 'attendee'
+
+/** The Audience role's code. Self-service: chosen at sign-up it is active at once, with a registration. */
+export const AUDIENCE_ROLE = 'attendee' as const
 
 export type RoleDefinition = {
   code: RoleCode
@@ -18,12 +22,16 @@ export const ROLE_CATALOGUE: readonly RoleDefinition[] = [
   { code: 'staff', label: 'Staff', path: '/portal' },
   { code: 'manager', label: 'Manager', path: '/manager' },
   { code: 'convenor', label: 'Convenor', path: '/convenor' },
+  { code: 'attendee', label: 'Audience', path: '/portal' },
 ] as const
 
 // Selectable at signup. role_requests.role_code in the database only allows
-// author/reviewer/session_chair/staff/manager — convenor is never
-// self-signed-up, it's appointed directly by a platform admin.
+// author/reviewer/session_chair/staff/manager (these wait for the convenor's
+// approval) — convenor is never self-signed-up, it's appointed directly by a
+// platform admin. Audience is listed first: it needs no approval and also
+// registers the person, so it's the most common choice.
 export const SIGNUP_ROLE_CODES = [
+  'attendee',
   'author',
   'reviewer',
   'session_chair',
@@ -43,6 +51,7 @@ export const LOGIN_ROLE_CODES = [
   'staff',
   'manager',
   'convenor',
+  'attendee',
 ] as const
 export type LoginRoleCode = (typeof LOGIN_ROLE_CODES)[number]
 
@@ -52,4 +61,14 @@ export function getRoleDefinition(code: string): RoleDefinition | undefined {
 
 export function isSignupRoleCode(code: string): code is SignupRoleCode {
   return (SIGNUP_ROLE_CODES as readonly string[]).includes(code)
+}
+
+/** One-line explanation shown under each role on the sign-up picker. */
+export const SIGNUP_ROLE_HINTS: Record<SignupRoleCode, string> = {
+  attendee: 'Attend the conference. Register now and get your QR ticket at once.',
+  author: 'Submit papers. The convenor approves this role.',
+  reviewer: 'Review papers. The convenor approves this role.',
+  session_chair: 'Chair sessions. The convenor approves this role.',
+  staff: 'Help at the registration desk. The convenor approves this role.',
+  manager: 'Help run the conference. The convenor approves this role.',
 }

@@ -1,10 +1,20 @@
 import { z } from 'zod'
 import { normalizePhone } from '../../utils/phone.js'
 
-export const SIGNUP_ROLE_CODES = ['author', 'reviewer', 'session_chair', 'staff', 'manager'] as const
+/** Roles that go through the convenor's approval (role_requests.role_code allows exactly these). */
+export const APPROVAL_ROLE_CODES = ['author', 'reviewer', 'session_chair', 'staff', 'manager'] as const
+export type ApprovalRoleCode = (typeof APPROVAL_ROLE_CODES)[number]
+
+/**
+ * The Audience role. Its code is the pre-existing 'attendee' (see database/09_audience.sql);
+ * it is self-service: chosen at sign-up it is active at once, together with a registration.
+ */
+export const AUDIENCE_ROLE = 'attendee' as const
+
+export const SIGNUP_ROLE_CODES = [...APPROVAL_ROLE_CODES, AUDIENCE_ROLE] as const
 export type SignupRoleCode = (typeof SIGNUP_ROLE_CODES)[number]
 
-export const LOGIN_ROLE_CODES = ['author', 'reviewer', 'session_chair', 'staff', 'manager', 'convenor'] as const
+export const LOGIN_ROLE_CODES = ['author', 'reviewer', 'session_chair', 'staff', 'manager', 'convenor', AUDIENCE_ROLE] as const
 export type LoginRoleCode = (typeof LOGIN_ROLE_CODES)[number]
 
 export const nameSchema = z
@@ -57,14 +67,26 @@ export const conferenceRefSchema = z
   .min(1, 'Choose a conference.')
   .max(80, 'Choose a conference.')
 
-export const registerSchema = z.object({
-  full_name: nameSchema,
-  email: emailSchema,
-  phone: phoneSchema,
-  password: passwordSchema,
-  requested_role: z.enum(SIGNUP_ROLE_CODES),
-  conference_id: z.string().uuid('Choose a conference.'),
-})
+/** Audience sign-up also registers for the conference, so it needs a registration category. */
+const categoryIdSchema = z.string().uuid('Choose a registration category.').optional()
+
+function requireCategoryForAudience(value: { requested_role: string; category_id?: string }, ctx: z.RefinementCtx): void {
+  if (value.requested_role === AUDIENCE_ROLE && !value.category_id) {
+    ctx.addIssue({ code: 'custom', path: ['category_id'], message: 'Choose a registration category.' })
+  }
+}
+
+export const registerSchema = z
+  .object({
+    full_name: nameSchema,
+    email: emailSchema,
+    phone: phoneSchema,
+    password: passwordSchema,
+    requested_role: z.enum(SIGNUP_ROLE_CODES),
+    conference_id: z.string().uuid('Choose a conference.'),
+    category_id: categoryIdSchema,
+  })
+  .superRefine(requireCategoryForAudience)
 export type RegisterInput = z.infer<typeof registerSchema>
 
 export const loginSchema = z.object({
@@ -78,19 +100,25 @@ export const loginSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>
 
 /** Sign-up at a conference with an email that already has an account — proven with that account's current password. */
-export const joinConferenceSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'Enter the password of your existing account.'),
-  requested_role: z.enum(SIGNUP_ROLE_CODES),
-  conference: conferenceRefSchema,
-})
+export const joinConferenceSchema = z
+  .object({
+    email: emailSchema,
+    password: z.string().min(1, 'Enter the password of your existing account.'),
+    requested_role: z.enum(SIGNUP_ROLE_CODES),
+    conference: conferenceRefSchema,
+    category_id: categoryIdSchema,
+  })
+  .superRefine(requireCategoryForAudience)
 export type JoinConferenceInput = z.infer<typeof joinConferenceSchema>
 
 /** A signed-in person asking for a role at another conference. */
-export const requestRoleSchema = z.object({
-  requested_role: z.enum(SIGNUP_ROLE_CODES),
-  conference: conferenceRefSchema,
-})
+export const requestRoleSchema = z
+  .object({
+    requested_role: z.enum(SIGNUP_ROLE_CODES),
+    conference: conferenceRefSchema,
+    category_id: categoryIdSchema,
+  })
+  .superRefine(requireCategoryForAudience)
 export type RequestRoleInput = z.infer<typeof requestRoleSchema>
 
 export const switchConferenceSchema = z.object({

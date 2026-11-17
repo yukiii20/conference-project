@@ -27,6 +27,8 @@ const ROLE_LABELS: Record<string, string> = {
   reviewer: 'Reviewer',
   session_chair: 'Session chair',
   author: 'Author',
+  // The Audience role (code 'attendee'): self-service, comes from the person's registration.
+  attendee: 'Audience',
 }
 
 const EMPTY_INVITE: InviteMemberInput = { full_name: '', email: '', phone: '', role_code: 'reviewer' }
@@ -233,7 +235,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                     <td className="px-3 py-2">{m.full_name}</td>
                     <td className="px-3 py-2">{m.email}</td>
                     <td className="px-3 py-2">
-                      {m.role_code === 'convenor' || m.role_code === 'author' ? (
+                      {m.role_code === 'convenor' || m.role_code === 'author' || m.role_code === 'attendee' ? (
                         <span>{ROLE_LABELS[m.role_code]}</span>
                       ) : (
                         <Select

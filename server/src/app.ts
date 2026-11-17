@@ -40,6 +40,7 @@ import { agendaFeedRouter, agendaRouter } from './modules/agenda/routes.js'
 import { sessionTimerRouter } from './modules/sessionTimer/routes.js'
 import { abstractBookRouter } from './modules/abstractBook/routes.js'
 import { feedbackMeRouter, feedbackRouter } from './modules/feedback/routes.js'
+import { audienceRouter } from './modules/audience/routes.js'
 import { createTickRouter } from './jobs/tick.js'
 import { machineEndpointRateLimit } from './middleware/rateLimit.js'
 import { createBrevoWebhookRouter } from './modules/emailWebhooks/routes.js'
@@ -198,6 +199,7 @@ export function createApp() {
   app.use('/api/conferences', reportsRouter)
   app.use('/api/conferences', activityLogRouter)
   app.use('/api/conferences', registrationRouter)
+  app.use('/api/conferences', audienceRouter)
   app.use('/api/conferences', badgesRouter)
   app.use('/api/conferences', analyticsRouter)
   app.use('/api/admin', platformAnalyticsRouter)

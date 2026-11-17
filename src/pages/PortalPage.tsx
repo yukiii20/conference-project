@@ -20,7 +20,7 @@ import { PORTAL_SECTIONS, visibleSections } from './portal/sidebarConfig'
 // Conference-scoped sections only make sense for roles tied to one
 // conference at a time — session chairs see "My sessions" across every
 // conference they chair regardless of which one is selected here.
-const CONFERENCE_SWITCHER_ROLES = ['author', 'reviewer', 'session_chair', 'staff']
+const CONFERENCE_SWITCHER_ROLES = ['author', 'reviewer', 'session_chair', 'staff', 'attendee']
 
 const PORTAL_SEARCH_KEYWORDS: Record<string, string[]> = {
   agenda: ['starred', 'calendar', 'schedule', 'clash'],
@@ -32,6 +32,7 @@ const PORTAL_SEARCH_KEYWORDS: Record<string, string[]> = {
   certificates: ['download', 'certificate'],
   feedback: ['survey'],
   notifications: ['alerts', 'messages'],
+  profile: ['account', 'name', 'password'],
 }
 
 type PortalConference = { id: string; name: string; slug: string }
@@ -188,6 +189,7 @@ function PortalPageInner() {
               <Route path="ticket" element={<MyTicketTab conferenceId={conferenceId} />} />
               <Route path="certificates" element={<MyCertificatesTab />} />
               <Route path="notifications" element={<NotificationsTab />} />
+              <Route path="profile" element={<Navigate to="/profile" />} />
               <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
           </main>

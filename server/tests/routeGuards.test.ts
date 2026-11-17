@@ -34,6 +34,7 @@ import { sessionTimerRouter } from '../src/modules/sessionTimer/routes.js'
 import { abstractBookRouter } from '../src/modules/abstractBook/routes.js'
 import { feedbackMeRouter, feedbackRouter } from '../src/modules/feedback/routes.js'
 import { createBrevoWebhookRouter } from '../src/modules/emailWebhooks/routes.js'
+import { audienceRouter } from '../src/modules/audience/routes.js'
 import { createTickRouter } from '../src/jobs/tick.js'
 
 const GUARD_MIDDLEWARE_NAMES = new Set(['requireAuth', 'requireAdmin', 'requireSuperAdmin', 'conferencePermissionGuard', 'conferenceRoleGuard'])
@@ -79,6 +80,9 @@ const PUBLIC_ROUTES = new Set([
   // Only ever serves a book the convenor switched on "Publish on conference page" for.
   'abstractBookRouter GET /:id/abstract-book/public',
   'abstractBookRouter GET /:id/abstract-book/public.pdf',
+  // The "Sign up as Audience" form, before the person has an account: only the open/closed
+  // state of registration and the ACTIVE categories with today's price (published conferences).
+  'registrationRouter GET /:id/registration-categories/public',
 ])
 
 type NamedRouter = { name: string; router: import('express').Router }
@@ -129,6 +133,7 @@ const ROUTERS: NamedRouter[] = [
   { name: 'abstractBookRouter', router: abstractBookRouter },
   { name: 'feedbackRouter', router: feedbackRouter },
   { name: 'feedbackMeRouter', router: feedbackMeRouter },
+  { name: 'audienceRouter', router: audienceRouter },
   { name: 'brevoWebhookRouter', router: createBrevoWebhookRouter() },
   { name: 'tickRouter', router: createTickRouter() },
 ]

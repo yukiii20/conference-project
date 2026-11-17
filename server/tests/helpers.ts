@@ -47,6 +47,13 @@ export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM bulk_emails') // cascades to bulk_email_recipients
   await pool.query('DELETE FROM feedback_surveys') // cascades to questions, responses, answers, invitations
   await pool.query('DELETE FROM abstract_books')
+  // Audience features (database/09_audience.sql). Votes cascade from questions.
+  await pool.query('DELETE FROM session_question_votes')
+  await pool.query('DELETE FROM session_questions')
+  await pool.query('DELETE FROM session_ratings')
+  await pool.query('DELETE FROM schedule_changes')
+  await pool.query('DELETE FROM conference_materials')
+  await pool.query('DELETE FROM conference_feedback')
   await pool.query('DELETE FROM agenda_feed_tokens')
   await pool.query('DELETE FROM agenda_items')
   await pool.query('DELETE FROM committee_members')
@@ -427,3 +434,4 @@ export async function createSessionDirect(
   ])
   return (rows as Array<{ id: string }>)[0]!.id
 }
+

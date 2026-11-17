@@ -11,6 +11,7 @@ import {
   MessageSquareHeart,
   QrCode,
   Ticket,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react'
 import { Icon } from '../../components/ui/Icon'
@@ -29,6 +30,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   certificates: Award,
   feedback: MessageSquareHeart,
   notifications: Bell,
+  profile: UserRound,
 }
 
 /** Visual grouping only; sections not listed here (e.g. new personal ones) fall under "Personal". */

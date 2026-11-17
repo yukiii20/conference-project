@@ -60,11 +60,39 @@ function sessionMeta(req: Request) {
   return { userAgent: req.get('user-agent') ?? null, ipAddress: req.ip ?? null }
 }
 
+/**
+ * Signs a person in at `conference` right after a self-service Audience sign-up (the role is
+ * already active, so there is nothing to wait for) and answers like POST /login, plus the new
+ * registration so the page can show the QR ticket at once.
+ */
+async function signInAfterAudienceSignup(
+  req: Request,
+  res: import('express').Response,
+  userId: string,
+  conference: ConferenceRef,
+  registration: unknown,
+  message: string,
+): Promise<void> {
+  await withTransaction(userId, async (conn) => {
+    await createSession(conn, res, { userId, rememberMe: true, isAdminSession: false, conferenceId: conference.id, ...sessionMeta(req) })
+  })
+  const [roles, profile] = await Promise.all([getMyRoles(userId, conference.id), getUserProfile(userId)])
+  res.status(201).json({ message, signed_in: true, user: profile, roles, conference: sessionConferenceDto(conference), registration })
+}
+
 authRouter.post('/register', authRateLimit, validateBody(registerSchema), async (req, res, next) => {
   try {
-    await registerUser(req.body, auditContextFrom(req))
+    const { userId, registration } = await registerUser(req.body, auditContextFrom(req))
+    if (registration) {
+      const conference = await findConference(req.body.conference_id, { publishedOnly: true })
+      if (conference) {
+        await signInAfterAudienceSignup(req, res, userId, conference, registration, 'Account created and registered. Your ticket is ready.')
+        return
+      }
+    }
     res.status(201).json({
       message: "Account created. The conference's convenor must approve it before you can sign in.",
+      signed_in: false,
     })
   } catch (err) {
     next(err)
@@ -78,8 +106,13 @@ authRouter.post('/register', authRateLimit, validateBody(registerSchema), async 
  */
 authRouter.post('/join-conference', authRateLimit, validateBody(joinConferenceSchema), async (req, res, next) => {
   try {
-    const { conference } = await joinConferenceWithExistingAccount(req.body, auditContextFrom(req))
+    const { conference, userId, registration } = await joinConferenceWithExistingAccount(req.body, auditContextFrom(req))
+    if (registration) {
+      await signInAfterAudienceSignup(req, res, userId, conference, registration, `You are registered for ${conference.name}. Your ticket is ready.`)
+      return
+    }
     res.status(201).json({
+      signed_in: false,
       message: `Request sent. You can sign in at ${conference.name} once the convenor approves it.`,
       conference: sessionConferenceDto(conference),
     })
@@ -275,12 +308,21 @@ authRouter.post('/switch-conference', requireAuth, validateBody(switchConference
  */
 authRouter.post('/request-role', requireAuth, authRateLimit, validateBody(requestRoleSchema), async (req, res, next) => {
   try {
-    const { conference } = await requestRoleAsSignedInUser(
+    const { conference, registration } = await requestRoleAsSignedInUser(
       req.user!.id,
       req.body.conference,
       req.body.requested_role,
       auditContextFrom(req),
+      req.body.category_id,
     )
+    if (registration) {
+      res.status(201).json({
+        message: `You are registered for ${conference.name}. Switch to it to see your ticket.`,
+        conference: sessionConferenceDto(conference),
+        registration,
+      })
+      return
+    }
     res.status(201).json({
       message: `Request sent. You can sign in at ${conference.name} once the convenor approves it.`,
       conference: sessionConferenceDto(conference),

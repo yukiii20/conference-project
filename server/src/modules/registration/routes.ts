@@ -19,6 +19,7 @@ import {
   getAttendanceDashboard,
   getMyRegistration,
   getMyRegistrationQrToken,
+  getPublicRegistrationOptions,
   listCategories,
   listRecentCheckins,
   listRegistrations,
@@ -47,6 +48,17 @@ import {
 export const registrationRouter = Router()
 
 // ------------------------------------------------------------- Categories
+// Public: the "Sign up as Audience" form shows the categories before the person has an account.
+registrationRouter.get('/:id/registration-categories/public', async (req, res, next) => {
+  try {
+    const options = await getPublicRegistrationOptions(req.params.id!)
+    if (!options) throw new NotFoundError('Conference not found.')
+    res.json(options)
+  } catch (err) {
+    next(err)
+  }
+})
+
 registrationRouter.get('/:id/registration-categories', requireAuth, async (req, res, next) => {
   try {
     res.json({ categories: await listCategories(req.params.id!) })
@@ -231,9 +243,10 @@ registrationRouter.get('/:id/registrations', requireConferencePermission('regist
     const search = typeof req.query.search === 'string' ? req.query.search : undefined
     const status = typeof req.query.status === 'string' ? req.query.status : undefined
     const categoryId = typeof req.query.category_id === 'string' ? req.query.category_id : undefined
+    const audience = req.query.audience === 'only' || req.query.audience === 'without' ? req.query.audience : undefined
     const pageNum = Number(req.query.page)
     const page = Number.isInteger(pageNum) && pageNum > 0 ? pageNum : 1
-    res.json(await listRegistrations(req.params.id!, { search, status, categoryId, page }))
+    res.json(await listRegistrations(req.params.id!, { search, status, categoryId, audience, page }))
   } catch (err) {
     next(err)
   }

@@ -22,6 +22,8 @@ type AdminRegistration = {
   amount_paid: string
   currency: string
   registered_at: string
+  /** Holds the active Audience role in this conference. */
+  is_audience?: number | boolean
 }
 
 function paymentSummary(r: AdminRegistration): { text: string; owing: boolean } {
@@ -55,6 +57,7 @@ export function RegistrationsList({
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [status, setStatus] = useState(initialStatus)
   const [categoryId, setCategoryId] = useState('')
+  const [audience, setAudience] = useState<'' | 'only' | 'without'>('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -81,6 +84,7 @@ export function RegistrationsList({
       if (debouncedSearch) query.search = debouncedSearch
       if (status) query.status = status
       if (categoryId) query.category_id = categoryId
+      if (audience) query.audience = audience
       const data = await api.get<{ registrations: AdminRegistration[]; page: number; page_size: number; total: number }>(
         `/conferences/${conferenceId}/registrations`,
         query,
@@ -94,7 +98,7 @@ export function RegistrationsList({
     } finally {
       setLoading(false)
     }
-  }, [conferenceId, debouncedSearch, status, categoryId, page])
+  }, [conferenceId, debouncedSearch, status, categoryId, audience, page])
 
   useEffect(() => {
     load()
@@ -104,7 +108,7 @@ export function RegistrationsList({
   // than risk landing past the end of a now-smaller result set.
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, status, categoryId])
+  }, [debouncedSearch, status, categoryId, audience])
 
   async function confirmRegistration(id: string) {
     setBusyId(id)
@@ -142,6 +146,9 @@ export function RegistrationsList({
       render: (r) => (
         <>
           {r.full_name}
+          {r.is_audience ? (
+            <span className="ml-1.5 rounded-full bg-indigo-soft px-1.5 py-0.5 text-[11px] font-medium text-button">Audience</span>
+          ) : null}
           <div className="text-xs text-text-muted">{r.email}</div>
         </>
       ),
@@ -215,6 +222,16 @@ export function RegistrationsList({
               {c.name}
             </option>
           ))}
+        </Select>
+        <Select
+          value={audience}
+          onChange={(e) => setAudience(e.target.value as '' | 'only' | 'without')}
+          className="w-auto"
+          aria-label="Audience filter"
+        >
+          <option value="">Everyone</option>
+          <option value="only">Audience only</option>
+          <option value="without">Not in Audience</option>
         </Select>
         <a
           href={`${API_BASE}/conferences/${conferenceId}/registrations/export.csv`}

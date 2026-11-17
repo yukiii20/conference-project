@@ -76,6 +76,13 @@ export async function changeMemberRole(
         "An author's role can't be changed here because the person would lose access to their submissions. Use Invite member to give them an additional role instead.",
       )
     }
+    // Audience membership comes from the person's own registration; replacing it would take
+    // away their ticket features. Give them a second role with "Invite member" instead.
+    if (current.role_code === 'attendee') {
+      throw new BadRequestError(
+        "An Audience member's role can't be changed here because it comes from their registration. Use Invite member to give them an additional role instead.",
+      )
+    }
     if (current.role_code === input.role_code) return
 
     const [dupRows] = await conn.query(

@@ -10,7 +10,8 @@ import { notifyUser } from '../../utils/notifications.js'
 import { AppError, BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
 import { getSessionConferenceId } from '../../middleware/sessionScope.js'
-import type { JoinConferenceInput, LoginRoleCode, RegisterInput, SignupRoleCode, UpdateProfileInput } from './validation.js'
+import { AUDIENCE_ROLE, type ApprovalRoleCode, type JoinConferenceInput, type LoginRoleCode, type RegisterInput, type SignupRoleCode, type UpdateProfileInput } from './validation.js'
+import { ensureAudienceMembership, registerInTransaction, type NewRegistration } from '../registration/service.js'
 
 const BCRYPT_COST = 12
 const MAX_FAILED_LOGINS = 5
@@ -29,6 +30,7 @@ const ROLE_LABELS: Record<string, string> = {
   manager: 'Manager',
   convenor: 'Convenor',
   admin: 'Administrator',
+  attendee: 'Audience',
 }
 
 export function roleLabel(code: string): string {
@@ -169,10 +171,42 @@ export async function getConferencePermissions(userId: string, conferenceId: str
   return new Set((rows as Array<{ permission_code: string }>).map((r) => r.permission_code))
 }
 
+/**
+ * Sign-up as Audience, inside the caller's transaction: the Audience role becomes active at once
+ * (no approval) and the person is registered in the chosen category - one step, all or nothing
+ * (closed registration or an inactive category rolls back the whole sign-up). Queues the ticket
+ * email. Returns the new registration.
+ */
+async function joinAsAudience(
+  conn: PoolConnection,
+  userId: string,
+  conferenceId: string,
+  categoryId: string,
+  ctx: AuditContext,
+): Promise<NewRegistration> {
+  const [existing] = await conn.query(
+    `SELECT id FROM registrations WHERE conference_id = ? AND user_id = ? AND status <> 'cancelled' LIMIT 1`,
+    [conferenceId, userId],
+  )
+  if ((existing as unknown[]).length > 0) {
+    throw new AppError(409, 'You are already registered for this conference. Sign in to see your ticket.', undefined, 'already_registered')
+  }
+  const [removed] = await conn.query(
+    `SELECT 1 FROM conference_members WHERE conference_id = ? AND user_id = ? AND role_code = 'attendee' AND status = 'removed' LIMIT 1`,
+    [conferenceId, userId],
+  )
+  if ((removed as unknown[]).length > 0) {
+    throw new ForbiddenError("The organisers have removed you from this conference's Audience. Contact them if you think this is a mistake.")
+  }
+  await ensureAudienceMembership(conn, conferenceId, userId, ctx, 'signup')
+  // registerInTransaction also queues the ticket email.
+  return registerInTransaction(conn, conferenceId, userId, categoryId, ctx)
+}
+
 export async function registerUser(
   input: RegisterInput,
   ctx: AuditContext = {},
-): Promise<{ userId: string }> {
+): Promise<{ userId: string; registration: NewRegistration | null }> {
   return withTransaction(null, async (conn) => {
     const [existing] = await conn.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
     if ((existing as unknown[]).length > 0) {
@@ -196,27 +230,33 @@ export async function registerUser(
     const userId = (userRow as Array<{ id: string }>)[0]?.id
     if (!userId) throw new AppError(500, 'Could not create the account.')
 
-    try {
-      await conn.query(
-        `INSERT INTO role_requests (user_id, conference_id, role_code, status) VALUES (?, ?, ?, 'pending')`,
-        [userId, input.conference_id, input.requested_role],
-      )
-    } catch (err) {
-      if (isDuplicateKeyError(err)) {
-        throw new AppError(409, 'You already have a pending request for this role at this conference.')
-      }
-      throw err
-    }
-
     await insertAuditLog(conn, {
       actorUserId: userId,
       conferenceId: input.conference_id,
       action: 'user.register',
       entityType: 'users',
       entityId: userId,
+      newValues: { requested_role: input.requested_role },
       ipAddress: ctx.ipAddress ?? null,
       userAgent: ctx.userAgent ?? null,
     })
+
+    let registration: NewRegistration | null = null
+    if (input.requested_role === AUDIENCE_ROLE) {
+      registration = await joinAsAudience(conn, userId, input.conference_id, input.category_id!, ctx)
+    } else {
+      try {
+        await conn.query(
+          `INSERT INTO role_requests (user_id, conference_id, role_code, status) VALUES (?, ?, ?, 'pending')`,
+          [userId, input.conference_id, input.requested_role],
+        )
+      } catch (err) {
+        if (isDuplicateKeyError(err)) {
+          throw new AppError(409, 'You already have a pending request for this role at this conference.')
+        }
+        throw err
+      }
+    }
 
     const [templateRows] = await conn.query(
       `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'account_created' LIMIT 1`,
@@ -233,7 +273,7 @@ export async function registerUser(
       templateData: data,
     })
 
-    return { userId }
+    return { userId, registration }
   })
 }
 
@@ -619,7 +659,7 @@ async function createPendingRoleRequest(
   conn: PoolConnection,
   userId: string,
   conference: ConferenceRef,
-  role: SignupRoleCode,
+  role: ApprovalRoleCode,
   ctx: AuditContext,
   source: 'join_existing_account' | 'signed_in_request',
 ): Promise<void> {
@@ -678,7 +718,7 @@ async function createPendingRoleRequest(
 export async function joinConferenceWithExistingAccount(
   input: JoinConferenceInput,
   ctx: AuditContext = {},
-): Promise<{ conference: ConferenceRef }> {
+): Promise<{ conference: ConferenceRef; userId: string; registration: NewRegistration | null }> {
   const conference = await findConference(input.conference, { publishedOnly: true })
   if (!conference) {
     throw new NotFoundError('Conference not found.')
@@ -697,10 +737,15 @@ export async function joinConferenceWithExistingAccount(
     throw wrongPassword()
   }
 
-  await withTransaction(user.id, (conn) =>
-    createPendingRoleRequest(conn, user.id, conference, input.requested_role, ctx, 'join_existing_account'),
-  )
-  return { conference }
+  if (input.requested_role === AUDIENCE_ROLE) {
+    const registration = await withTransaction(user.id, (conn) =>
+      joinAsAudience(conn, user.id, conference.id, input.category_id!, ctx),
+    )
+    return { conference, userId: user.id, registration }
+  }
+  const role = input.requested_role
+  await withTransaction(user.id, (conn) => createPendingRoleRequest(conn, user.id, conference, role, ctx, 'join_existing_account'))
+  return { conference, userId: user.id, registration: null }
 }
 
 /**
@@ -714,15 +759,20 @@ export async function requestRoleAsSignedInUser(
   conferenceRef: string,
   role: SignupRoleCode,
   ctx: AuditContext = {},
-): Promise<{ conference: ConferenceRef }> {
+  categoryId?: string,
+): Promise<{ conference: ConferenceRef; registration: NewRegistration | null }> {
   const conference = await findConference(conferenceRef, { publishedOnly: true })
   if (!conference) {
     throw new NotFoundError('Conference not found.')
   }
+  if (role === AUDIENCE_ROLE) {
+    const registration = await withTransaction(userId, (conn) => joinAsAudience(conn, userId, conference.id, categoryId!, ctx))
+    return { conference, registration }
+  }
   await withTransaction(userId, (conn) =>
     createPendingRoleRequest(conn, userId, conference, role, ctx, 'signed_in_request'),
   )
-  return { conference }
+  return { conference, registration: null }
 }
 
 // ---------------------------------------------------------------------------
