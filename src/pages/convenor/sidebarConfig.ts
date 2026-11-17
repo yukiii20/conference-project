@@ -59,7 +59,7 @@ export const SECTIONS: SectionConfig[] = [
       { id: 'attendance', label: 'Attendance', keywords: ['registrations', 'qr', 'check-in', 'name badges', 'print badges'] },
       { id: 'certificates', label: 'Certificates', keywords: ['templates', 'issue'] },
       { id: 'abstracts', label: 'Book of abstracts', keywords: ['abstract book', 'pdf'] },
-      { id: 'feedback', label: 'Feedback survey', keywords: ['survey', 'questions'] },
+      { id: 'feedback', label: 'Feedback', keywords: ['survey', 'questions', 'ratings', 'audience feedback', 'session ratings'] },
     ],
   },
   {

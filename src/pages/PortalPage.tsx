@@ -13,6 +13,7 @@ import { NotificationsTab } from './portal/NotificationsTab'
 import { ProgrammeTab } from './portal/audience/ProgrammeTab'
 import { AudienceSpeakersTab } from './portal/audience/SpeakersTab'
 import { QaTab } from './portal/audience/QaTab'
+import { AudienceFeedbackTab } from './portal/audience/AudienceFeedbackTab'
 import { AuthorSection } from './portal/sections/AuthorSection'
 import { ReviewerSection } from './portal/sections/ReviewerSection'
 import { SessionChairSection } from './portal/sections/SessionChairSection'
@@ -191,7 +192,19 @@ function PortalPageInner() {
                 }
               />
               <Route path="agenda" element={<MyAgendaTab conferenceId={conferenceId} />} />
-              <Route path="feedback" element={<GiveFeedbackTab />} />
+              <Route
+                path="feedback"
+                element={
+                  conferenceId && rolesInConference.has('attendee') ? (
+                    <div className="mt-6 max-w-2xl space-y-8">
+                      <AudienceFeedbackTab conferenceId={conferenceId} />
+                      <GiveFeedbackTab />
+                    </div>
+                  ) : (
+                    <GiveFeedbackTab />
+                  )
+                }
+              />
               <Route path="ticket" element={<MyTicketTab conferenceId={conferenceId} />} />
               <Route path="programme" element={<ProgrammeTab conferenceId={conferenceId} />} />
               <Route path="speakers" element={<AudienceSpeakersTab conferenceId={conferenceId} />} />

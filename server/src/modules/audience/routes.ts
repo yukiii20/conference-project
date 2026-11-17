@@ -16,6 +16,20 @@ import {
   parseSort,
   setVote,
 } from './qa.js'
+import {
+  assertFullScope,
+  conferenceFeedbackSchema,
+  feedbackCsv,
+  getFeedbackScope,
+  getFeedbackSummary,
+  getMyFeedback,
+  moderateFeedback,
+  moderateFeedbackSchema,
+  parseFeedbackFilters,
+  saveConferenceFeedback,
+  saveSessionRating,
+  sessionRatingSchema,
+} from './feedback.js'
 import { getAudienceProgramme, getAudienceSpeakers, joinOnline } from './programme.js'
 import { resendTicketEmail } from './ticket.js'
 import { getMyTicket } from './ticketService.js'
@@ -172,6 +186,97 @@ audienceRouter.delete('/:id/sessions/:sessionId/questions/:questionId', requireA
     await assertCanModerate(req.user!.id, req.params.id!, req.params.sessionId!)
     await moderateQuestion(req.user!.id, req.params.id!, req.params.sessionId!, req.params.questionId!, 'deleted', auditContextFrom(req))
     res.json({ message: 'Question deleted.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ------------------------------------------------------------------ Feedback (Audience)
+audienceRouter.get('/:id/audience/feedback', requireConferencePermission('audience.give_feedback'), async (req, res, next) => {
+  try {
+    res.json(await getMyFeedback(req.params.id!, req.user!.id))
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.put(
+  '/:id/audience/feedback',
+  requireConferencePermission('audience.give_feedback'),
+  validateBody(conferenceFeedbackSchema),
+  async (req, res, next) => {
+    try {
+      const { created } = await saveConferenceFeedback(req.params.id!, req.user!.id, req.body)
+      res.status(created ? 201 : 200).json({ message: created ? 'Thank you for your feedback.' : 'Your feedback has been updated.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+audienceRouter.put(
+  '/:id/audience/sessions/:sessionId/rating',
+  requireConferencePermission('audience.give_feedback'),
+  validateBody(sessionRatingSchema),
+  async (req, res, next) => {
+    try {
+      const { created } = await saveSessionRating(req.params.id!, req.params.sessionId!, req.user!.id, req.body)
+      res.status(created ? 201 : 200).json({ message: created ? 'Thanks for rating this session.' : 'Your rating has been updated.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ------------------------------------------------------------------ Feedback (organisers)
+// Organisers (audience.moderate) see everything; a chair sees ratings of their own sessions
+// only. requireAuth + getFeedbackScope, since it is "a permission OR chair of something".
+audienceRouter.get('/:id/audience-feedback', requireAuth, async (req, res, next) => {
+  try {
+    const scope = await getFeedbackScope(req.user!.id, req.params.id!)
+    res.setHeader('Cache-Control', 'no-store')
+    res.json(await getFeedbackSummary(req.params.id!, scope, parseFeedbackFilters(req.query as Record<string, unknown>)))
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.get('/:id/audience-feedback/export.csv', requireAuth, async (req, res, next) => {
+  try {
+    const scope = await getFeedbackScope(req.user!.id, req.params.id!)
+    const summary = await getFeedbackSummary(req.params.id!, scope, parseFeedbackFilters(req.query as Record<string, unknown>))
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename="audience-feedback.csv"')
+    res.setHeader('Cache-Control', 'no-store')
+    res.send('\uFEFF' + feedbackCsv(summary))
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.patch(
+  '/:id/audience-feedback/:kind/:itemId',
+  requireConferencePermission('audience.moderate'),
+  validateBody(moderateFeedbackSchema),
+  async (req, res, next) => {
+    try {
+      const kind = req.params.kind === 'conference' ? 'conference' : req.params.kind === 'session' ? 'session' : null
+      if (!kind) throw new NotFoundError('Not found.')
+      assertFullScope(await getFeedbackScope(req.user!.id, req.params.id!))
+      await moderateFeedback(req.user!.id, req.params.id!, kind, req.params.itemId!, req.body.status, auditContextFrom(req))
+      res.json({ message: 'Updated.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+audienceRouter.delete('/:id/audience-feedback/:kind/:itemId', requireConferencePermission('audience.moderate'), async (req, res, next) => {
+  try {
+    const kind = req.params.kind === 'conference' ? 'conference' : req.params.kind === 'session' ? 'session' : null
+    if (!kind) throw new NotFoundError('Not found.')
+    await moderateFeedback(req.user!.id, req.params.id!, kind, req.params.itemId!, 'deleted', auditContextFrom(req))
+    res.json({ message: 'Feedback deleted.' })
   } catch (err) {
     next(err)
   }
