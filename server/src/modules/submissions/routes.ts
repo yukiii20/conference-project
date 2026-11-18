@@ -2,6 +2,7 @@ import { sendPrivateFile } from '../../storage/send.js'
 import { Router } from 'express'
 import multer from 'multer'
 import { requireAuth } from '../../middleware/auth.js'
+import { refuseWhenConferenceEnded, refuseWhenSubmissionConferenceEnded } from '../../middleware/conferenceEnded.js'
 import { uploadRateLimit } from '../../middleware/rateLimit.js'
 import { validateBody } from '../../middleware/validate.js'
 import { BadRequestError } from '../../utils/errors.js'
@@ -52,6 +53,7 @@ submissionsConferenceRouter.get('/:id/my-submissions', requireAuth, async (req, 
 submissionsConferenceRouter.post(
   '/:id/submissions',
   requireAuth,
+  refuseWhenConferenceEnded,
   validateBody(createSubmissionSchema),
   async (req, res, next) => {
     try {
@@ -73,7 +75,7 @@ submissionsRouter.get('/:sid', requireAuth, async (req, res, next) => {
   }
 })
 
-submissionsRouter.patch('/:sid', requireAuth, validateBody(updateSubmissionSchema), async (req, res, next) => {
+submissionsRouter.patch('/:sid', requireAuth, refuseWhenSubmissionConferenceEnded, validateBody(updateSubmissionSchema), async (req, res, next) => {
   try {
     await updateSubmission(req.user!.id, req.params.sid!, req.body)
     res.json(await getSubmissionDetail(req.user!.id, req.params.sid!))
@@ -82,7 +84,7 @@ submissionsRouter.patch('/:sid', requireAuth, validateBody(updateSubmissionSchem
   }
 })
 
-submissionsRouter.post('/:sid/submit', requireAuth, async (req, res, next) => {
+submissionsRouter.post('/:sid/submit', requireAuth, refuseWhenSubmissionConferenceEnded, async (req, res, next) => {
   try {
     await submitSubmission(req.user!.id, req.params.sid!)
     res.json(await getSubmissionDetail(req.user!.id, req.params.sid!))
@@ -94,6 +96,7 @@ submissionsRouter.post('/:sid/submit', requireAuth, async (req, res, next) => {
 submissionsRouter.post(
   '/:sid/withdraw',
   requireAuth,
+  refuseWhenSubmissionConferenceEnded,
   validateBody(withdrawSubmissionSchema),
   async (req, res, next) => {
     try {
@@ -105,7 +108,7 @@ submissionsRouter.post(
   },
 )
 
-submissionsRouter.delete('/:sid', requireAuth, async (req, res, next) => {
+submissionsRouter.delete('/:sid', requireAuth, refuseWhenSubmissionConferenceEnded, async (req, res, next) => {
   try {
     await deleteSubmission(req.user!.id, req.params.sid!)
     res.json({ message: 'Submission deleted.' })
@@ -114,7 +117,7 @@ submissionsRouter.delete('/:sid', requireAuth, async (req, res, next) => {
   }
 })
 
-submissionsRouter.post('/:sid/authors', requireAuth, validateBody(addAuthorSchema), async (req, res, next) => {
+submissionsRouter.post('/:sid/authors', requireAuth, refuseWhenSubmissionConferenceEnded, validateBody(addAuthorSchema), async (req, res, next) => {
   try {
     const result = await addAuthor(req.user!.id, req.params.sid!, req.body)
     res.status(201).json(result)
@@ -126,6 +129,7 @@ submissionsRouter.post('/:sid/authors', requireAuth, validateBody(addAuthorSchem
 submissionsRouter.patch(
   '/:sid/authors/:aid',
   requireAuth,
+  refuseWhenSubmissionConferenceEnded,
   validateBody(updateAuthorSchema),
   async (req, res, next) => {
     try {
@@ -137,7 +141,7 @@ submissionsRouter.patch(
   },
 )
 
-submissionsRouter.delete('/:sid/authors/:aid', requireAuth, async (req, res, next) => {
+submissionsRouter.delete('/:sid/authors/:aid', requireAuth, refuseWhenSubmissionConferenceEnded, async (req, res, next) => {
   try {
     await deleteAuthor(req.user!.id, req.params.sid!, req.params.aid!)
     res.json({ message: 'Author removed.' })
@@ -146,7 +150,7 @@ submissionsRouter.delete('/:sid/authors/:aid', requireAuth, async (req, res, nex
   }
 })
 
-submissionsRouter.post('/:sid/files/:kind', requireAuth, uploadRateLimit, upload, async (req, res, next) => {
+submissionsRouter.post('/:sid/files/:kind', requireAuth, refuseWhenSubmissionConferenceEnded, uploadRateLimit, upload, async (req, res, next) => {
   try {
     const kind = req.params.kind!
     if (!isFileKind(kind)) throw new BadRequestError('Unknown file kind.')

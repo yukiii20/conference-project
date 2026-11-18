@@ -3,6 +3,7 @@ import { api, ApiError } from '../../lib/api'
 import { StatusChip } from '../../components/ui/Badge'
 import { Alert, Button, EmptyState, SkeletonText, Textarea } from '../../components/ui'
 import { formatKathmandu } from '../../lib/datetime'
+import { useConferenceEnded } from '../../lib/conferenceEndedContext'
 
 type Assignment = {
   id: string
@@ -37,6 +38,8 @@ export function AssignmentsList({
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [decliningId, setDecliningId] = useState<string | null>(null)
+  // Part 2 (changes-nov2): accepting or declining is closed once the conference has ended.
+  const ended = useConferenceEnded()
   const [declineReason, setDeclineReason] = useState('')
 
   const load = useCallback(async () => {
@@ -111,7 +114,7 @@ export function AssignmentsList({
             </div>
 
             <div className="flex shrink-0 gap-2">
-              {a.status === 'assigned' ? (
+              {a.status === 'assigned' && !ended ? (
                 <>
                   <Button type="button" size="sm" loading={busyId === a.id} onClick={() => handleAccept(a.id)}>
                     Accept

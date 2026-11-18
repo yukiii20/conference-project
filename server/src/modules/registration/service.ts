@@ -14,6 +14,7 @@ import type { RegistrationCategoryInput } from './validation.js'
 import { AMOUNT_PAID_SQL, currentFeesByCategory, priceForNewRegistration, pricedCategoryIds, type CurrentFee } from './fees.service.js'
 import { csvCell } from '../../utils/csv.js'
 import { queueTicketEmail } from '../audience/ticket.js'
+import { assertConferenceNotEnded } from '../../utils/conferenceEnded.js'
 
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { code?: string }).code === 'ER_DUP_ENTRY')
@@ -280,6 +281,9 @@ export async function registerInTransaction(
   ctx: AuditContext = {},
 ): Promise<NewRegistration> {
   {
+    // Part 2 (changes-nov2): no new registration once the conference has ended. Also covers
+    // "Sign up as Audience", which registers inside the account-creation transaction.
+    await assertConferenceNotEnded(conn, conferenceId)
     const window = await loadDeadlineWindow(conferenceId, 'registration')
     if (!isWindowOpen(window)) {
       throw new ConflictError('Registration is not open right now.')

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useConferenceEnded } from '../../../lib/conferenceEndedContext'
 import { useSearchParams } from 'react-router-dom'
 import { ThumbsUp } from 'lucide-react'
 import { api, ApiError } from '../../../lib/api'
@@ -33,6 +34,7 @@ const POLL_MS = 10_000
  * what was answered. Refreshes every 10 seconds while open. The server enforces every rule.
  */
 export function QaTab({ conferenceId }: { conferenceId: string | null }) {
+  const ended = useConferenceEnded()
   const [searchParams, setSearchParams] = useSearchParams()
   const [sessions, setSessions] = useState<AudienceSession[] | null>(null)
   const [registered, setRegistered] = useState(true)
@@ -180,9 +182,11 @@ export function QaTab({ conferenceId }: { conferenceId: string | null }) {
                 <div className="mt-4">
                   <Alert variant="warning">Asking and voting need a confirmed registration. You can still read the questions.</Alert>
                 </div>
-              ) : !qa.window.open ? (
+              ) : !qa.window.open || ended ? (
                 <p className="mt-4 rounded-lg bg-surface-muted px-3 py-2 text-sm text-text-muted">
-                  {new Date() < new Date(qa.window.opens_at)
+                  {ended
+                    ? 'Questions are closed because this conference has ended.'
+                    : new Date() < new Date(qa.window.opens_at)
                     ? `Questions open when the session starts (${formatKathmanduTime(qa.window.opens_at)}).`
                     : 'Questions for this session are closed.'}
                 </p>
@@ -233,7 +237,7 @@ export function QaTab({ conferenceId }: { conferenceId: string | null }) {
                       <button
                         type="button"
                         onClick={() => toggleVote(q)}
-                        disabled={q.is_mine || !qa.window.open || !registered || q.status === 'hidden'}
+                        disabled={q.is_mine || !qa.window.open || ended || !registered || q.status === 'hidden'}
                         aria-pressed={q.voted_by_me}
                         aria-label={q.voted_by_me ? 'Remove your vote' : 'Vote for this question'}
                         className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg border text-xs font-semibold disabled:opacity-60 ${

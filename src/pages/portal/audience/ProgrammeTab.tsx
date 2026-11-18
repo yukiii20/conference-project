@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useConferenceEnded } from '../../../lib/conferenceEndedContext'
 import { Link } from 'react-router-dom'
 import { CalendarPlus, MonitorPlay, Star } from 'lucide-react'
 import { api, ApiError, API_BASE } from '../../../lib/api'
@@ -33,6 +34,7 @@ function dayLabel(key: string): string {
  * online/hybrid sessions. Phone first: one column, sticky filter bar, 44px touch targets.
  */
 export function ProgrammeTab({ conferenceId }: { conferenceId: string | null }) {
+  const ended = useConferenceEnded()
   const [data, setData] = useState<Programme | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<ProgrammeFilters>(EMPTY_FILTERS)
@@ -252,7 +254,7 @@ export function ProgrammeTab({ conferenceId }: { conferenceId: string | null }) 
                       </ul>
                     ) : null}
 
-                    {join !== 'none' ? (
+                    {join !== 'none' && !ended ? (
                       <div className="mt-3">
                         {join === 'open' ? (
                           <button

@@ -7,6 +7,8 @@ import { darken, getAccessibleTextColor, hexToRgba, resolveConferenceBrand } fro
 import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
 import { RegistrationPanel } from './conference/RegistrationPanel'
+import { ConferenceEndedNotice } from '../components/ConferenceEndedNotice'
+import { isConferenceEnded } from '../lib/conferenceEnded'
 import { PublicAcceptedAbstracts } from '../components/audience/PublicAcceptedAbstracts'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
 import { StarButton } from '../components/agenda/StarButton'
@@ -307,6 +309,8 @@ export function ConferencePage() {
   const daysUntilNext = nextDeadline ? Math.ceil((new Date(nextDeadline.at).getTime() - nowMs) / 86400000) : null
 
   const sectionStyle = { scrollMarginTop: headerHeight + 8 }
+  // Part 2 (changes-nov2): after the end date (Nepal time) participant actions are closed.
+  const ended = isConferenceEnded(conference.end_date)
 
   return (
     <div style={{ '--conf-color': accent } as React.CSSProperties} className="min-h-screen bg-background text-ink">
@@ -324,7 +328,14 @@ export function ConferencePage() {
         loginHref={loginHref}
         activeSection={activeSection}
         onNavigate={handleNavigate}
+        ended={ended}
       />
+
+      {ended ? (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <ConferenceEndedNotice />
+        </div>
+      ) : null}
 
       <section
         id="home"
@@ -378,20 +389,24 @@ export function ConferencePage() {
                 introDone ? 'opacity-100' : 'opacity-0'
               }`}
             >
-              <Link
-                to={signupHref}
-                style={{ backgroundColor: '#ffffff', color: accent }}
-                className="rounded-xl px-5 py-3 font-medium shadow-sm hover:opacity-90"
-              >
-                Submit an abstract
-              </Link>
-              <Link
-                to={signupHref}
-                style={{ borderColor: heroTextColor, color: heroTextColor }}
-                className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
-              >
-                Register
-              </Link>
+              {ended ? null : (
+                <>
+                  <Link
+                    to={signupHref}
+                    style={{ backgroundColor: '#ffffff', color: accent }}
+                    className="rounded-xl px-5 py-3 font-medium shadow-sm hover:opacity-90"
+                  >
+                    Submit an abstract
+                  </Link>
+                  <Link
+                    to={signupHref}
+                    style={{ borderColor: heroTextColor, color: heroTextColor }}
+                    className="rounded-md border px-5 py-2.5 font-medium hover:bg-white/10"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
               <Link
                 to={loginHref}
                 style={{ borderColor: heroTextColor, color: heroTextColor }}
@@ -456,13 +471,15 @@ export function ConferencePage() {
           <div id="submission-guidelines" className="mt-8 rounded-xl border border-border-soft bg-surface p-5 shadow-card sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-display text-2xl font-semibold tracking-tight">Submission guidelines</h3>
-              <Link
-                to={signupHref}
-                style={{ backgroundColor: accent, color: getAccessibleTextColor(accent) }}
-                className="rounded-xl px-4 py-2 text-sm font-medium shadow-sm hover:opacity-90"
-              >
-                Submit an abstract
-              </Link>
+              {ended ? null : (
+                <Link
+                  to={signupHref}
+                  style={{ backgroundColor: accent, color: getAccessibleTextColor(accent) }}
+                  className="rounded-xl px-4 py-2 text-sm font-medium shadow-sm hover:opacity-90"
+                >
+                  Submit an abstract
+                </Link>
+              )}
             </div>
             <Markdown source={conference.submission_guidelines} className="mt-4 max-w-prose text-ink/80" />
           </div>
@@ -726,7 +743,11 @@ export function ConferencePage() {
       >
         <h2 className="font-display text-3xl font-semibold tracking-tight">Registration</h2>
         <div className="mt-4">
-          <RegistrationPanel conferenceId={conference.id} conferenceSlug={conference.slug} accent={accent} contactEmail={conference.contact_email} />
+          {ended ? (
+            <p className="text-sm text-ink/70">Registration is closed because this conference has ended.</p>
+          ) : (
+            <RegistrationPanel conferenceId={conference.id} conferenceSlug={conference.slug} accent={accent} contactEmail={conference.contact_email} />
+          )}
         </div>
       </section>
 

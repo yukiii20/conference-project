@@ -34,6 +34,8 @@ type ConferenceNavProps = {
   loginHref: string
   activeSection: string
   onNavigate: (id: SectionId) => void
+  /** Conference has ended (changes-nov2, Part 2): the Register button is hidden. */
+  ended?: boolean
 }
 
 function useSupportsHover(): boolean {
@@ -370,7 +372,7 @@ function NavItem({
 }
 
 export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(function ConferenceNav(
-  { conference, tracks, supporters, schedule, deadlines, accent, accentText, logoUrl, signupHref, loginHref, activeSection, onNavigate },
+  { conference, tracks, supporters, schedule, deadlines, accent, accentText, logoUrl, signupHref, loginHref, activeSection, onNavigate, ended = false },
   ref,
 ) {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -490,13 +492,15 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
           <Link to={loginHref} className="rounded-lg border border-border-soft px-3 py-1.5 hover:bg-page-bg">
             Sign in
           </Link>
-          <Link
-            to={signupHref}
-            style={{ backgroundColor: accent, color: accentText }}
-            className="rounded-lg px-3 py-1.5 font-medium shadow-sm hover:opacity-90"
-          >
-            Register
-          </Link>
+          {ended ? null : (
+            <Link
+              to={signupHref}
+              style={{ backgroundColor: accent, color: accentText }}
+              className="rounded-lg px-3 py-1.5 font-medium shadow-sm hover:opacity-90"
+            >
+              Register
+            </Link>
+          )}
         </div>
 
         <div className="relative xl:hidden">
@@ -550,14 +554,16 @@ export const ConferenceNav = forwardRef<HTMLElement, ConferenceNavProps>(functio
                 >
                   Sign in
                 </Link>
-                <Link
-                  to={signupHref}
-                  onClick={() => setMobileOpen(false)}
-                  style={{ backgroundColor: accent, color: accentText }}
-                  className="flex-1 rounded-md px-3 py-2 text-center text-sm font-medium"
-                >
-                  Register
-                </Link>
+                {ended ? null : (
+                  <Link
+                    to={signupHref}
+                    onClick={() => setMobileOpen(false)}
+                    style={{ backgroundColor: accent, color: accentText }}
+                    className="flex-1 rounded-md px-3 py-2 text-center text-sm font-medium"
+                  >
+                    Register
+                  </Link>
+                )}
               </div>
             </div>
           ) : null}

@@ -12,6 +12,7 @@ import {
 } from '../../utils/errors.js'
 import { notifyUser } from '../../utils/notifications.js'
 import { assertConferenceInSession } from '../../middleware/sessionScope.js'
+import { conferenceHasEnded } from '../../utils/conferenceEnded.js'
 import type { AddAuthorInput, CreateSubmissionInput, UpdateAuthorInput, UpdateSubmissionInput } from './validation.js'
 
 // ---------------------------------------------------------------------------
@@ -132,13 +133,14 @@ export async function getAuthorFormData(userId: string, conferenceId: string): P
   const submissionGuidelines = (conferenceRows as Array<{ submission_guidelines: string | null }>)[0]?.submission_guidelines ?? null
 
   const windowTypes = ['abstract_submission', 'full_paper', 'final_paper'] as const
+  const ended = await conferenceHasEnded(pool, conferenceId)
   const windows: AuthorFormData['windows'] = {} as AuthorFormData['windows']
   for (const type of windowTypes) {
     const window = await loadDeadlineWindow(conferenceId, type)
     windows[type] = {
       opens_at: window?.opens_at ?? null,
       closes_at: window?.closes_at ?? null,
-      is_open: isWindowOpen(window),
+      is_open: !ended && isWindowOpen(window),
     }
   }
 
@@ -398,6 +400,8 @@ export async function getSubmissionDetail(userId: string, submissionId: string):
   ])
   const activeReview = await hasActiveReview(submissionId)
   const feedback = await getFeedback(sub.conference_id, submissionId)
+  // Part 2 (changes-nov2): after the conference has ended the author can only view.
+  const open = !(await conferenceHasEnded(pool, sub.conference_id))
 
   return {
     id: sub.id,
@@ -413,14 +417,14 @@ export async function getSubmissionDetail(userId: string, submissionId: string):
     files: fileRows as SubmissionFileMetaRow[],
     status_history: historyRows as SubmissionStatusHistoryRow[],
     feedback,
-    can_edit: EDITABLE_STATUSES.has(sub.status),
-    can_delete: (sub.status === 'draft' || sub.status === 'submitted') && !activeReview,
-    can_withdraw: WITHDRAWABLE_STATUSES.has(sub.status),
+    can_edit: open && EDITABLE_STATUSES.has(sub.status),
+    can_delete: open && (sub.status === 'draft' || sub.status === 'submitted') && !activeReview,
+    can_withdraw: open && WITHDRAWABLE_STATUSES.has(sub.status),
     can_upload: {
-      abstract: ABSTRACT_UPLOAD_STATUSES.has(sub.status),
-      full_paper: FULL_PAPER_UPLOAD_STATUSES.has(sub.status) && isWindowOpen(fullPaperWindow),
-      slides: FULL_PAPER_UPLOAD_STATUSES.has(sub.status) && isWindowOpen(fullPaperWindow),
-      camera_ready: sub.status === 'final_approved' && isWindowOpen(finalPaperWindow),
+      abstract: open && ABSTRACT_UPLOAD_STATUSES.has(sub.status),
+      full_paper: open && FULL_PAPER_UPLOAD_STATUSES.has(sub.status) && isWindowOpen(fullPaperWindow),
+      slides: open && FULL_PAPER_UPLOAD_STATUSES.has(sub.status) && isWindowOpen(fullPaperWindow),
+      camera_ready: open && sub.status === 'final_approved' && isWindowOpen(finalPaperWindow),
     },
   }
 }

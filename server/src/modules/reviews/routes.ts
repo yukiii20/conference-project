@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth.js'
+import { refuseWhenAssignmentConferenceEnded, refuseWhenSubmissionConferenceEnded } from '../../middleware/conferenceEnded.js'
 import { validateBody, validateQuery } from '../../middleware/validate.js'
 import { listReviewersWithPendingReviews, sendAllPendingReminders, sendManualReminder } from './reminders.js'
 import {
@@ -208,7 +209,7 @@ reviewerRouter.get('/bids', requireAuth, validateQuery(listBiddableQuerySchema),
   }
 })
 
-reviewerRouter.put('/bids/:sid', requireAuth, validateBody(upsertBidSchema), async (req, res, next) => {
+reviewerRouter.put('/bids/:sid', requireAuth, refuseWhenSubmissionConferenceEnded, validateBody(upsertBidSchema), async (req, res, next) => {
   try {
     await upsertReviewBid(req.user!.id, req.params.sid!, req.body)
     res.json({ message: 'Bid saved.' })
@@ -234,7 +235,7 @@ reviewerRouter.get('/assignments/:aid', requireAuth, async (req, res, next) => {
   }
 })
 
-reviewerRouter.post('/assignments/:aid/accept', requireAuth, async (req, res, next) => {
+reviewerRouter.post('/assignments/:aid/accept', requireAuth, refuseWhenAssignmentConferenceEnded, async (req, res, next) => {
   try {
     await acceptAssignment(req.user!.id, req.params.aid!)
     res.json({ message: 'Assignment accepted.' })
@@ -246,6 +247,7 @@ reviewerRouter.post('/assignments/:aid/accept', requireAuth, async (req, res, ne
 reviewerRouter.post(
   '/assignments/:aid/decline',
   requireAuth,
+  refuseWhenAssignmentConferenceEnded,
   validateBody(reviewerAssignmentActionSchema),
   async (req, res, next) => {
     try {
@@ -260,6 +262,7 @@ reviewerRouter.post(
 reviewerRouter.post(
   '/assignments/:aid/conflict',
   requireAuth,
+  refuseWhenAssignmentConferenceEnded,
   validateBody(reviewerAssignmentActionSchema),
   async (req, res, next) => {
     try {
@@ -274,6 +277,7 @@ reviewerRouter.post(
 reviewerRouter.put(
   '/assignments/:aid/review',
   requireAuth,
+  refuseWhenAssignmentConferenceEnded,
   validateBody(saveReviewDraftSchema),
   async (req, res, next) => {
     try {
@@ -288,6 +292,7 @@ reviewerRouter.put(
 reviewerRouter.post(
   '/assignments/:aid/review/submit',
   requireAuth,
+  refuseWhenAssignmentConferenceEnded,
   validateBody(submitReviewSchema),
   async (req, res, next) => {
     try {

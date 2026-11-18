@@ -19,6 +19,7 @@ import {
   type DeadlineWindow,
   type TabId,
 } from './homeData'
+import { isConferenceEnded } from '../../../lib/conferenceEnded'
 
 type Windows = { abstracts: Map<string, DeadlineWindow>; registration: Map<string, DeadlineWindow> }
 
@@ -86,8 +87,10 @@ function ConferenceCard({ conference: c, windows, featured }: { conference: Conf
   const place = placeLabel(c)
   const where = [c.venue_name, place].filter(Boolean).join(' · ')
   const abstractsOpen = windowState(windows.abstracts.get(c.id)) === 'open'
-  const statusLabel = past ? 'Past conference' : abstractsOpen ? 'Open for abstracts' : (STATUS_LABELS[c.status] ?? c.status)
-  const chipTone = past ? 'bg-white/85 text-text-muted' : abstractsOpen ? 'bg-success text-white' : 'bg-white/90 text-brand'
+  // Part 2 (changes-nov2): an ended conference (end date over in Nepal time) shows "Ended" in the status badge.
+  const ended = isConferenceEnded(c.end_date)
+  const statusLabel = ended ? 'Ended' : past ? 'Past conference' : abstractsOpen ? 'Open for abstracts' : (STATUS_LABELS[c.status] ?? c.status)
+  const chipTone = past || ended ? 'bg-white/85 text-text-muted' : abstractsOpen ? 'bg-success text-white' : 'bg-white/90 text-brand'
 
   return (
     <Link

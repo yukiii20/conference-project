@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import QRCode from 'qrcode'
 import { requireAuth, requireConferencePermission } from '../../middleware/auth.js'
+import { refuseWhenConferenceEnded } from '../../middleware/conferenceEnded.js'
 import { validateBody, validateQuery } from '../../middleware/validate.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { env } from '../../config/env.js'
@@ -218,6 +219,7 @@ registrationRouter.get('/:id/my-registration/qr.png', requireAuth, async (req, r
 registrationRouter.post(
   '/:id/register',
   requireAuth,
+  refuseWhenConferenceEnded,
   validateBody(registerSchema),
   async (req, res, next) => {
     try {
@@ -228,7 +230,7 @@ registrationRouter.post(
   },
 )
 
-registrationRouter.delete('/:id/my-registration', requireAuth, async (req, res, next) => {
+registrationRouter.delete('/:id/my-registration', requireAuth, refuseWhenConferenceEnded, async (req, res, next) => {
   try {
     await cancelMyRegistration(req.params.id!, req.user!.id, auditContextFrom(req))
     res.json({ message: 'Registration cancelled.' })
@@ -335,6 +337,7 @@ registrationRouter.get(
 registrationRouter.post(
   '/:id/checkin',
   requireConferencePermission('attendance.record'),
+  refuseWhenConferenceEnded,
   validateBody(checkinSchema),
   async (req, res, next) => {
     try {
@@ -348,6 +351,7 @@ registrationRouter.post(
 registrationRouter.post(
   '/:id/checkin/manual',
   requireConferencePermission('attendance.record'),
+  refuseWhenConferenceEnded,
   validateBody(manualCheckinSchema),
   async (req, res, next) => {
     try {
@@ -390,7 +394,7 @@ registrationRouter.get('/:id/attendance/recent', requireConferencePermission('at
 })
 
 // ---------------------------------------------------- Session attendance
-registrationRouter.post('/:id/sessions/:sessionId/checkin', requireAuth, validateBody(sessionCheckinSchema), async (req, res, next) => {
+registrationRouter.post('/:id/sessions/:sessionId/checkin', requireAuth, refuseWhenConferenceEnded, validateBody(sessionCheckinSchema), async (req, res, next) => {
   try {
     await assertCanRecordSessionAttendance(req.user!.id, req.params.id!, req.params.sessionId!)
     res.json(await sessionCheckinByQrToken(req.user!.id, req.params.id!, req.params.sessionId!, req.body.qr_token, auditContextFrom(req)))
@@ -402,6 +406,7 @@ registrationRouter.post('/:id/sessions/:sessionId/checkin', requireAuth, validat
 registrationRouter.post(
   '/:id/sessions/:sessionId/checkin/manual',
   requireAuth,
+  refuseWhenConferenceEnded,
   validateBody(manualSessionCheckinSchema),
   async (req, res, next) => {
     try {

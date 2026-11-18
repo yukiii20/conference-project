@@ -5,6 +5,7 @@ import { formatKathmandu } from '../../lib/datetime'
 import { formatMoney } from '../../lib/money'
 import { useAuth } from '../../lib/authContext'
 import { ConfirmDialog } from '../../components/ui/Modal'
+import { useConferenceEnded } from '../../lib/conferenceEndedContext'
 
 type Category = {
   id: string
@@ -67,6 +68,9 @@ export function RegistrationPanel({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // Part 2 (changes-nov2): in the portal of an ended conference the ticket stays visible, but
+  // registering and cancelling are closed (the server refuses them too).
+  const ended = useConferenceEnded()
 
   useEffect(() => {
     refresh()
@@ -155,7 +159,9 @@ export function RegistrationPanel({
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       {!registration ? (
-        categories.length === 0 ? (
+        ended ? (
+          <p className="text-sm text-ink/60">Registration is closed because this conference has ended.</p>
+        ) : categories.length === 0 ? (
           <p className="text-sm text-ink/60">Registration is not open yet.</p>
         ) : (
           <div className="rounded-lg border border-line bg-white p-5">
@@ -248,14 +254,16 @@ export function RegistrationPanel({
                 >
                   Download QR (PNG)
                 </a>
-                <button
-                  type="button"
-                  onClick={() => setConfirmingCancel(true)}
-                  disabled={busy}
-                  className="block min-h-10 rounded-md border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-                >
-                  Cancel registration
-                </button>
+                {ended ? null : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingCancel(true)}
+                    disabled={busy}
+                    className="block min-h-10 rounded-md border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    Cancel registration
+                  </button>
+                )}
               </div>
             </div>
           ) : null}

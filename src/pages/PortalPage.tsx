@@ -22,6 +22,8 @@ import { SessionChairSection } from './portal/sections/SessionChairSection'
 import { StaffSection } from './portal/sections/StaffSection'
 import { DirtyGuardProvider, useDirtyGuard } from './convenor/DirtyGuard'
 import { PORTAL_SECTIONS, visibleSections } from './portal/sidebarConfig'
+import { ConferenceEndedNotice } from '../components/ConferenceEndedNotice'
+import { ConferenceEndedContext, useConferenceEndedBySlug } from '../lib/conferenceEndedContext'
 
 // Conference-scoped sections only make sense for roles tied to one
 // conference at a time — session chairs see "My sessions" across every
@@ -101,6 +103,7 @@ function PortalPageInner() {
   }, [roles, preselectedSlug])
 
   const conference = myConferences.find((c) => c.id === conferenceId) ?? null
+  const ended = useConferenceEndedBySlug(conference?.slug || null)
 
   const rolesInConference = new Set(roles.filter((r) => r.conference_id === conferenceId).map((r) => r.role_code))
   const rolesAnywhere = new Set(roles.map((r) => r.role_code))
@@ -146,6 +149,12 @@ function PortalPageInner() {
           onChangeCapture={markDirty}
           onInputCapture={markDirty}
         >
+          {ended ? (
+            <div className="mt-4">
+              <ConferenceEndedNotice />
+            </div>
+          ) : null}
+          <ConferenceEndedContext.Provider value={ended}>
             <Routes>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route
@@ -232,6 +241,7 @@ function PortalPageInner() {
               <Route path="profile" element={<Navigate to="/profile" />} />
               <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Routes>
+          </ConferenceEndedContext.Provider>
           </main>
     </AppShell>
   )

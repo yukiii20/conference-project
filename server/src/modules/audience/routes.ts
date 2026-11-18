@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { requireAuth, requireConferencePermission } from '../../middleware/auth.js'
+import { refuseWhenConferenceEnded } from '../../middleware/conferenceEnded.js'
 import { assertConferenceInSession } from '../../middleware/sessionScope.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { NotFoundError } from '../../utils/errors.js'
@@ -117,6 +118,7 @@ audienceRouter.get('/:id/audience/speakers', requireConferencePermission('audien
 audienceRouter.post(
   '/:id/audience/sessions/:sessionId/join-online',
   requireConferencePermission('audience.view_content'),
+  refuseWhenConferenceEnded,
   async (req, res, next) => {
     try {
       const result = await joinOnline(req.params.id!, req.params.sessionId!, req.user!.id)
@@ -145,6 +147,7 @@ audienceRouter.get(
 audienceRouter.post(
   '/:id/audience/sessions/:sessionId/questions',
   requireConferencePermission('audience.ask_question'),
+  refuseWhenConferenceEnded,
   qaAskRateLimit,
   validateBody(askQuestionSchema),
   async (req, res, next) => {
@@ -160,6 +163,7 @@ audienceRouter.post(
 audienceRouter.put(
   '/:id/audience/questions/:questionId/vote',
   requireConferencePermission('audience.ask_question'),
+  refuseWhenConferenceEnded,
   qaVoteRateLimit,
   async (req, res, next) => {
     try {
@@ -173,6 +177,7 @@ audienceRouter.put(
 audienceRouter.delete(
   '/:id/audience/questions/:questionId/vote',
   requireConferencePermission('audience.ask_question'),
+  refuseWhenConferenceEnded,
   qaVoteRateLimit,
   async (req, res, next) => {
     try {

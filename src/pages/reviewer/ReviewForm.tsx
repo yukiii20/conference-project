@@ -6,6 +6,7 @@ import { useToast } from '../../components/ui/Toast'
 import { RECOMMENDATIONS, reviewFormSchema, type ReviewFormInput } from '../../lib/validation'
 import { FILE_KIND_LABELS } from '../../lib/submissionDisplay'
 import { Alert, Button, Card, ConfirmDialog, FormField, Select, SkeletonText, Textarea } from '../../components/ui'
+import { useConferenceEnded } from '../../lib/conferenceEndedContext'
 
 type AssignmentDetail = {
   assignment: { id: string; status: string }
@@ -39,6 +40,8 @@ const EMPTY_FORM = {
 }
 
 export function ReviewForm({ assignmentId, submissionId }: { assignmentId: string; submissionId: string }) {
+  // Part 2 (changes-nov2): reviews are closed once the conference has ended.
+  const ended = useConferenceEnded()
   const { showToast } = useToast()
   const [submission, setSubmission] = useState<AssignmentDetail['submission'] | null>(null)
   const [files, setFiles] = useState<AssignmentDetail['files']>([])
@@ -195,7 +198,7 @@ export function ReviewForm({ assignmentId, submissionId }: { assignmentId: strin
         </Card>
       ) : null}
 
-      <fieldset disabled={locked} className="space-y-4 rounded-lg border border-border bg-surface p-5">
+      <fieldset disabled={locked || ended} className="space-y-4 rounded-lg border border-border bg-surface p-5">
         <h3 className="font-medium text-text">Your review</h3>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">

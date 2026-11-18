@@ -76,6 +76,9 @@ export async function resetDatabase(): Promise<void> {
   await pool.query('DELETE FROM review_bids')
   await pool.query('DELETE FROM reviewer_tracks')
   await pool.query('DELETE FROM conflicts_of_interest')
+  // changes-nov2 tables (database/10_changes_nov2.sql).
+  await pool.query('DELETE FROM submission_publications')
+  await pool.query('DELETE FROM conference_reports')
   await pool.query('DELETE FROM submission_decisions')
   await pool.query('DELETE FROM submission_status_history')
   await pool.query('DELETE FROM submission_files')
