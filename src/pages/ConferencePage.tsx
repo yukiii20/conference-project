@@ -7,6 +7,7 @@ import { darken, getAccessibleTextColor, hexToRgba, resolveConferenceBrand } fro
 import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
 import { RegistrationPanel } from './conference/RegistrationPanel'
+import { PublicAcceptedAbstracts } from '../components/audience/PublicAcceptedAbstracts'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
 import { StarButton } from '../components/agenda/StarButton'
 import { useAgendaStars } from '../components/agenda/useAgendaStars'
@@ -712,6 +713,8 @@ export function ConferencePage() {
           </div>
         )}
       </section>
+
+      <PublicAcceptedAbstracts conferenceId={conference.id} style={sectionStyle} />
 
       <section
         id="registration"

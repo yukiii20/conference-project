@@ -40,6 +40,18 @@ export async function queueEmail(conn: PoolConnection, input: QueueEmailInput): 
     }
   }
 
+  // Callers render the subject from the platform default template. When this conference has its
+  // own active template for this email, its subject wins (the worker already picks the
+  // conference's body over the default, so subject and body always come from the same template).
+  if (input.conferenceId && input.templateKey !== 'bulk_email') {
+    const [customRows] = await conn.query(
+      `SELECT subject FROM email_templates WHERE conference_id = ? AND template_key = ? AND is_active = TRUE LIMIT 1`,
+      [input.conferenceId, input.templateKey],
+    )
+    const custom = (customRows as Array<{ subject: string }>)[0]
+    if (custom?.subject) subject = renderTemplate(custom.subject, templateData)
+  }
+
   const [result] = await conn.query(
     `INSERT INTO email_logs (conference_id, user_id, recipient_email, template_key, subject, template_data, entity_type, entity_id, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued')`,

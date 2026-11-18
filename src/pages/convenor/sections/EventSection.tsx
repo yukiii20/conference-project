@@ -3,6 +3,7 @@ import { AttendanceTab } from '../AttendanceTab'
 import { CertificatesTab } from '../CertificatesTab'
 import { AbstractBookTab } from '../AbstractBookTab'
 import { FeedbackTab } from '../FeedbackTab'
+import { AudienceTab } from '../AudienceTab'
 import { SECTIONS } from '../sidebarConfig'
 import { TabbedSection } from './TabbedSection'
 
@@ -14,6 +15,7 @@ const ELEMENTS: Record<string, (conferenceId: string, basePath: string) => React
     <AbstractBookTab conferenceId={conferenceId} submissionsPath={`${basePath.replace(/\/event$/, '')}/papers/submissions`} />
   ),
   feedback: (conferenceId) => <FeedbackTab conferenceId={conferenceId} />,
+  audience: (conferenceId) => <AudienceTab conferenceId={conferenceId} />,
 }
 
 export function EventSection({ conferenceId, basePath }: { conferenceId: string; basePath: string }) {

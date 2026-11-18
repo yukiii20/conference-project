@@ -2,14 +2,10 @@ import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../../db/pool.js'
 import { withTransaction } from '../../db/withTransaction.js'
 import { insertAuditLog } from '../../utils/audit.js'
-import { generateToken, sha256 } from '../../utils/crypto.js'
-import { queueEmail, renderTemplate } from '../../utils/email.js'
 import { BadRequestError, NotFoundError } from '../../utils/errors.js'
-import { notifyUser } from '../../utils/notifications.js'
-import { conferenceSignInPath, conferenceSignInUrl, setPasswordUrl } from '../../utils/conferenceLinks.js'
+import type { AuditContext } from '../../utils/audit.js'
+import { createInvitation } from '../invitations/service.js'
 import type { ChangeRoleInput, InviteMemberInput, ListMembersQuery, SetMaxReviewLoadInput } from './validation.js'
-
-const INVITATION_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 export type MemberRow = {
   id: string
@@ -156,103 +152,14 @@ export async function setMemberMaxReviewLoad(
   })
 }
 
-export async function inviteMember(
-  actorUserId: string,
-  conferenceId: string,
-  input: InviteMemberInput,
-): Promise<{ invited: boolean }> {
-  return withTransaction(actorUserId, async (conn) => {
-    const [confRows] = await conn.query('SELECT id, name, slug FROM conferences WHERE id = ? AND deleted_at IS NULL LIMIT 1', [
-      conferenceId,
-    ])
-    const conference = (confRows as Array<{ id: string; name: string; slug: string }>)[0]
-    if (!conference) throw new NotFoundError('This conference does not exist.')
-
-    const [existingRows] = await conn.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
-    let userId = (existingRows as Array<{ id: string }>)[0]?.id
-    const invited = !userId
-
-    if (invited) {
-      await conn.query('INSERT INTO users (email, full_name, phone) VALUES (?, ?, ?)', [
-        input.email,
-        input.full_name,
-        input.phone,
-      ])
-      const [rows] = await conn.query('SELECT id FROM users WHERE email = ? LIMIT 1', [input.email])
-      userId = (rows as Array<{ id: string }>)[0]!.id
-    }
-
-    const [dupRows] = await conn.query(
-      `SELECT 1 FROM conference_members WHERE conference_id = ? AND user_id = ? AND role_code = ? AND status = 'active' LIMIT 1`,
-      [conferenceId, userId, input.role_code],
-    )
-    if ((dupRows as unknown[]).length > 0) {
-      throw new BadRequestError('This person already has that role in this conference.')
-    }
-
-    const [updateResult] = await conn.query(
-      `UPDATE conference_members SET status = 'active' WHERE conference_id = ? AND user_id = ? AND role_code = ?`,
-      [conferenceId, userId, input.role_code],
-    )
-    if ((updateResult as { affectedRows: number }).affectedRows === 0) {
-      await conn.query(
-        `INSERT INTO conference_members (conference_id, user_id, role_code, added_by) VALUES (?, ?, ?, ?)`,
-        [conferenceId, userId, input.role_code, actorUserId],
-      )
-    }
-
-    if (invited) {
-      const rawToken = generateToken()
-      const expiresAt = new Date(Date.now() + INVITATION_TOKEN_TTL_MS)
-      await conn.query(
-        `INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at, created_by) VALUES (?, 'invitation', ?, ?, ?)`,
-        [userId, sha256(rawToken), expiresAt, actorUserId],
-      )
-
-      const [templateRows] = await conn.query(
-        `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'invitation' LIMIT 1`,
-      )
-      const template = (templateRows as Array<{ subject: string }>)[0]
-      const acceptUrl = setPasswordUrl(rawToken, conference.slug)
-      const data = {
-        full_name: input.full_name,
-        conference_name: conference.name,
-        role_name: input.role_code,
-        accept_url: acceptUrl,
-        sign_in_url: conferenceSignInUrl(conference.slug),
-      }
-      const subject = template ? renderTemplate(template.subject, data) : `You are invited to ${conference.name}`
-
-      await queueEmail(conn, {
-        userId: userId!,
-        conferenceId,
-        recipientEmail: input.email,
-        templateKey: 'invitation',
-        subject,
-        templateData: data,
-      })
-    } else {
-      await notifyUser(conn, {
-        userId: userId!,
-        conferenceId,
-        type: 'system',
-        title: 'Added to a conference',
-        body: `You've been added to ${conference.name} as ${input.role_code}.`,
-        linkPath: conferenceSignInPath(conference.slug),
-      })
-    }
-
-    await insertAuditLog(conn, {
-      actorUserId,
-      conferenceId,
-      action: 'member.invite',
-      entityType: 'conference_members',
-      entityId: userId,
-      newValues: { email: input.email, role_code: input.role_code, invited },
-    })
-
-    return { invited }
-  })
+/**
+ * "Invite member": creates a PENDING invitation and always emails it (new and existing
+ * accounts alike). It used to create an active membership straight away - so the person could
+ * sign in without ever accepting - and an existing account got no email at all, only an
+ * in-app notification. See modules/invitations/service.ts.
+ */
+export async function inviteMember(actorUserId: string, conferenceId: string, input: InviteMemberInput, ctx: AuditContext = {}) {
+  return createInvitation(actorUserId, conferenceId, input, ctx)
 }
 
 export async function listReviewerTracks(conferenceId: string, userId: string): Promise<string[]> {

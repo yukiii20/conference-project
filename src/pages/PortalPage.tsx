@@ -13,7 +13,9 @@ import { NotificationsTab } from './portal/NotificationsTab'
 import { ProgrammeTab } from './portal/audience/ProgrammeTab'
 import { AudienceSpeakersTab } from './portal/audience/SpeakersTab'
 import { QaTab } from './portal/audience/QaTab'
+import { AcceptedPapersTab, MaterialsTab } from './portal/audience/MaterialsTab'
 import { AudienceFeedbackTab } from './portal/audience/AudienceFeedbackTab'
+import { CertificateProgressCard } from '../components/audience/CertificateProgressCard'
 import { AuthorSection } from './portal/sections/AuthorSection'
 import { ReviewerSection } from './portal/sections/ReviewerSection'
 import { SessionChairSection } from './portal/sections/SessionChairSection'
@@ -209,7 +211,23 @@ function PortalPageInner() {
               <Route path="programme" element={<ProgrammeTab conferenceId={conferenceId} />} />
               <Route path="speakers" element={<AudienceSpeakersTab conferenceId={conferenceId} />} />
               <Route path="qa" element={<QaTab conferenceId={conferenceId} />} />
-              <Route path="certificates" element={<MyCertificatesTab />} />
+              <Route path="materials" element={<MaterialsTab conferenceId={conferenceId} />} />
+              <Route path="abstracts" element={<AcceptedPapersTab conferenceId={conferenceId} />} />
+              <Route
+                path="certificates"
+                element={
+                  conferenceId && rolesInConference.has('attendee') ? (
+                    <div className="mt-6 space-y-6">
+                      <div className="max-w-2xl">
+                        <CertificateProgressCard conferenceId={conferenceId} />
+                      </div>
+                      <MyCertificatesTab />
+                    </div>
+                  ) : (
+                    <MyCertificatesTab />
+                  )
+                }
+              />
               <Route path="notifications" element={<NotificationsTab />} />
               <Route path="profile" element={<Navigate to="/profile" />} />
               <Route path="*" element={<Navigate to="dashboard" replace />} />

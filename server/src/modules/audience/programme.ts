@@ -2,6 +2,7 @@ import { pool } from '../../db/pool.js'
 import { ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import { getAudienceSchedule, type PublicSessionRow } from '../schedule/service.js'
 import { assertConfirmedRegistration, getConfirmedRegistration } from './access.js'
+import { latestScheduleChanges, type ScheduleChangeKind } from './scheduleChanges.js'
 
 /** The private online link opens this long before a session starts, and closes when it ends. */
 export const ONLINE_LINK_OPENS_MINUTES_BEFORE = 15
@@ -19,6 +20,8 @@ export type AudienceSession = PublicSessionRow & {
   /** Only for online/hybrid sessions: when "Join online" works (it never carries the link). */
   online_window: OnlineWindow | null
   attended: boolean
+  /** The latest Audience-visible change to this session ("Schedule changed" note), or null. */
+  schedule_change: { at: string; summary: string; kinds: ScheduleChangeKind[] } | null
 }
 
 /**
@@ -40,11 +43,12 @@ export async function getAudienceProgramme(
   const conference = (confRows as Array<{ timezone: string }>)[0]
   if (!conference) throw new NotFoundError('This conference does not exist.')
 
-  const [sessions, registration, [starRows], [attendRows]] = await Promise.all([
+  const [sessions, registration, [starRows], [attendRows], changes] = await Promise.all([
     getAudienceSchedule(conferenceId),
     getConfirmedRegistration(conferenceId, userId),
     pool.query('SELECT session_id FROM agenda_items WHERE conference_id = ? AND user_id = ?', [conferenceId, userId]),
     pool.query('SELECT session_id FROM session_attendance WHERE conference_id = ? AND user_id = ?', [conferenceId, userId]),
+    latestScheduleChanges(conferenceId),
   ])
   const starred = new Set((starRows as Array<{ session_id: string }>).map((r) => r.session_id))
   const attended = new Set((attendRows as Array<{ session_id: string }>).map((r) => r.session_id))
@@ -63,6 +67,7 @@ export async function getAudienceProgramme(
       ...s,
       starred: starred.has(s.id),
       attended: attended.has(s.id),
+      schedule_change: changes.get(s.id) ?? null,
       online_window: s.delivery_mode === 'in_person' || s.status === 'cancelled' ? null : onlineWindow(s.starts_at, s.ends_at),
     })),
     tracks: [...tracks].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),

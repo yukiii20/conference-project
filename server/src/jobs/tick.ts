@@ -4,6 +4,7 @@ import { env } from '../config/env.js'
 import { recoverStuckSendingRows, runEmailWorkerOnce } from '../email/worker.js'
 import { publishDueAnnouncements } from '../modules/announcements/service.js'
 import { sendDueReminders } from '../modules/reviews/reminders.js'
+import { sendScheduleChangeEmails } from '../modules/audience/scheduleChanges.js'
 import { runSessionCleanup } from './cleanup.js'
 
 /**
@@ -22,6 +23,7 @@ export const DEFAULT_TICK_JOBS: TickJob[] = [
   { name: 'email', run: runEmailWorkerOnce },
   { name: 'announcements', run: publishDueAnnouncements },
   { name: 'review_reminders', run: sendDueReminders },
+  { name: 'schedule_change_emails', run: sendScheduleChangeEmails },
   { name: 'session_cleanup', run: runSessionCleanup },
 ]
 

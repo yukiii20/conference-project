@@ -88,9 +88,19 @@ async function processRow(row: QueuedEmailRow): Promise<void> {
       row.template_key === 'bulk_email'
         ? await loadBulkEmailBody(row.template_data.bulk_email_id)
         : await loadTemplateBody(row.template_key, row.conference_id)
-    const content = bodyTemplate
-      ? appendSignInLink(renderHtmlTemplate(bodyTemplate, row.template_data), bodyTemplate, row.template_data)
-      : `<p>${row.subject}</p>`
+    if (!bodyTemplate) {
+      // Never send a subject-only email (an invitation without its link is useless): record
+      // why, visibly, and don't retry - retrying can't create the missing template.
+      await pool.query(`UPDATE email_logs SET status = 'failed', attempts = ?, error_message = ? WHERE id = ?`, [
+        MAX_ATTEMPTS,
+        row.template_key === 'bulk_email'
+          ? 'The bulk email this message belongs to no longer exists.'
+          : `Email template "${row.template_key}" is missing. Run the latest database update (database/2026-11-13).`,
+        row.id,
+      ])
+      return
+    }
+    const content = appendSignInLink(renderHtmlTemplate(bodyTemplate, row.template_data), bodyTemplate, row.template_data)
     const html = wrapEmailHtml(content)
     const text = htmlToText(html)
 
@@ -134,6 +144,35 @@ export async function runEmailWorkerOnce(): Promise<void> {
     // One row's SMTP failure must never stop the rest of the batch (or the server).
     await processRow(row).catch((err) => console.error(`Email worker: row ${row.id} failed unexpectedly:`, err))
   }
+}
+
+export type EmailSendOutcome = { status: 'sent' | 'failed' | 'queued'; error_message: string | null }
+
+/**
+ * Sends one queued email right away instead of waiting for the next worker tick, and reports
+ * what happened - so a convenor who invites someone sees at once whether the email went out
+ * (and why not). Anything slower than `timeoutMs` is left to the worker and reported 'queued'.
+ */
+export async function sendQueuedEmailNow(emailLogId: number, timeoutMs = 8000): Promise<EmailSendOutcome> {
+  const [claim] = await pool.query(`UPDATE email_logs SET status = 'sending' WHERE id = ? AND status = 'queued'`, [emailLogId])
+  if ((claim as { affectedRows: number }).affectedRows === 1) {
+    const [rows] = await pool.query(
+      `SELECT id, conference_id, recipient_email, template_key, subject, template_data, attempts FROM email_logs WHERE id = ?`,
+      [emailLogId],
+    )
+    const row = (rows as QueuedEmailRow[])[0]
+    if (row) {
+      const sending = processRow(row).catch((err) => console.error(`Email ${emailLogId} failed unexpectedly:`, err))
+      await Promise.race([sending, new Promise((resolve) => setTimeout(resolve, timeoutMs))])
+    }
+  }
+  const [after] = await pool.query(`SELECT status, error_message FROM email_logs WHERE id = ?`, [emailLogId])
+  const current = (after as Array<{ status: string; error_message: string | null }>)[0]
+  if (!current) return { status: 'failed', error_message: 'The email record was not found.' }
+  if (current.status === 'failed') return { status: 'failed', error_message: current.error_message }
+  if (current.status === 'sent' || current.status === 'delivered') return { status: 'sent', error_message: null }
+  if (current.status === 'bounced') return { status: 'failed', error_message: current.error_message ?? 'The email bounced.' }
+  return { status: 'queued', error_message: null }
 }
 
 /** A crash or restart mid-send can leave rows stuck in 'sending' forever — requeue anything stale on startup. */

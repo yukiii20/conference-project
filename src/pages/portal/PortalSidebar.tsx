@@ -14,6 +14,8 @@ import {
   Mic,
   ListChecks,
   MessageCircleQuestion,
+  FolderDown,
+  BookOpen,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -33,6 +35,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   programme: ListChecks,
   speakers: Mic,
   qa: MessageCircleQuestion,
+  materials: FolderDown,
+  abstracts: BookOpen,
   certificates: Award,
   feedback: MessageSquareHeart,
   notifications: Bell,

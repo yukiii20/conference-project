@@ -4,6 +4,7 @@ import { startEmailWorker } from './email/worker.js'
 import { startAnnouncementPublishJob } from './jobs/announcements.js'
 import { startSessionCleanupJob } from './jobs/cleanup.js'
 import { startReviewReminderJob } from './jobs/reviewReminders.js'
+import { startScheduleChangeEmailJob } from './jobs/scheduleChanges.js'
 import { ensureStorageDirs } from './storage/paths.js'
 
 process.on('unhandledRejection', (e) => console.error('unhandledRejection:', e))
@@ -28,6 +29,7 @@ ensureStorageDirs()
       safeStart('session cleanup job', startSessionCleanupJob)
       safeStart('announcement job', startAnnouncementPublishJob)
       safeStart('review reminder job', startReviewReminderJob)
+      safeStart('schedule-change email job', startScheduleChangeEmailJob)
     })
   })
   .catch((err) => {

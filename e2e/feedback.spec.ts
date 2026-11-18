@@ -70,7 +70,9 @@ test('convenor builds and opens the feedback survey, a chair answers anonymously
   const cleanup = await chairASession(page, stamp)
 
   await page.locator(SIDEBAR).getByRole('link', { name: 'Event' }).click()
-  await page.getByRole('link', { name: 'Feedback survey', exact: true }).click()
+  // Event > Feedback holds two sub-tabs: Audience feedback (first) and the Feedback survey.
+  await page.getByRole('link', { name: 'Feedback', exact: true }).click()
+  await page.getByRole('tab', { name: 'Feedback survey' }).click()
   await expect(page.getByRole('heading', { name: 'Feedback survey' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Create the survey' }).click()

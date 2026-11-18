@@ -40,6 +40,7 @@ import { agendaFeedRouter, agendaRouter } from './modules/agenda/routes.js'
 import { sessionTimerRouter } from './modules/sessionTimer/routes.js'
 import { abstractBookRouter } from './modules/abstractBook/routes.js'
 import { feedbackMeRouter, feedbackRouter } from './modules/feedback/routes.js'
+import { invitationsPublicRouter } from './modules/invitations/routes.js'
 import { audienceRouter } from './modules/audience/routes.js'
 import { createTickRouter } from './jobs/tick.js'
 import { machineEndpointRateLimit } from './middleware/rateLimit.js'
@@ -168,6 +169,7 @@ export function createApp() {
   app.use('/api/webhooks', machineEndpointRateLimit, createBrevoWebhookRouter())
   app.use('/api/internal', machineEndpointRateLimit, createTickRouter())
   app.use('/api/auth', authRouter)
+  app.use('/api/invitations', invitationsPublicRouter)
   // publicExtras is mounted BEFORE the Phase 1 public router: its routes
   // (`/public-deadlines`, `/public-track-count`) are single path segments,
   // same shape as Phase 1's greedy `GET /:slug` — Express tries routers in

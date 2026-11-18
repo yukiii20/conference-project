@@ -1,4 +1,5 @@
 import { PageHeader, Card } from '../../components/ui'
+import { AudienceReportCard } from './AudienceReportCard'
 
 const REPORTS: Array<{ kind: string; label: string; description: string }> = [
   { kind: 'submissions', label: 'Submissions', description: 'Code, title, track, status, authors, average score, decision.' },
@@ -31,6 +32,7 @@ export function ReportsTab({ conferenceId }: { conferenceId: string }) {
           </div>
         </Card>
       ))}
+      <AudienceReportCard conferenceId={conferenceId} />
     </div>
   )
 }

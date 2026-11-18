@@ -18,6 +18,8 @@ import {
   setReviewerTracksSchema,
 } from './validation.js'
 import { emailTriggerRateLimit } from '../../middleware/rateLimit.js'
+import { auditContextFrom } from '../../utils/audit.js'
+import { cancelInvitation, listInvitations, resendInvitation } from '../invitations/service.js'
 
 export const membersRouter = Router()
 const PERM = 'members.manage'
@@ -32,7 +34,37 @@ membersRouter.get('/:id/members', requireConferencePermission(PERM), validateQue
 
 membersRouter.post('/:id/members/invite', requireConferencePermission(PERM), emailTriggerRateLimit, validateBody(inviteMemberSchema), async (req, res, next) => {
   try {
-    res.status(201).json(await inviteMember(req.user!.id, req.params.id!, req.body))
+    res.status(201).json(await inviteMember(req.user!.id, req.params.id!, req.body, auditContextFrom(req)))
+  } catch (err) {
+    next(err)
+  }
+})
+
+membersRouter.get('/:id/members/invitations', requireConferencePermission(PERM), async (req, res, next) => {
+  try {
+    res.json({ invitations: await listInvitations(req.params.id!) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+membersRouter.post(
+  '/:id/members/invitations/:invitationId/resend',
+  requireConferencePermission(PERM),
+  emailTriggerRateLimit,
+  async (req, res, next) => {
+    try {
+      res.json(await resendInvitation(req.user!.id, req.params.id!, req.params.invitationId!, auditContextFrom(req)))
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+membersRouter.delete('/:id/members/invitations/:invitationId', requireConferencePermission(PERM), async (req, res, next) => {
+  try {
+    await cancelInvitation(req.user!.id, req.params.id!, req.params.invitationId!, auditContextFrom(req))
+    res.json({ message: 'Invitation cancelled.' })
   } catch (err) {
     next(err)
   }

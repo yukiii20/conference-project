@@ -18,6 +18,8 @@ export type PortalSectionId =
   | 'programme'
   | 'speakers'
   | 'qa'
+  | 'materials'
+  | 'abstracts'
 
 export type PortalSectionConfig = {
   id: PortalSectionId
@@ -45,6 +47,8 @@ export const PORTAL_SECTIONS: PortalSectionConfig[] = [
   { id: 'programme', label: 'Programme', requiresRole: 'attendee' },
   { id: 'speakers', label: 'Speakers', requiresRole: 'attendee' },
   { id: 'qa', label: 'Q&A', requiresRole: 'attendee' },
+  { id: 'materials', label: 'Materials', requiresRole: 'attendee' },
+  { id: 'abstracts', label: 'Accepted papers', requiresRole: 'attendee' },
   { id: 'profile', label: 'Profile', requiresRole: 'attendee' },
 ]
 
@@ -59,6 +63,8 @@ export const AUDIENCE_SECTION_IDS: PortalSectionId[] = [
   'programme',
   'speakers',
   'qa',
+  'materials',
+  'abstracts',
   'feedback',
   'notifications',
   'certificates',

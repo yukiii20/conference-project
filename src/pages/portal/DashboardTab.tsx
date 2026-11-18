@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Award, CalendarDays, CheckCircle2, ChevronRight, ClipboardCheck, FileText, ListChecks, Mic, QrCode, Ticket, type LucideIcon } from 'lucide-react'
+import { Award, CalendarDays, CheckCircle2, ChevronRight, ClipboardCheck, FileText, ListChecks, MessageCircleQuestion, Mic, QrCode, Ticket, type LucideIcon } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useAuth } from '../../lib/authContext'
 import { formatKathmandu } from '../../lib/datetime'
@@ -8,6 +8,7 @@ import { getRoleDefinition } from '../../lib/roles'
 import { DEADLINE_LABELS } from '../conference/types'
 import { Badge, Panel, SkeletonText } from '../../components/ui'
 import { GiveFeedbackCard } from '../../components/feedback/GiveFeedbackCard'
+import { CertificateProgressCard } from '../../components/audience/CertificateProgressCard'
 import { Icon } from '../../components/ui/Icon'
 
 type Deadline = { deadline_type: string; opens_at: string; closes_at: string | null }
@@ -25,6 +26,8 @@ const QUICK_LINKS: Array<{ path: string; label: string; icon: LucideIcon; role?:
   { path: 'session-chair', label: 'My sessions', icon: Mic, role: 'session_chair' },
   { path: 'staff', label: 'Check-in desk', icon: QrCode, role: 'staff' },
   { path: 'ticket', label: 'My ticket', icon: Ticket },
+  { path: 'programme', label: 'Programme', icon: CalendarDays, role: 'attendee' },
+  { path: 'qa', label: 'Q&A', icon: MessageCircleQuestion, role: 'attendee' },
   { path: 'certificates', label: 'My certificates', icon: Award },
 ]
 
@@ -181,6 +184,8 @@ export function DashboardTab({
       </section>
 
       <GiveFeedbackCard base={base} />
+
+      {conferenceId && heldRoles.has('attendee') ? <CertificateProgressCard conferenceId={conferenceId} linkTo={`${base}/certificates`} /> : null}
 
       {quickLinks.length > 0 ? (
         <nav aria-label="Quick links" className="grid grid-cols-2 gap-3 sm:grid-cols-3">

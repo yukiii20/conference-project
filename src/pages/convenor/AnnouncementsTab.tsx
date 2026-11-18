@@ -24,6 +24,7 @@ const AUDIENCE_LABELS: Record<(typeof ANNOUNCEMENT_AUDIENCES)[number], string> =
   reviewers: 'Reviewers',
   session_chairs: 'Session chairs',
   staff: 'Staff',
+  audience: 'Audience',
 }
 
 const STATUS_LABELS: Record<Announcement['status'], string> = {

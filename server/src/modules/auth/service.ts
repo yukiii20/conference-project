@@ -293,7 +293,7 @@ async function findUserByEmail(email: string): Promise<UserRow | null> {
   return row ?? null
 }
 
-async function recordFailedLogin(userId: string, currentCount: number): Promise<void> {
+export async function recordFailedLogin(userId: string, currentCount: number): Promise<void> {
   const nextCount = currentCount + 1
   if (nextCount >= MAX_FAILED_LOGINS) {
     const lockedUntil = new Date(Date.now() + LOCK_MINUTES * 60 * 1000)

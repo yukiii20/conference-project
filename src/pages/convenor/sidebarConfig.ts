@@ -60,6 +60,7 @@ export const SECTIONS: SectionConfig[] = [
       { id: 'certificates', label: 'Certificates', keywords: ['templates', 'issue'] },
       { id: 'abstracts', label: 'Book of abstracts', keywords: ['abstract book', 'pdf'] },
       { id: 'feedback', label: 'Feedback', keywords: ['survey', 'questions', 'ratings', 'audience feedback', 'session ratings'] },
+      { id: 'audience', label: 'Audience', keywords: ['materials', 'downloads', 'accepted abstracts', 'q&a', 'schedule emails'] },
     ],
   },
   {

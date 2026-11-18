@@ -16,6 +16,7 @@ import type {
   SessionChairInput,
   SessionInput,
 } from './validation.js'
+import { notifyAudienceSessionRemoved, recordScheduleChange } from '../audience/scheduleChanges.js'
 
 // -----------------------------------------------------------------------
 // Rooms
@@ -558,6 +559,9 @@ export async function updateSession(
       ],
     )
 
+    // Audience: the "Schedule changed" note, a portal notification now, the batched email later.
+    await recordScheduleChange(conn, conferenceId, sessionId, actorUserId, current, input)
+
     if (wasPublished && timeOrRoomChanged) {
       const [roomRows] = await conn.query('SELECT name FROM rooms WHERE id = ? LIMIT 1', [input.room_id])
       const roomName = (roomRows as Array<{ name: string }>)[0]?.name ?? ''
@@ -580,6 +584,7 @@ export async function updateSession(
 export async function deleteSession(actorUserId: string, conferenceId: string, sessionId: string): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
     const current = await loadSession(conn, conferenceId, sessionId)
+    await notifyAudienceSessionRemoved(conn, conferenceId, sessionId, current)
     await conn.query('DELETE FROM conference_sessions WHERE id = ?', [sessionId])
     await insertAuditLog(conn, {
       actorUserId,

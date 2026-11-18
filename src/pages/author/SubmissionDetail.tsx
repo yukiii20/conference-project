@@ -26,6 +26,7 @@ import {
 } from '../../components/ui'
 import { FileViewerModal } from '../../components/FileViewerModal'
 import { useToast } from '../../components/ui/Toast'
+import { AudienceConsentCard } from '../../components/submissions/AudienceConsentCard'
 
 type Track = { id: string; name: string }
 
@@ -834,6 +835,8 @@ export function SubmissionDetail({
               once uploaded.
             </p>
           </Card>
+
+          {id ? <AudienceConsentCard conferenceId={conferenceId} submissionId={id} status={status} /> : null}
 
           {history.length > 0 ? (
             <Card>

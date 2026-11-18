@@ -24,6 +24,7 @@ const AUDIENCE_TO_ROLE: Record<string, string> = {
   reviewers: 'reviewer',
   session_chairs: 'session_chair',
   staff: 'staff',
+  audience: 'attendee',
 }
 
 export async function listAnnouncements(conferenceId: string): Promise<AnnouncementRow[]> {

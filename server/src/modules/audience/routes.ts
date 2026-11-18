@@ -1,10 +1,12 @@
 import { Router } from 'express'
+import multer from 'multer'
 import { requireAuth, requireConferencePermission } from '../../middleware/auth.js'
 import { assertConferenceInSession } from '../../middleware/sessionScope.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { NotFoundError } from '../../utils/errors.js'
 import { validateBody } from '../../middleware/validate.js'
-import { qaAskRateLimit, qaVoteRateLimit } from '../../middleware/rateLimit.js'
+import { qaAskRateLimit, qaVoteRateLimit, uploadRateLimit } from '../../middleware/rateLimit.js'
+import { sendPrivateFile } from '../../storage/send.js'
 import {
   askQuestion,
   askQuestionSchema,
@@ -30,7 +32,35 @@ import {
   saveSessionRating,
   sessionRatingSchema,
 } from './feedback.js'
+import {
+  MATERIAL_MAX_BYTES,
+  assertMaterialKind,
+  consentSchema,
+  createMaterial,
+  createMaterialSchema,
+  deleteMaterial,
+  getAudienceConsent,
+  getAudienceDownload,
+  getMaterialFileForOrganiser,
+  listAudienceMaterials,
+  listMaterials,
+  setAudienceConsent,
+  updateMaterial,
+  updateMaterialSchema,
+} from './materials.js'
+import {
+  assertAudienceAbstractsOn,
+  assertPublicAbstractsOn,
+  audienceSettingsSchema,
+  listAcceptedAbstracts,
+  parseAbstractFilters,
+  readAudienceSettings,
+  saveAudienceSettings,
+} from './abstracts.js'
+
 import { getAudienceProgramme, getAudienceSpeakers, joinOnline } from './programme.js'
+import { getCertificateProgress } from './certificateProgress.js'
+import { audienceQuestionsCsv, audienceReportCsv, getAudienceReport } from './report.js'
 import { resendTicketEmail } from './ticket.js'
 import { getMyTicket } from './ticketService.js'
 
@@ -40,6 +70,9 @@ import { getMyTicket } from './ticketService.js'
  * audience.* permission (requireConferencePermission) - see tests/audienceMatrix.test.ts.
  */
 export const audienceRouter = Router()
+
+// Conference materials (convenor upload): one file, at most 25 MB, sniffed in the service.
+const materialUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MATERIAL_MAX_BYTES, files: 1 } }).single('file')
 
 // ------------------------------------------------------------------ Ticket
 audienceRouter.get('/:id/my-ticket', requireAuth, async (req, res, next) => {
@@ -277,6 +310,189 @@ audienceRouter.delete('/:id/audience-feedback/:kind/:itemId', requireConferenceP
     if (!kind) throw new NotFoundError('Not found.')
     await moderateFeedback(req.user!.id, req.params.id!, kind, req.params.itemId!, 'deleted', auditContextFrom(req))
     res.json({ message: 'Feedback deleted.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ------------------------------------------------------------------ Audience settings (convenor, manager)
+audienceRouter.get('/:id/audience-settings', requireConferencePermission('conference.manage'), async (req, res, next) => {
+  try {
+    res.json({ settings: await readAudienceSettings(req.params.id!) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.put(
+  '/:id/audience-settings',
+  requireConferencePermission('conference.manage'),
+  validateBody(audienceSettingsSchema),
+  async (req, res, next) => {
+    try {
+      await saveAudienceSettings(req.user!.id, req.params.id!, req.body, auditContextFrom(req))
+      res.json({ message: 'Audience settings saved.', settings: await readAudienceSettings(req.params.id!) })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ------------------------------------------------------------------ Materials (convenor, manager)
+audienceRouter.get('/:id/materials', requireConferencePermission('conference.manage'), async (req, res, next) => {
+  try {
+    res.json({ materials: await listMaterials(req.params.id!) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.post('/:id/materials', requireConferencePermission('conference.manage'), uploadRateLimit, materialUpload, async (req, res, next) => {
+  try {
+    const input = createMaterialSchema.safeParse({ title: req.body?.title ?? '', description: req.body?.description ?? null })
+    if (!input.success) {
+      const issue = input.error.issues[0]
+      const field = String(issue?.path[0] ?? 'title')
+      res.status(400).json({ error: { message: issue?.message ?? 'Check the form.', fields: { [field]: issue?.message } } })
+      return
+    }
+    const { id } = await createMaterial(req.user!.id, req.params.id!, input.data, req.file, auditContextFrom(req))
+    res.status(201).json({ id, message: 'File uploaded.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.patch(
+  '/:id/materials/:materialId',
+  requireConferencePermission('conference.manage'),
+  validateBody(updateMaterialSchema),
+  async (req, res, next) => {
+    try {
+      await updateMaterial(req.user!.id, req.params.id!, req.params.materialId!, req.body, auditContextFrom(req))
+      res.json({ message: 'Saved.' })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+audienceRouter.delete('/:id/materials/:materialId', requireConferencePermission('conference.manage'), async (req, res, next) => {
+  try {
+    await deleteMaterial(req.user!.id, req.params.id!, req.params.materialId!, auditContextFrom(req))
+    res.json({ message: 'File deleted.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.get('/:id/materials/:materialId/download', requireConferencePermission('conference.manage'), async (req, res, next) => {
+  try {
+    const file = await getMaterialFileForOrganiser(req.params.id!, req.params.materialId!)
+    await sendPrivateFile(res, file.storage_path, file.original_filename, file.mime_type)
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ------------------------------------------------------------------ Materials (Audience)
+audienceRouter.get('/:id/audience/materials', requireConferencePermission('audience.download_materials'), async (req, res, next) => {
+  try {
+    res.json({ materials: await listAudienceMaterials(req.params.id!) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.get(
+  '/:id/audience/materials/:kind/:itemId/download',
+  requireConferencePermission('audience.download_materials'),
+  async (req, res, next) => {
+    try {
+      const file = await getAudienceDownload(req.params.id!, req.user!.id, assertMaterialKind(req.params.kind), req.params.itemId!)
+      await sendPrivateFile(res, file.storage_path, file.filename, file.mime_type)
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// ------------------------------------------------------------------ Author consent for Audience downloads
+// Only an author of the paper (checked in the service; anyone else gets 404).
+audienceRouter.get('/:id/submissions/:submissionId/audience-consent', requireAuth, async (req, res, next) => {
+  try {
+    res.json(await getAudienceConsent(req.user!.id, req.params.id!, req.params.submissionId!))
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.put('/:id/submissions/:submissionId/audience-consent', requireAuth, validateBody(consentSchema), async (req, res, next) => {
+  try {
+    await setAudienceConsent(req.user!.id, req.params.id!, req.params.submissionId!, req.body, auditContextFrom(req))
+    res.json({ message: 'Saved.', ...(await getAudienceConsent(req.user!.id, req.params.id!, req.params.submissionId!)) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ------------------------------------------------------------------ Accepted abstracts
+audienceRouter.get('/:id/audience/abstracts', requireConferencePermission('audience.view_accepted_abstracts'), async (req, res, next) => {
+  try {
+    await assertAudienceAbstractsOn(req.params.id!)
+    res.json(await listAcceptedAbstracts(req.params.id!, parseAbstractFilters(req.query as Record<string, unknown>)))
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Public: only when the organisers switched "show on the public page" on (off by default).
+audienceRouter.get('/:id/abstracts/public', async (req, res, next) => {
+  try {
+    await assertPublicAbstractsOn(req.params.id!)
+    res.json(await listAcceptedAbstracts(req.params.id!, parseAbstractFilters(req.query as Record<string, unknown>)))
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ------------------------------------------------------------------ Certificate progress (Audience)
+audienceRouter.get('/:id/audience/certificate-progress', requireConferencePermission('audience.view_content'), async (req, res, next) => {
+  try {
+    res.json(await getCertificateProgress(req.params.id!, req.user!.id))
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ------------------------------------------------------------------ Audience report (convenor, manager)
+audienceRouter.get('/:id/audience-report', requireConferencePermission('report.view'), async (req, res, next) => {
+  try {
+    res.json(await getAudienceReport(req.params.id!))
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.get('/:id/audience-report/export.csv', requireConferencePermission('report.view'), async (req, res, next) => {
+  try {
+    const report = await getAudienceReport(req.params.id!)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename="audience-report.csv"')
+    res.setHeader('Cache-Control', 'no-store')
+    res.send('\uFEFF' + audienceReportCsv(report))
+  } catch (err) {
+    next(err)
+  }
+})
+
+audienceRouter.get('/:id/audience-report/questions.csv', requireConferencePermission('report.view'), async (req, res, next) => {
+  try {
+    const csv = await audienceQuestionsCsv(req.params.id!)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename="audience-questions.csv"')
+    res.setHeader('Cache-Control', 'no-store')
+    res.send('﻿' + csv)
   } catch (err) {
     next(err)
   }

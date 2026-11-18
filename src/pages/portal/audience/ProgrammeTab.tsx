@@ -219,7 +219,11 @@ export function ProgrammeTab({ conferenceId }: { conferenceId: string | null }) 
                           {s.track ? <Badge>{s.track.name}</Badge> : null}
                           {s.attended ? <Badge tone="success">Attended</Badge> : null}
                         </div>
-                        {s.schedule_change ? <p className="mt-1 text-xs text-text-muted">{s.schedule_change.summary}</p> : null}
+                        {s.schedule_change ? (
+                          <p className="mt-1 text-xs text-text-muted">
+                            Changed {formatKathmandu(s.schedule_change.at)}: {s.schedule_change.summary}
+                          </p>
+                        ) : null}
                       </div>
                       {!cancelled ? (
                         <button

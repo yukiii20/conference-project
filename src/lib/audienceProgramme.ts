@@ -19,7 +19,7 @@ export type AudienceSession = {
   attended: boolean
   online_window: { opens_at: string; closes_at: string; open: boolean } | null
   /** Set when the organisers changed time/room/title/mode or cancelled it (Phase 6). */
-  schedule_change?: { summary: string; changed_at: string } | null
+  schedule_change?: { summary: string; at: string; kinds: string[] } | null
 }
 
 export type ProgrammeFilters = {

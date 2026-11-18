@@ -83,6 +83,9 @@ const PUBLIC_ROUTES = new Set([
   // The "Sign up as Audience" form, before the person has an account: only the open/closed
   // state of registration and the ACTIVE categories with today's price (published conferences).
   'registrationRouter GET /:id/registration-categories/public',
+  // Accepted abstracts (title, abstract, keywords, track, author names + affiliations only),
+  // and only when the organisers switched "show on the public page" on - off by default.
+  'audienceRouter GET /:id/abstracts/public',
 ])
 
 type NamedRouter = { name: string; router: import('express').Router }

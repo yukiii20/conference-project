@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const ANNOUNCEMENT_AUDIENCES = ['all', 'authors', 'reviewers', 'session_chairs', 'staff'] as const
+export const ANNOUNCEMENT_AUDIENCES = ['all', 'authors', 'reviewers', 'session_chairs', 'staff', 'audience'] as const
 
 export const createAnnouncementSchema = z.object({
   title: z.string().trim().min(2, 'Title must be at least 2 characters.').max(200, 'Title must be 200 characters or fewer.'),
