@@ -72,6 +72,7 @@ export const SECTIONS: SectionConfig[] = [
       { id: 'bulk-email', label: 'Bulk email', keywords: ['send email', 'mailing'] },
       { id: 'templates', label: 'Email templates', keywords: ['email templates'] },
       { id: 'emails', label: 'Email log', keywords: ['sent', 'failed', 'delivery'] },
+      { id: 'post-conference-email', label: 'Post-conference email', keywords: ['thank you', 'after the conference', 'ended', 'follow-up'] },
       { id: 'conference-report', label: 'Conference report', keywords: ['archive', 'post-conference', 'publish report', 'pdf'] },
       { id: 'reports', label: 'Reports', keywords: ['export', 'csv', 'download'] },
       { id: 'analytics', label: 'Analytics', keywords: ['charts', 'statistics', 'kpi'] },

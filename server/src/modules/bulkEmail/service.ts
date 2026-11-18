@@ -89,6 +89,23 @@ const GROUP_QUERIES: Record<RecipientGroup, string> = {
     JOIN users u ON u.id = cm.user_id
     WHERE cm.conference_id = ? AND cm.status = 'active' AND cm.role_code = 'session_chair'
       AND u.status <> 'deactivated' AND u.anonymized_at IS NULL`,
+  // Speakers with an account (Speakers list) and presenting authors named in the programme.
+  speakers: `
+    SELECT DISTINCT u.id AS user_id, u.email AS email, u.full_name AS full_name
+    FROM (SELECT ? AS cid) x
+    JOIN users u ON u.id IN (
+      SELECT cs.user_id FROM conference_speakers cs WHERE cs.conference_id = x.cid AND cs.user_id IS NOT NULL
+      UNION
+      SELECT p.presenter_user_id FROM presentations p
+      WHERE p.conference_id = x.cid AND p.presenter_user_id IS NOT NULL AND p.status <> 'cancelled'
+    )
+    WHERE u.status <> 'deactivated' AND u.anonymized_at IS NULL`,
+  staff: `
+    SELECT u.id AS user_id, u.email AS email, u.full_name AS full_name
+    FROM conference_members cm
+    JOIN users u ON u.id = cm.user_id
+    WHERE cm.conference_id = ? AND cm.status = 'active' AND cm.role_code = 'staff'
+      AND u.status <> 'deactivated' AND u.anonymized_at IS NULL`,
 }
 
 /** Runs every selected group's query and merges the results, de-duplicated by email (case-insensitive — same rule the `users` table itself uses). A row with a linked account wins over one without, if the same address shows up both ways (e.g. an author who later registered). */

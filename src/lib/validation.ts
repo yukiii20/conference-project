@@ -834,6 +834,8 @@ export const RECIPIENT_GROUPS = [
   'attendees_checked_in',
   'committee_members',
   'session_chairs',
+  'speakers',
+  'staff',
 ] as const
 export type RecipientGroup = (typeof RECIPIENT_GROUPS)[number]
 
@@ -848,6 +850,8 @@ export const RECIPIENT_GROUP_LABELS: Record<RecipientGroup, string> = {
   attendees_checked_in: 'Checked-in attendees',
   committee_members: 'Committee members',
   session_chairs: 'Session chairs',
+  speakers: 'Speakers',
+  staff: 'Staff',
 }
 
 export const bulkEmailSchema = z.object({

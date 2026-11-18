@@ -30,6 +30,8 @@ import { Badge } from '../../components/ui/Badge'
 import { Icon } from '../../components/ui/Icon'
 import type { ActivityEntry, ConvenorAnalytics, Dashboard, DeadlineRow, Room, SessionRow } from './dashboard/types'
 
+import { PostConferenceReminder } from './dashboard/PostConferenceReminder'
+
 const DashboardCharts = lazy(() => import('./dashboard/DashboardCharts'))
 
 type ChecklistStep = { id: keyof Dashboard['setup_checklist']; label: string; hint: string; to: string }
@@ -192,6 +194,8 @@ export function DashboardTab({
       {!data.setup_checklist.published || checklistDone < CHECKLIST_STEPS.length ? (
         <SetupChecklist checklist={data.setup_checklist} base={base} done={checklistDone} />
       ) : null}
+
+      <PostConferenceReminder conferenceId={conferenceId} base={base} />
 
       <section aria-label="Key figures" className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border-soft bg-border-soft shadow-card lg:grid-cols-4">
         <Kpi

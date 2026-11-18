@@ -12,6 +12,9 @@ export const RECIPIENT_GROUPS = [
   'attendees_checked_in',
   'committee_members',
   'session_chairs',
+  // changes-nov2, Part 5 (offered by the post-conference email tool).
+  'speakers',
+  'staff',
 ] as const
 export type RecipientGroup = (typeof RECIPIENT_GROUPS)[number]
 
