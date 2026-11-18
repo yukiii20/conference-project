@@ -168,15 +168,22 @@ export type MySubmissionRow = {
   status: string
   track_name: string
   updated_at: string
+  /** Publication of the paper (changes-nov2, Part 4). */
+  is_published: boolean
+  published_in: string | null
+  doi_or_link: string | null
+  publication_date: string | null
 }
 
 export async function listMySubmissions(userId: string, conferenceId: string): Promise<MySubmissionRow[]> {
   await assertActiveAuthorMember(userId, conferenceId)
 
   const [rows] = await pool.query(
-    `SELECT s.id, s.submission_code, s.title, s.status, t.name AS track_name, s.updated_at
+    `SELECT s.id, s.submission_code, s.title, s.status, t.name AS track_name, s.updated_at,
+            COALESCE(sp.is_published, FALSE) AS is_published, sp.published_in, sp.doi_or_link, sp.publication_date
      FROM submissions s
      JOIN conference_tracks t ON t.id = s.track_id
+     LEFT JOIN submission_publications sp ON sp.submission_id = s.id
      WHERE s.conference_id = ? AND s.deleted_at IS NULL
        AND (s.created_by = ? OR EXISTS (
          SELECT 1 FROM submission_authors sa WHERE sa.submission_id = s.id AND sa.user_id = ?
@@ -184,7 +191,7 @@ export async function listMySubmissions(userId: string, conferenceId: string): P
      ORDER BY s.updated_at DESC`,
     [conferenceId, userId, userId],
   )
-  return rows as MySubmissionRow[]
+  return (rows as MySubmissionRow[]).map((r) => ({ ...r, is_published: Boolean(r.is_published) }))
 }
 
 export async function createSubmission(

@@ -10,6 +10,10 @@ type Row = {
   status: string
   track_name: string
   updated_at: string
+  /** changes-nov2, Part 4: publication of the paper, set by the organisers. */
+  is_published?: boolean
+  published_in?: string | null
+  doi_or_link?: string | null
 }
 
 export function SubmissionsList({
@@ -78,6 +82,12 @@ export function SubmissionsList({
               {r.submission_code ? <p className="font-mono text-xs text-text-muted">{r.submission_code}</p> : null}
               <p className="font-medium text-text">{r.title}</p>
               <p className="text-xs text-text-muted">{r.track_name}</p>
+              {r.is_published ? (
+                <p className="mt-0.5 text-xs font-medium text-success" data-testid="publication-status">
+                  Published{r.published_in ? ` in ${r.published_in}` : ''}
+                  {r.doi_or_link ? ` · ${r.doi_or_link}` : ''}
+                </p>
+              ) : null}
             </div>
             <StatusChip status={r.status} labels={SUBMISSION_STATUS_LABELS} />
           </button>

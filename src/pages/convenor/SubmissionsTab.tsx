@@ -6,6 +6,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { TableContainer } from '../../components/ui/Table'
 import { Select, Spinner, Alert, Button, PageHeader } from '../../components/ui'
 import { SubmissionDetailPanel } from './SubmissionDetailPanel'
+import { PublishAllPapersButton } from './PaperPublication'
 
 type Track = { id: string; name: string }
 
@@ -98,6 +99,9 @@ export function SubmissionsTab({ conferenceId }: { conferenceId: string }) {
             </option>
           ))}
         </Select>
+        <div className="ml-auto">
+          <PublishAllPapersButton conferenceId={conferenceId} />
+        </div>
       </div>
 
       {loading ? (

@@ -20,6 +20,7 @@ export const SECTIONS: SectionConfig[] = [
       { id: 'branding', label: 'Logo and branding', keywords: ['logo', 'banner', 'colour', 'color'] },
       { id: 'location', label: 'Location', keywords: ['venue', 'map', 'address'] },
       { id: 'supporters', label: 'Supporters', keywords: ['sponsors', 'partners'] },
+      { id: 'publication', label: 'Publication information', keywords: ['proceedings', 'publisher', 'isbn', 'issn', 'doi'] },
     ],
   },
   {

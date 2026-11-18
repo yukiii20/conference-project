@@ -8,6 +8,7 @@ import { SUPPORTER_TIERS, type SupporterTier } from '../lib/validation'
 import { ConferenceNav, SECTIONS, type SectionId } from './conference/ConferenceNav'
 import { RegistrationPanel } from './conference/RegistrationPanel'
 import { ConferenceEndedNotice } from '../components/ConferenceEndedNotice'
+import { PublicationSection } from './conference/PublicationSection'
 import { isConferenceEnded } from '../lib/conferenceEnded'
 import { PublicAcceptedAbstracts } from '../components/audience/PublicAcceptedAbstracts'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
@@ -732,6 +733,8 @@ export function ConferencePage() {
       </section>
 
       <PublicAcceptedAbstracts conferenceId={conference.id} style={sectionStyle} />
+
+      <PublicationSection conferenceId={conference.id} style={sectionStyle} />
 
       <section
         id="registration"

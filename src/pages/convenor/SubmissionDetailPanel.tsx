@@ -13,6 +13,7 @@ import {
 } from '../../lib/submissionDisplay'
 import { Alert, Badge, Button, Card, CardHeader, ConfirmDialog, Input, Select, StatusChip, Textarea } from '../../components/ui'
 import { formatKathmandu, kathmanduToday } from '../../lib/datetime'
+import { PaperPublicationCard } from './PaperPublication'
 
 type Submission = {
   id: string
@@ -237,6 +238,8 @@ export function SubmissionDetailPanel({ conferenceId, submissionId }: { conferen
           ))}
         </div>
       </Card>
+
+      <PaperPublicationCard conferenceId={conferenceId} submissionId={submissionId} />
 
       <Card>
         <CardHeader title="Authors" />

@@ -2,6 +2,7 @@ import { ConferenceDetailsTab } from '../ConferenceDetailsTab'
 import { LogoTab } from '../LogoTab'
 import { LocationTab } from '../LocationTab'
 import { SupportersTab } from '../SupportersTab'
+import { PublicationInfoTab } from '../PublicationInfoTab'
 import { SECTIONS } from '../sidebarConfig'
 import { TabbedSection } from './TabbedSection'
 
@@ -19,6 +20,8 @@ export function SetupSection({ conferenceId, basePath }: { conferenceId: string;
             <LogoTab conferenceId={conferenceId} />
           ) : t.id === 'location' ? (
             <LocationTab conferenceId={conferenceId} />
+          ) : t.id === 'publication' ? (
+            <PublicationInfoTab conferenceId={conferenceId} />
           ) : (
             <SupportersTab conferenceId={conferenceId} />
           ),
