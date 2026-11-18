@@ -25,8 +25,9 @@ export type MyTicket = {
     address: string | null
     city: string | null
   }
-  /** The QR as a PNG data URL, so the ticket page can keep showing it offline (saved on the phone). */
-  qr_data_url: string
+  /** The QR as a PNG data URL, so the ticket page can keep showing it offline (saved on the phone).
+   *  changes-nov2, Part 6: null until the registration is confirmed (the QR is not valid before). */
+  qr_data_url: string | null
 }
 
 /**
@@ -61,7 +62,8 @@ export async function getMyTicket(conferenceRef: string, userId: string): Promis
     return null
   }
   assertConferenceInSession(row.conference_id as string)
-  const qr_data_url = await QRCode.toDataURL(`${env.APP_URL}/checkin/${row.qr_token as string}`, { width: 360, margin: 2 })
+  const qr_data_url =
+    row.status === 'confirmed' ? await QRCode.toDataURL(`${env.APP_URL}/checkin/${row.qr_token as string}`, { width: 360, margin: 2 }) : null
   const day = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10))
   return {
     registration: {

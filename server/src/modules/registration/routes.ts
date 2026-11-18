@@ -206,7 +206,7 @@ registrationRouter.get('/:id/my-registration', requireAuth, async (req, res, nex
 registrationRouter.get('/:id/my-registration/qr.png', requireAuth, async (req, res, next) => {
   try {
     const qrToken = await getMyRegistrationQrToken(req.params.id!, req.user!.id)
-    if (!qrToken) throw new NotFoundError('You do not have an active registration for this conference.')
+    if (!qrToken) throw new NotFoundError('Your QR ticket is available once your registration is confirmed.')
     const buffer = await QRCode.toBuffer(`${env.APP_URL}/checkin/${qrToken}`, { type: 'png', width: 320, margin: 2 })
     res.setHeader('Content-Type', 'image/png')
     res.setHeader('Cache-Control', 'no-store')
@@ -246,9 +246,13 @@ registrationRouter.get('/:id/registrations', requireConferencePermission('regist
     const status = typeof req.query.status === 'string' ? req.query.status : undefined
     const categoryId = typeof req.query.category_id === 'string' ? req.query.category_id : undefined
     const audience = req.query.audience === 'only' || req.query.audience === 'without' ? req.query.audience : undefined
+    const payment =
+      req.query.payment === 'awaiting_receipt' || req.query.payment === 'pending_confirmation' || req.query.payment === 'rejected'
+        ? req.query.payment
+        : undefined
     const pageNum = Number(req.query.page)
     const page = Number.isInteger(pageNum) && pageNum > 0 ? pageNum : 1
-    res.json(await listRegistrations(req.params.id!, { search, status, categoryId, audience, page }))
+    res.json(await listRegistrations(req.params.id!, { search, status, categoryId, audience, payment, page }))
   } catch (err) {
     next(err)
   }

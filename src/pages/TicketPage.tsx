@@ -33,7 +33,8 @@ type Ticket = {
     address: string | null
     city: string | null
   }
-  qr_data_url: string
+  /** changes-nov2, Part 6: null until the registration is confirmed. */
+  qr_data_url: string | null
 }
 
 type Saved = { ticket: Ticket; saved_at: string }
@@ -81,6 +82,7 @@ function clearSaved(slug: string): void {
 
 /** Draws the ticket (QR + name + number) onto a canvas and downloads it as one PNG. */
 async function downloadTicketPng(ticket: Ticket): Promise<void> {
+  if (!ticket.qr_data_url) return
   const img = new Image()
   img.src = ticket.qr_data_url
   await img.decode()
@@ -249,13 +251,22 @@ export function TicketPage() {
           {formatDateRange(ticket.conference.start_date, ticket.conference.end_date)}
           {venue ? ` · ${venue}` : ''}
         </p>
-        <img
-          src={ticket.qr_data_url}
-          alt={`Check-in QR code for ticket ${ticket.registration.registration_number}`}
-          width={288}
-          height={288}
-          className="mx-auto mt-4 h-72 w-72 max-w-full rounded-xl border border-border-soft bg-white"
-        />
+        {ticket.qr_data_url ? (
+          <img
+            src={ticket.qr_data_url}
+            alt={`Check-in QR code for ticket ${ticket.registration.registration_number}`}
+            width={288}
+            height={288}
+            className="mx-auto mt-4 h-72 w-72 max-w-full rounded-xl border border-border-soft bg-white"
+          />
+        ) : (
+          <div
+            className="mx-auto mt-4 flex h-72 w-72 max-w-full items-center justify-center rounded-xl border border-dashed border-border px-6 text-sm text-text-muted"
+            data-testid="ticket-qr-pending"
+          >
+            Your QR code appears here once the organisers confirm your registration.
+          </div>
+        )}
         <p className="mt-4 font-display text-xl font-semibold text-text">{ticket.holder.full_name}</p>
         <p className="mt-1 font-mono text-lg tracking-wide text-text">{ticket.registration.registration_number}</p>
         <p className="mt-1 text-sm text-text-muted">{ticket.registration.category_name}</p>
@@ -269,7 +280,8 @@ export function TicketPage() {
         <button
           type="button"
           onClick={() => downloadTicketPng(ticket)}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text hover:bg-page-bg"
+          disabled={!ticket.qr_data_url}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text hover:bg-page-bg disabled:opacity-50"
         >
           <Download size={16} aria-hidden="true" /> Download
         </button>

@@ -7,6 +7,7 @@ import { AttendanceDashboard } from '../../components/attendance/AttendanceDashb
 import { RegistrationsList } from '../../components/attendance/RegistrationsList'
 import { PrintBadgesPanel } from '../../components/attendance/PrintBadgesPanel'
 import { FeesSection } from '../../components/attendance/FeesSection'
+import { PaymentSettingsSection } from '../../components/attendance/PaymentSettingsSection'
 import { formatMoney } from '../../lib/money'
 import { PageHeader, Table, StatusChip, Button, FormField, Input, Checkbox, Alert, Spinner } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
@@ -201,6 +202,7 @@ export function AttendanceTab({ conferenceId }: { conferenceId: string }) {
       <AttendanceDashboard conferenceId={conferenceId} refreshKey={refreshKey} />
       <div className="mt-10 max-w-5xl">
         <CategoriesSection conferenceId={conferenceId} onChanged={() => setRefreshKey((k) => k + 1)} />
+        <PaymentSettingsSection conferenceId={conferenceId} />
       </div>
       <div className="mt-10">
         <h2 className="font-display text-xl font-semibold text-brand">Registrations</h2>

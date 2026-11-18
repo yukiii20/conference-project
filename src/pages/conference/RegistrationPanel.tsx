@@ -6,6 +6,7 @@ import { formatMoney } from '../../lib/money'
 import { useAuth } from '../../lib/authContext'
 import { ConfirmDialog } from '../../components/ui/Modal'
 import { useConferenceEnded } from '../../lib/conferenceEndedContext'
+import { PaymentInstructions, ReceiptUploadForm, usePaymentInfo } from './ReceiptUpload'
 
 type Category = {
   id: string
@@ -30,6 +31,15 @@ type MyRegistration = {
   amount_paid?: string
   currency?: string
   registered_at: string
+  // changes-nov2, Part 6: payment receipt
+  has_receipt?: number | boolean
+  receipt_original_name?: string | null
+  receipt_amount?: string | null
+  receipt_paid_on?: string | null
+  receipt_reference?: string | null
+  receipt_uploaded_at?: string | null
+  rejection_reason?: string | null
+  rejected_at?: string | null
 }
 type MyCertificate = {
   id: string
@@ -71,6 +81,8 @@ export function RegistrationPanel({
   // Part 2 (changes-nov2): in the portal of an ended conference the ticket stays visible, but
   // registering and cancelling are closed (the server refuses them too).
   const ended = useConferenceEnded()
+  const paymentInfo = usePaymentInfo(conferenceId)
+  const [replacingReceipt, setReplacingReceipt] = useState(false)
 
   useEffect(() => {
     refresh()
@@ -194,11 +206,14 @@ export function RegistrationPanel({
               const chosen = categories.find((c) => c.id === categoryId)
               if (!chosen?.current_fee || chosen.current_fee.amount === 0) return null
               return (
-                <p className="mt-2 text-xs text-ink/60">
-                  Fee {formatMoney(chosen.current_fee.amount, chosen.current_fee.currency)} — this price applies until{' '}
-                  {formatKathmandu(chosen.current_fee.valid_until)}. You'll get your ticket now; the organisers confirm it once your payment is
-                  received.
-                </p>
+                <>
+                  <p className="mt-2 text-xs text-ink/60">
+                    Fee {formatMoney(chosen.current_fee.amount, chosen.current_fee.currency)} — this price applies until{' '}
+                    {formatKathmandu(chosen.current_fee.valid_until)}. After registering, upload your payment receipt; your QR ticket is issued
+                    once the organisers confirm it.
+                  </p>
+                  <PaymentInstructions conferenceId={conferenceId} info={paymentInfo} />
+                </>
               )
             })()}
           </div>
@@ -219,7 +234,62 @@ export function RegistrationPanel({
                   )} still to pay`}
             </p>
           ) : null}
-          <p className="mt-1 text-sm text-ink/60">{STATUS_NOTE[registration.status]}</p>
+          {(() => {
+            // changes-nov2, Part 6: a paid, pending registration goes through the receipt flow.
+            const paid = registration.status === 'pending' && Number(registration.amount_due ?? 0) > 0
+            if (!paid) return <p className="mt-1 text-sm text-ink/60">{STATUS_NOTE[registration.status]}</p>
+            const rejected = Boolean(registration.rejected_at)
+            const hasReceipt = Boolean(registration.has_receipt)
+            const showForm = !ended && (!hasReceipt || rejected || replacingReceipt)
+            return (
+              <div data-testid="receipt-status">
+                {rejected ? (
+                  <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    Your receipt was not accepted{registration.rejection_reason ? `: ${registration.rejection_reason}` : '.'} Please upload a new one.
+                  </p>
+                ) : hasReceipt ? (
+                  <p className="mt-2 text-sm text-ink/70">
+                    <span className="font-medium text-ink">Pending confirmation.</span> We received your receipt
+                    {registration.receipt_reference ? ` (ref. ${registration.receipt_reference})` : ''}. Your QR ticket will be issued once the
+                    organisers confirm it.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-ink/70">Pay the fee, then upload your receipt below. Your QR ticket is issued once it is confirmed.</p>
+                )}
+                {hasReceipt ? (
+                  <div className="mt-1 flex flex-wrap gap-3 text-sm">
+                    <a
+                      href={`${API_BASE}/conferences/${conferenceId}/my-registration/receipt`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-ink"
+                    >
+                      View my receipt
+                    </a>
+                    {!rejected && !replacingReceipt && !ended ? (
+                      <button type="button" onClick={() => setReplacingReceipt(true)} className="underline hover:text-ink">
+                        Upload a different receipt
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {showForm ? (
+                  <>
+                    <PaymentInstructions conferenceId={conferenceId} info={paymentInfo} />
+                    <ReceiptUploadForm
+                      conferenceId={conferenceId}
+                      accent={accent}
+                      defaultAmount={registration.amount_due}
+                      onUploaded={() => {
+                        setReplacingReceipt(false)
+                        load()
+                      }}
+                    />
+                  </>
+                ) : null}
+              </div>
+            )
+          })()}
           {registration.status === 'pending' && contactEmail ? (
             <p className="mt-1 text-sm text-ink/60">
               Already paid? Contact{' '}
@@ -230,13 +300,27 @@ export function RegistrationPanel({
             </p>
           ) : null}
 
-          {registration.status !== 'cancelled' ? (
+          {registration.status === 'pending' && !ended ? (
+            // changes-nov2, Part 6: no QR before confirmation, but the registration can still be cancelled.
+            <button
+              type="button"
+              onClick={() => setConfirmingCancel(true)}
+              disabled={busy}
+              className="mt-4 block min-h-10 rounded-md border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              Cancel registration
+            </button>
+          ) : null}
+
+          {registration.status === 'confirmed' || registration.status === 'waitlisted' ? (
             <div className="mt-4 flex flex-wrap items-center gap-4">
+              {registration.status === 'confirmed' ? (
               <img
                 src={`${API_BASE}/conferences/${conferenceId}/my-registration/qr.png`}
                 alt="Your check-in QR code"
                 className="h-36 w-36 rounded-md border border-line"
               />
+              ) : null}
               <div className="space-y-2">
                 {ticketSlug ? (
                   <Link
@@ -247,6 +331,7 @@ export function RegistrationPanel({
                     Open ticket (print, save, email)
                   </Link>
                 ) : null}
+                {registration.status === 'confirmed' ? (
                 <a
                   href={`${API_BASE}/conferences/${conferenceId}/my-registration/qr.png`}
                   download="ticket-qr.png"
@@ -254,6 +339,7 @@ export function RegistrationPanel({
                 >
                   Download QR (PNG)
                 </a>
+                ) : null}
                 {ended ? null : (
                   <button
                     type="button"

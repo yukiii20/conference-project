@@ -15,6 +15,11 @@ import { AMOUNT_PAID_SQL, currentFeesByCategory, priceForNewRegistration, priced
 import { csvCell } from '../../utils/csv.js'
 import { queueTicketEmail } from '../audience/ticket.js'
 import { assertConferenceNotEnded } from '../../utils/conferenceEnded.js'
+import { queueRegistrationConfirmedEmail } from './receipts.js'
+
+/** changes-nov2, Part 6: the receipt columns (never receipt_path itself). */
+const RECEIPT_COLUMNS_SQL = `r.receipt_path IS NOT NULL AS has_receipt, r.receipt_original_name, r.receipt_mime_type, r.receipt_amount,
+            r.receipt_paid_on, r.receipt_reference, r.receipt_uploaded_at, r.rejection_reason, r.rejected_at`
 
 function isDuplicateKeyError(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && (err as { code?: string }).code === 'ER_DUP_ENTRY')
@@ -204,12 +209,21 @@ export type MyRegistrationRow = {
   amount_paid: string
   currency: string
   registered_at: string
+  // changes-nov2, Part 6: payment receipt
+  has_receipt: number | boolean
+  receipt_original_name: string | null
+  receipt_amount: string | null
+  receipt_paid_on: string | null
+  receipt_reference: string | null
+  receipt_uploaded_at: string | null
+  rejection_reason: string | null
+  rejected_at: string | null
 }
 
 export async function getMyRegistration(conferenceId: string, userId: string): Promise<MyRegistrationRow | null> {
   const [rows] = await pool.query(
     `SELECT r.id, r.registration_number, r.status, r.amount_due, ${AMOUNT_PAID_SQL} AS amount_paid, r.currency, r.registered_at,
-            c.name AS category_name
+            c.name AS category_name, ${RECEIPT_COLUMNS_SQL}
      FROM registrations r JOIN registration_categories c ON c.id = r.category_id
      WHERE r.conference_id = ? AND r.user_id = ? AND r.status <> 'cancelled'
      ORDER BY r.registered_at DESC LIMIT 1`,
@@ -218,10 +232,11 @@ export async function getMyRegistration(conferenceId: string, userId: string): P
   return (rows as MyRegistrationRow[])[0] ?? null
 }
 
-/** The raw qr_token, used only to build the QR image — never serialised into a JSON response. */
+/** The raw qr_token, used only to build the QR image — never serialised into a JSON response.
+ *  changes-nov2, Part 6: only a confirmed registration has a usable QR. */
 export async function getMyRegistrationQrToken(conferenceId: string, userId: string): Promise<string | null> {
   const [rows] = await pool.query(
-    `SELECT qr_token FROM registrations WHERE conference_id = ? AND user_id = ? AND status <> 'cancelled'
+    `SELECT qr_token FROM registrations WHERE conference_id = ? AND user_id = ? AND status = 'confirmed'
      ORDER BY registered_at DESC LIMIT 1`,
     [conferenceId, userId],
   )
@@ -406,13 +421,30 @@ export type AdminRegistrationRow = {
   registered_at: string
   /** 1 when the person holds the active Audience role here (only on the paginated list). */
   is_audience?: number | boolean
+  // changes-nov2, Part 6 (only on the paginated list)
+  has_receipt?: number | boolean
+  receipt_original_name?: string | null
+  receipt_mime_type?: string | null
+  receipt_amount?: string | null
+  receipt_paid_on?: string | null
+  receipt_reference?: string | null
+  receipt_uploaded_at?: string | null
+  rejection_reason?: string | null
+  rejected_at?: string | null
 }
 
 // Deliberately selects every column except qr_token — it must never appear
 // in a list response (only the owner's own QR-image endpoint reads it).
 const REGISTRATIONS_PAGE_SIZE = 50
 
-export type RegistrationFilter = { search?: string; status?: string; categoryId?: string; audience?: 'only' | 'without' }
+export type RegistrationFilter = {
+  search?: string
+  status?: string
+  categoryId?: string
+  audience?: 'only' | 'without'
+  /** changes-nov2, Part 6: payment receipt state of pending registrations. */
+  payment?: 'awaiting_receipt' | 'pending_confirmation' | 'rejected'
+}
 
 function registrationWhere(conferenceId: string, filter: RegistrationFilter) {
   const conditions = ['r.conference_id = ?']
@@ -428,6 +460,9 @@ function registrationWhere(conferenceId: string, filter: RegistrationFilter) {
     conditions.push('r.status = ?')
     params.push(filter.status)
   }
+  if (filter.payment === 'awaiting_receipt') conditions.push(`r.status = 'pending' AND r.receipt_path IS NULL`)
+  if (filter.payment === 'pending_confirmation') conditions.push(`r.status = 'pending' AND r.receipt_path IS NOT NULL AND r.rejected_at IS NULL`)
+  if (filter.payment === 'rejected') conditions.push(`r.status = 'pending' AND r.rejected_at IS NOT NULL`)
   if (filter.categoryId) {
     conditions.push('r.category_id = ?')
     params.push(filter.categoryId)
@@ -472,7 +507,8 @@ export async function listRegistrations(
       `SELECT r.id, r.registration_number, u.full_name, u.email, c.name AS category_name,
               r.status, r.amount_due, ${AMOUNT_PAID_SQL} AS amount_paid, r.currency, r.registered_at,
               EXISTS (SELECT 1 FROM conference_members am WHERE am.conference_id = r.conference_id AND am.user_id = r.user_id
-                        AND am.role_code = 'attendee' AND am.status = 'active') AS is_audience
+                        AND am.role_code = 'attendee' AND am.status = 'active') AS is_audience,
+              ${RECEIPT_COLUMNS_SQL}
        FROM registrations r
        JOIN users u ON u.id = r.user_id
        JOIN registration_categories c ON c.id = r.category_id
@@ -527,9 +563,11 @@ export async function confirmRegistration(
     if (current.status !== 'pending') {
       throw new ConflictError('Only a pending registration can be confirmed.')
     }
-    await conn.query(`UPDATE registrations SET status = 'confirmed', confirmed_at = NOW(3) WHERE id = ?`, [
-      registrationId,
-    ])
+    await conn.query(
+      `UPDATE registrations SET status = 'confirmed', confirmed_at = NOW(3), rejection_reason = NULL, rejected_at = NULL, rejected_by = NULL
+       WHERE id = ?`,
+      [registrationId],
+    )
     await notifyUser(conn, {
       userId: current.user_id,
       conferenceId,
@@ -537,6 +575,8 @@ export async function confirmRegistration(
       title: 'Your registration is confirmed',
       body: 'Your registration has been confirmed by the organisers.',
     })
+    // changes-nov2, Part 6: "Registration confirmed" email with the ticket link and QR image.
+    await queueRegistrationConfirmedEmail(conn, conferenceId, registrationId)
     await insertAuditLog(conn, {
       actorUserId,
       conferenceId,

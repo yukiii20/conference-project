@@ -45,6 +45,7 @@ import { audienceRouter } from './modules/audience/routes.js'
 import { publicationRouter } from './modules/publication/routes.js'
 import { archiveRouter } from './modules/archive/routes.js'
 import { postConferenceRouter } from './modules/postConference/routes.js'
+import { receiptsRouter } from './modules/registration/receipts.routes.js'
 import { createTickRouter } from './jobs/tick.js'
 import { machineEndpointRateLimit } from './middleware/rateLimit.js'
 import { createBrevoWebhookRouter } from './modules/emailWebhooks/routes.js'
@@ -208,6 +209,7 @@ export function createApp() {
   app.use('/api/conferences', publicationRouter)
   app.use('/api/conferences', archiveRouter)
   app.use('/api/conferences', postConferenceRouter)
+  app.use('/api/conferences', receiptsRouter)
   app.use('/api/conferences', badgesRouter)
   app.use('/api/conferences', analyticsRouter)
   app.use('/api/admin', platformAnalyticsRouter)
