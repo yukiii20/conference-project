@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Play } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { LandingHeader } from '../components/landing/LandingHeader'
@@ -31,6 +31,21 @@ type SectionId = 'conferences' | 'features' | 'how-it-works' | 'faq' | 'contact'
 
 // In document order — the scroll-spy walks them top to bottom.
 const SECTION_IDS: SectionId[] = ['conferences', 'features', 'how-it-works', 'faq', 'contact']
+
+// Home page only: every text-* size one step smaller (90 %). Tailwind v4 reads font sizes from
+// these --text-* variables, so overriding them on <main> shrinks headings, sub text and card
+// text here without touching the global styles, the header/footer or any other page.
+// --home-scale does the same for the few fixed sizes (text-[calc(15px*var(--home-scale,1))])
+// in the landing/home components; outside <main> it falls back to 1.
+const HOME_TYPE_SCALE = 0.9
+const HOME_TEXT_SIZES_REM: Record<string, number> = {
+  xs: 0.75, sm: 0.875, base: 1, lg: 1.125, xl: 1.25, '2xl': 1.5, '3xl': 1.875, '4xl': 2.25, '5xl': 3, '6xl': 3.75, '7xl': 4.5,
+}
+const homeTypeStyle = Object.fromEntries([
+  ['fontSize', `${HOME_TYPE_SCALE}rem`],
+  ['--home-scale', String(HOME_TYPE_SCALE)],
+  ...Object.entries(HOME_TEXT_SIZES_REM).map(([k, rem]) => [`--text-${k}`, `${+(rem * HOME_TYPE_SCALE).toFixed(4)}rem`]),
+]) as CSSProperties
 
 type DeadlineRow = { conference_id: string; opens_at: string; closes_at: string | null }
 
@@ -307,7 +322,7 @@ export function HomePage() {
 
       <LandingHeader ref={headerRef} activeSection={activeSection} onNavigate={handleNavigate} />
 
-      <main id="main-content">
+      <main id="main-content" style={homeTypeStyle}>
         <HomeHero
           headline={heroHeadline}
           subheadline={heroSubheadline}

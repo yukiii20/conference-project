@@ -32,7 +32,7 @@ export const ContactSection = memo(function ContactSection({ email, onFeedback }
                   href={gmailHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-gold px-6 py-3.5 text-[15px] font-semibold text-brand transition duration-300 hover:bg-[#e6c993]"
+                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-gold px-6 py-3.5 text-[calc(15px*var(--home-scale,1))] font-semibold text-brand transition duration-300 hover:bg-[#e6c993]"
                 >
                   {SITE.contactBand.cta}
                   <ArrowRight size={18} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -40,7 +40,7 @@ export const ContactSection = memo(function ContactSection({ email, onFeedback }
                 <button
                   type="button"
                   onClick={onFeedback}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 px-6 py-3.5 text-[15px] font-medium text-white transition duration-300 hover:border-white/50 hover:bg-white/5"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 px-6 py-3.5 text-[calc(15px*var(--home-scale,1))] font-medium text-white transition duration-300 hover:border-white/50 hover:bg-white/5"
                 >
                   <MessageSquareText size={18} aria-hidden="true" />
                   Send feedback

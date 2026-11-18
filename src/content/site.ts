@@ -33,9 +33,9 @@ export const SITE = {
   ],
 
   conferences: {
-    heading: 'Conferences',
-    description: 'Browse conferences hosted on this platform.',
-    searchPlaceholder: 'Search by name, code or city',
+    heading: 'Find your next conference',
+    description: 'Search by name, code or city.',
+    searchPlaceholder: 'Find your conference',
     tabs: [
       { id: 'all', label: 'All' },
       { id: 'open', label: 'Open for abstracts' },

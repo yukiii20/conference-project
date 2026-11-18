@@ -21,7 +21,7 @@ function Photo({ name, alt, className, sizes, label }: { name: string; alt: stri
         className={`h-full w-full object-cover transition-transform duration-[1200ms] ease-out hover:scale-[1.04] ${className}`}
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent" aria-hidden="true" />
-      <figcaption className="pointer-events-none absolute bottom-3 left-3 right-3 text-[13px] font-medium text-white sm:bottom-4 sm:left-4">{label}</figcaption>
+      <figcaption className="pointer-events-none absolute bottom-3 left-3 right-3 text-[calc(13px*var(--home-scale,1))] font-medium text-white sm:bottom-4 sm:left-4">{label}</figcaption>
     </figure>
   )
 }

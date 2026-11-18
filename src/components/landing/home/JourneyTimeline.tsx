@@ -60,7 +60,7 @@ export const JourneyTimeline = memo(function JourneyTimeline() {
           </p>
           <Link
             to="/signup"
-            className="group mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3.5 text-[15px] font-medium text-on-brand transition hover:bg-brand-hover"
+            className="group mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3.5 text-[calc(15px*var(--home-scale,1))] font-medium text-on-brand transition hover:bg-brand-hover"
           >
             Create your account
             <ArrowRight size={18} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />

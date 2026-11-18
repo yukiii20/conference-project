@@ -91,7 +91,7 @@ function JourneyCard() {
           const done = i <= step
           const Icon = j.icon
           return (
-            <li key={j.label} className="flex items-center gap-3 text-[13px]">
+            <li key={j.label} className="flex items-center gap-3 text-[calc(13px*var(--home-scale,1))]">
               <span
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-500 ${
                   done ? 'bg-brand text-on-brand' : 'border border-border bg-white text-text-muted'
@@ -111,7 +111,7 @@ function JourneyCard() {
 function HeroStat({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="flex flex-col-reverse px-4 first:pl-0 last:pr-0 sm:px-6">
-      <dt className="mt-1 text-xs leading-tight text-text-muted sm:text-[13px]">{label}</dt>
+      <dt className="mt-1 text-xs leading-tight text-text-muted sm:text-[calc(13px*var(--home-scale,1))]">{label}</dt>
       <dd className="font-display text-3xl font-semibold text-brand sm:text-4xl">
         {value === null ? <span className="inline-block h-8 w-10 animate-pulse rounded bg-surface-muted align-middle" /> : <CountUp value={value} />}
       </dd>
@@ -160,8 +160,8 @@ function FeaturedCard({
       <div className="mt-3 flex items-start gap-3.5">
         <ConferenceLogo conference={conference} className="h-12 w-12 shrink-0 rounded-xl border border-border-soft text-sm" />
         <div className="min-w-0">
-          <p className="line-clamp-2 font-display text-[17px] font-semibold leading-snug text-text">{conference.name}</p>
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-text-muted">
+          <p className="line-clamp-2 font-display text-[calc(17px*var(--home-scale,1))] font-semibold leading-snug text-text">{conference.name}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[calc(13px*var(--home-scale,1))] text-text-muted">
             <span className="inline-flex items-center gap-1">
               <CalendarDays size={13} aria-hidden="true" /> {formatDateRange(conference.start_date, conference.end_date)}
             </span>
@@ -232,13 +232,13 @@ export const HomeHero = memo(function HomeHero({
 
           <h1
             id="home-hero-title"
-            className="home-settle mt-5 max-w-[15ch] font-display text-[2.6rem] font-semibold leading-[1.04] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[4.4rem]"
+            className="home-settle mt-5 max-w-[15ch] font-display text-[calc(2.6rem*var(--home-scale,1))] font-semibold leading-[1.04] tracking-[-0.02em] text-brand sm:text-6xl lg:text-[calc(4.4rem*var(--home-scale,1))]"
             style={{ animationDelay: '140ms' }}
           >
             {headline}
           </h1>
 
-          <p className="home-settle mt-6 max-w-[34rem] text-[17px] leading-relaxed text-text-muted sm:text-lg" style={{ animationDelay: '260ms' }}>
+          <p className="home-settle mt-6 max-w-[34rem] text-[calc(17px*var(--home-scale,1))] leading-relaxed text-text-muted sm:text-lg" style={{ animationDelay: '260ms' }}>
             {subheadline}
           </p>
 
@@ -246,7 +246,7 @@ export const HomeHero = memo(function HomeHero({
             <button
               type="button"
               onClick={onExplore}
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-[15px] font-medium text-on-brand shadow-[0_10px_30px_-12px_rgb(16_28_50/0.6)] transition duration-300 hover:bg-brand-hover hover:shadow-[0_14px_34px_-12px_rgb(16_28_50/0.7)]"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-[calc(15px*var(--home-scale,1))] font-medium text-on-brand shadow-[0_10px_30px_-12px_rgb(16_28_50/0.6)] transition duration-300 hover:bg-brand-hover hover:shadow-[0_14px_34px_-12px_rgb(16_28_50/0.7)]"
             >
               Explore conferences
               <ArrowRight size={18} aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -254,14 +254,14 @@ export const HomeHero = memo(function HomeHero({
             <button
               type="button"
               onClick={onDiscover}
-              className="inline-flex items-center justify-center rounded-full border border-brand/15 bg-white/70 px-6 py-3.5 text-[15px] font-medium text-brand backdrop-blur transition duration-300 hover:border-brand/35 hover:bg-white"
+              className="inline-flex items-center justify-center rounded-full border border-brand/15 bg-white/70 px-6 py-3.5 text-[calc(15px*var(--home-scale,1))] font-medium text-brand backdrop-blur transition duration-300 hover:border-brand/35 hover:bg-white"
             >
               Discover the platform
             </button>
             <button
               type="button"
               onClick={onWatchDemo}
-              className="group inline-flex items-center justify-center gap-2 px-2 py-3 text-[15px] font-medium text-text transition hover:text-indigo"
+              className="group inline-flex items-center justify-center gap-2 px-2 py-3 text-[calc(15px*var(--home-scale,1))] font-medium text-text transition hover:text-indigo"
             >
               <PlayCircle size={20} aria-hidden="true" className="text-indigo transition-transform duration-300 group-hover:scale-110" />
               Watch the demo

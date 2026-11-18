@@ -43,7 +43,7 @@ function Media({ conference, past }: { conference: Conference; past: boolean }) 
           style={{ backgroundImage: `linear-gradient(135deg, ${accent} 0%, ${darken(accent, 0.45)} 100%)` }}
         >
           <div className="absolute inset-0 opacity-[0.18] [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:16px_16px]" />
-          <span className="absolute -bottom-4 right-2 select-none font-display text-[3rem] font-semibold leading-none text-white/10" aria-hidden="true">
+          <span className="absolute -bottom-4 right-2 select-none font-display text-[calc(3rem*var(--home-scale,1))] font-semibold leading-none text-white/10" aria-hidden="true">
             {conference.short_name || conference.code}
           </span>
         </div>
@@ -208,17 +208,15 @@ export const ConferenceDiscovery = memo(function ConferenceDiscovery({
         <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold-ink">Discover</p>
-            <h2 className="mt-3 font-display text-4xl font-semibold tracking-[-0.015em] text-brand sm:text-5xl">Find your next conference</h2>
-            <p className="mt-4 text-lg leading-relaxed text-text-muted">
-              Browse every conference hosted here, see what's open for abstracts, and follow each one from call for papers to closing session.
-            </p>
+            <h2 className="mt-3 font-display text-4xl font-semibold tracking-[-0.015em] text-brand sm:text-5xl">{SITE.conferences.heading}</h2>
+            <p className="mt-4 text-lg leading-relaxed text-text-muted">{SITE.conferences.description}</p>
           </div>
           <div className="relative w-full lg:w-[22rem]">
             <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, code, city or theme"
+              placeholder={SITE.conferences.searchPlaceholder}
               aria-label="Search conferences"
               type="search"
               className="w-full rounded-full border border-border bg-surface py-3.5 pl-11 pr-11 text-sm shadow-sm transition placeholder:text-text-muted/80 focus:border-indigo focus:outline-none focus:ring-4 focus:ring-indigo/15 [&::-webkit-search-cancel-button]:hidden"
