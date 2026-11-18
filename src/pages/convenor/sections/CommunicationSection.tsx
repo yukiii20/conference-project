@@ -4,6 +4,7 @@ import { BulkEmailTab } from '../BulkEmailTab'
 import { EmailTemplatesTab } from '../EmailTemplatesTab'
 import { EmailLogTab } from '../../../components/EmailLogTab'
 import { ReportsTab } from '../ReportsTab'
+import { ConferenceReportTab } from '../ConferenceReportTab'
 import { ActivityLogTab } from '../ActivityLogTab'
 import { Spinner } from '../../../components/ui'
 import { SECTIONS, visibleTabs } from '../sidebarConfig'
@@ -45,6 +46,8 @@ export function CommunicationSection({
             <EmailTemplatesTab conferenceId={conferenceId} />
           ) : t.id === 'emails' ? (
             <EmailLogTab scope={{ conferenceId }} />
+          ) : t.id === 'conference-report' ? (
+            <ConferenceReportTab conferenceId={conferenceId} />
           ) : t.id === 'reports' ? (
             <ReportsTab conferenceId={conferenceId} />
           ) : t.id === 'analytics' ? (

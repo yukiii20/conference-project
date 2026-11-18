@@ -9,6 +9,7 @@ import { ConferenceNav, SECTIONS, type SectionId } from './conference/Conference
 import { RegistrationPanel } from './conference/RegistrationPanel'
 import { ConferenceEndedNotice } from '../components/ConferenceEndedNotice'
 import { PublicationSection } from './conference/PublicationSection'
+import { ArchiveSection } from './conference/ArchiveSection'
 import { isConferenceEnded } from '../lib/conferenceEnded'
 import { PublicAcceptedAbstracts } from '../components/audience/PublicAcceptedAbstracts'
 import { ConferenceBadgeAnimation } from '../components/ConferenceBadgeAnimation'
@@ -735,6 +736,8 @@ export function ConferencePage() {
       <PublicAcceptedAbstracts conferenceId={conference.id} style={sectionStyle} />
 
       <PublicationSection conferenceId={conference.id} style={sectionStyle} />
+
+      {ended ? <ArchiveSection conferenceId={conference.id} accent={accent} style={sectionStyle} /> : null}
 
       <section
         id="registration"

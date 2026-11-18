@@ -135,7 +135,8 @@ describe('paper publication', () => {
     expect(byId.get(a)).toMatchObject({ is_published: true, published_in: 'Default Proceedings' })
     expect(byId.get(b)).toMatchObject({ is_published: true, published_in: 'Special Issue' })
     expect(byId.has(c)).toBe(false)
-    expect(await auditCount('paper_publication.bulk_publish')).toBe(2)
+    const [bulk] = await pool.query(`SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'paper_publication.bulk_publish' AND conference_id = ?`, [conferenceId])
+    expect(Number((bulk as Array<{ n: number }>)[0]!.n)).toBe(2)
 
     // Running it again changes nothing.
     expect((await convenor.post(`/api/conferences/${conferenceId}/paper-publications/publish-all`).send({})).body.published).toBe(0)

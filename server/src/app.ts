@@ -43,6 +43,7 @@ import { feedbackMeRouter, feedbackRouter } from './modules/feedback/routes.js'
 import { invitationsPublicRouter } from './modules/invitations/routes.js'
 import { audienceRouter } from './modules/audience/routes.js'
 import { publicationRouter } from './modules/publication/routes.js'
+import { archiveRouter } from './modules/archive/routes.js'
 import { createTickRouter } from './jobs/tick.js'
 import { machineEndpointRateLimit } from './middleware/rateLimit.js'
 import { createBrevoWebhookRouter } from './modules/emailWebhooks/routes.js'
@@ -204,6 +205,7 @@ export function createApp() {
   app.use('/api/conferences', registrationRouter)
   app.use('/api/conferences', audienceRouter)
   app.use('/api/conferences', publicationRouter)
+  app.use('/api/conferences', archiveRouter)
   app.use('/api/conferences', badgesRouter)
   app.use('/api/conferences', analyticsRouter)
   app.use('/api/admin', platformAnalyticsRouter)
