@@ -5,6 +5,17 @@ REM Installs dependencies first so packages added in a pull are never missing.
 
 cd /d "%~dp0"
 
+REM The backend starts even without MySQL, but then every page that needs data fails.
+REM Stop here with a clear message instead (see LOCAL_SETUP.md, "Start MySQL").
+netstat -an | find ":3306" | find "LISTENING" >nul
+if errorlevel 1 (
+  echo.
+  echo MySQL is not running on port 3306. Start it first - see LOCAL_SETUP.md, "Start MySQL".
+  echo.
+  pause
+  exit /b 1
+)
+
 echo Installing frontend dependencies...
 call npm install
 if errorlevel 1 (
