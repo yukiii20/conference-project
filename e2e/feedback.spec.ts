@@ -106,6 +106,8 @@ test('convenor builds and opens the feedback survey, a chair answers anonymously
   await signIn(page, FIXTURE.convenorEmail, 'convenor')
   await expect(page).toHaveURL(/\/convenor/)
   await page.goto('/convenor/event/feedback')
+  // The page opens on the Audience feedback sub-tab; survey answers are on the other one.
+  await page.getByRole('tab', { name: 'Feedback survey' }).click()
   const comment = page.getByText(`Anonymous e2e comment ${stamp}`)
   await expect(comment).toBeVisible()
   await expect(comment.locator('xpath=..')).toContainText('Anonymous')

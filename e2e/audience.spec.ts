@@ -133,9 +133,9 @@ test('Audience: sign up, ticket, programme, Q&A with live moderation, feedback, 
     // --- 7. Rate the session (it has started) and give conference feedback.
     await page.goto('/portal/feedback')
     const ratingRow = page.locator('li', { has: page.getByRole('heading', { name: sessionTitle }) })
-    await ratingRow.getByRole('radiogroup', { name: `Your rating of ${sessionTitle}` }).getByRole('button', { name: '5 stars' }).click()
+    await ratingRow.getByRole('radiogroup', { name: `Your rating of ${sessionTitle}` }).getByRole('radio', { name: '5 stars' }).click()
     await expect(ratingRow.getByText('Rated', { exact: true })).toBeVisible()
-    await page.getByRole('radiogroup', { name: 'Your rating of the conference' }).getByRole('button', { name: '4 stars' }).click()
+    await page.getByRole('radiogroup', { name: 'Your rating of the conference' }).getByRole('radio', { name: '4 stars' }).click()
     await page.getByRole('textbox', { name: 'What did you like?' }).fill(`Great talks ${stamp}`)
     await page.getByRole('button', { name: /^(Send|Update) feedback$/ }).click()
     await expect(page.getByRole('status').filter({ hasText: /./ }).first()).toBeVisible()
