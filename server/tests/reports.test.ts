@@ -3,8 +3,15 @@ import request from 'supertest'
 import ExcelJS from 'exceljs'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db/pool.js'
-import { canReadAllReviews } from '../src/modules/reports/service.js'
-import { addConferenceMember, createConference, createDirectSession, createUser, resetDatabase } from './helpers.js'
+import { canReadAllReviews, canReadRegistrations } from '../src/modules/reports/service.js'
+import {
+  addConferenceMember,
+  createAudienceMember,
+  createConference,
+  createDirectSession,
+  createUser,
+  resetDatabase,
+} from './helpers.js'
 
 const app = createApp()
 
@@ -98,5 +105,65 @@ describe('reports and export', () => {
 
     expect(await canReadAllReviews(convenorId, conferenceId)).toBe(true)
     expect(await canReadAllReviews(reviewerId, conferenceId)).toBe(false)
+  })
+
+  it('exports registrations with attendance counts, and one attendance row per check-in', async () => {
+    const conferenceId = await createConference()
+    const agent = await loginAsConvenor(conferenceId, 'reports-reg-conv@example.com')
+    const { userId, registrationId } = await createAudienceMember(conferenceId, 'reports-reg-att@example.com', { fullName: 'Asha Attendee' })
+    await createAudienceMember(conferenceId, 'reports-reg-pending@example.com', { fullName: 'Pending Person', registrationStatus: 'pending' })
+    await pool.query(
+      `INSERT INTO conference_attendance (conference_id, registration_id, user_id, attendance_date, method) VALUES (?, ?, ?, CURDATE(), 'qr')`,
+      [conferenceId, registrationId, userId],
+    )
+
+    const reg = await agent.get(`/api/conferences/${conferenceId}/reports/registrations/csv`)
+    expect(reg.status).toBe(200)
+    const regLines = reg.text.split('\n')
+    expect(regLines[0]).toContain('Registration no.')
+    expect(regLines).toHaveLength(3)
+    const asha = regLines.find((l) => l.includes('Asha Attendee'))!
+    expect(asha).toContain('"reports-reg-att@example.com"')
+    expect(asha).toContain('"confirmed"')
+    expect(asha).toMatch(/"1","0"$/)
+    expect(regLines.find((l) => l.includes('Pending Person'))).toContain('"pending"')
+
+    const att = await agent.get(`/api/conferences/${conferenceId}/reports/attendance/csv`)
+    expect(att.status).toBe(200)
+    const attLines = att.text.split('\n')
+    expect(attLines).toHaveLength(2)
+    expect(attLines[1]).toContain('Asha Attendee')
+    expect(attLines[1]).toContain('"QR scan"')
+    expect(attLines[1]).toMatch(/"\d{4}-\d{2}-\d{2} \d{2}:\d{2}"/)
+
+    const xlsx = await agent.get(`/api/conferences/${conferenceId}/reports/attendance/xlsx`)
+    expect(xlsx.status).toBe(200)
+    expect(xlsx.headers['content-type']).toContain('spreadsheetml')
+  })
+
+  it("does not include another conference's registrations", async () => {
+    const conferenceId = await createConference()
+    const otherId = await createConference()
+    const agent = await loginAsConvenor(conferenceId, 'reports-scope-conv@example.com')
+    await createAudienceMember(otherId, 'reports-scope-other@example.com', { fullName: 'Other Conference Person' })
+
+    const res = await agent.get(`/api/conferences/${conferenceId}/reports/registrations/csv`)
+    expect(res.status).toBe(200)
+    expect(res.text).not.toContain('Other Conference Person')
+  })
+
+  it('registration exports are forbidden for staff (no report.view) and attendees', async () => {
+    const conferenceId = await createConference()
+    const staffId = await createUser({ email: 'reports-staff@example.com', password: 'Str0ng!Pass' })
+    await addConferenceMember(conferenceId, staffId, 'staff')
+    const staff = cookieAgent(await createDirectSession(staffId))
+    const { cookie } = await createAudienceMember(conferenceId, 'reports-attendee@example.com')
+    const attendee = cookieAgent(cookie)
+
+    for (const kind of ['registrations', 'attendance']) {
+      expect((await staff.get(`/api/conferences/${conferenceId}/reports/${kind}/csv`)).status).toBe(403)
+      expect((await attendee.get(`/api/conferences/${conferenceId}/reports/${kind}/xlsx`)).status).toBe(403)
+    }
+    expect(await canReadRegistrations(staffId, conferenceId)).toBe(true)
   })
 })

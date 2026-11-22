@@ -397,6 +397,35 @@ async function readPublicFileIfAny(relativePath: string | null): Promise<Buffer 
   }
 }
 
+type CertificateConference = { name: string; logo_path: string | null; primary_color: string | null }
+
+/** Builds a certificate's PDF from its database values; missing images are simply left out. */
+async function renderCertificatePdf(
+  conference: CertificateConference,
+  template: TemplateRow | null,
+  cert: { recipientName: string; certificateType: string; certificateNumber: string; issuedAt: Date; verificationToken: string },
+): Promise<Buffer> {
+  const [backgroundBuffer, logoBuffer, signatureBuffers] = await Promise.all([
+    readPublicFileIfAny(template?.background_path ?? null),
+    readPublicFileIfAny(conference.logo_path),
+    Promise.all((template?.signatories ?? []).map((s) => readPublicFileIfAny(s.signature_path))),
+  ])
+  return generateCertificatePdf({
+    recipientName: cert.recipientName,
+    conferenceName: conference.name,
+    certificateType: cert.certificateType,
+    certificateNumber: cert.certificateNumber,
+    issuedAt: cert.issuedAt,
+    verificationToken: cert.verificationToken,
+    backgroundBuffer,
+    logoBuffer,
+    primaryColor: conference.primary_color ?? '#2747A0',
+    layout: template?.layout ?? { name: { y: 260, font_size: 48, color: '#1A1A1A' } },
+    signatories: template?.signatories ?? [],
+    signatureBuffers,
+  })
+}
+
 async function nextCertificateNumber(conn: PoolConnection, conferenceId: string, code: string): Promise<string> {
   await conn.query(
     `INSERT INTO conference_counters (conference_id, counter_key, current_value) VALUES (?, 'certificate', 0)
@@ -457,30 +486,23 @@ async function issueOne(
   const [idRows] = await conn.query('SELECT id FROM certificates WHERE certificate_number = ? LIMIT 1', [certificateNumber])
   const certificateId = (idRows as Array<{ id: string }>)[0]!.id
 
-  const [backgroundBuffer, logoBuffer, signatureBuffers] = await Promise.all([
-    readPublicFileIfAny(template?.background_path ?? null),
-    readPublicFileIfAny(conference.logo_path),
-    Promise.all((template?.signatories ?? []).map((s) => readPublicFileIfAny(s.signature_path))),
-  ])
-
-  const pdf = await generateCertificatePdf({
+  const pdf = await renderCertificatePdf(conference, template, {
     recipientName,
-    conferenceName: conference.name,
     certificateType,
     certificateNumber,
     issuedAt: new Date(),
     verificationToken,
-    backgroundBuffer,
-    logoBuffer,
-    primaryColor: conference.primary_color ?? '#2747A0',
-    layout: template?.layout ?? { name: { y: 260, font_size: 48, color: '#1A1A1A' } },
-    signatories: template?.signatories ?? [],
-    signatureBuffers,
   })
 
   const filePath = `certificates/${conferenceId}/${certificateId}.pdf`
   await savePrivateFile(filePath, pdf)
   await conn.query('UPDATE certificates SET file_path = ? WHERE id = ?', [filePath, certificateId])
+
+  // Issued after the release date (e.g. a late speaker certificate): tell the recipient now,
+  // because "Release now" has already run and will not be pressed again for them.
+  if (await isReleasedWith(conn, conferenceId)) {
+    await notifyCertificateReady(conn, conferenceId, certificateId)
+  }
 
   await insertAuditLog(conn, {
     actorUserId,
@@ -735,12 +757,64 @@ export async function listMyCertificatesEverywhere(userId: string): Promise<MyCe
  * Node's Date.now()) so it can never be thrown off by clock skew between
  * this process and the database server.
  */
+const RELEASED_SQL = `SELECT 1 FROM conference_deadlines WHERE conference_id = ? AND deadline_type = 'certificate_release' AND opens_at <= NOW(3) LIMIT 1`
+
 export async function isReleased(conferenceId: string): Promise<boolean> {
-  const [rows] = await pool.query(
-    `SELECT 1 FROM conference_deadlines WHERE conference_id = ? AND deadline_type = 'certificate_release' AND opens_at <= NOW(3) LIMIT 1`,
-    [conferenceId],
-  )
+  const [rows] = await pool.query(RELEASED_SQL, [conferenceId])
   return (rows as unknown[]).length > 0
+}
+
+async function isReleasedWith(conn: PoolConnection, conferenceId: string): Promise<boolean> {
+  const [rows] = await conn.query(RELEASED_SQL, [conferenceId])
+  return (rows as unknown[]).length > 0
+}
+
+/**
+ * Emails and notifies the recipient that one certificate can be downloaded, at most once per
+ * certificate: the email row is tagged with the certificate's id, and a second call finds it.
+ * Returns false when the recipient was already told.
+ */
+async function notifyCertificateReady(conn: PoolConnection, conferenceId: string, certificateId: string): Promise<boolean> {
+  const [rows] = await conn.query(
+    `SELECT c.recipient_user_id, u.email, u.full_name, co.name AS conference_name, co.code AS conference_code
+     FROM certificates c
+     JOIN users u ON u.id = c.recipient_user_id
+     JOIN conferences co ON co.id = c.conference_id
+     WHERE c.id = ? AND c.conference_id = ? AND c.status = 'issued'
+       AND NOT EXISTS (
+         SELECT 1 FROM email_logs e
+         WHERE e.template_key = 'certificate_available' AND e.entity_type = 'certificates' AND e.entity_id = c.id
+       )
+     LIMIT 1`,
+    [certificateId, conferenceId],
+  )
+  const r = (rows as Array<{ recipient_user_id: string; email: string; full_name: string; conference_name: string; conference_code: string }>)[0]
+  if (!r) return false
+  const [templateRows] = await conn.query(
+    `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'certificate_available' LIMIT 1`,
+  )
+  const template = (templateRows as Array<{ subject: string }>)[0]
+  const data = { full_name: r.full_name, conference_name: r.conference_name, conference_code: r.conference_code }
+  await queueEmail(conn, {
+    userId: r.recipient_user_id,
+    conferenceId,
+    recipientEmail: r.email,
+    templateKey: 'certificate_available',
+    subject: template ? renderTemplate(template.subject, data) : 'Your certificate is ready',
+    templateData: data,
+    entityType: 'certificates',
+    entityId: certificateId,
+  })
+  await notifyUser(conn, {
+    userId: r.recipient_user_id,
+    conferenceId,
+    type: 'certificate',
+    title: 'Your certificate is ready',
+    body: 'You can now download your certificate.',
+    entityType: 'certificates',
+    entityId: certificateId,
+  })
+  return true
 }
 
 export async function releaseNow(actorUserId: string, conferenceId: string, ctx: AuditContext = {}): Promise<{ released: number }> {
@@ -751,63 +825,39 @@ export async function releaseNow(actorUserId: string, conferenceId: string, ctx:
        ON DUPLICATE KEY UPDATE opens_at = LEAST(opens_at, NOW(3))`,
       [conferenceId],
     )
-    const [rows] = await conn.query(
-      `SELECT c.recipient_user_id, c.id, u.email, u.full_name
-       FROM certificates c JOIN users u ON u.id = c.recipient_user_id
-       WHERE c.conference_id = ? AND c.status = 'issued'`,
-      [conferenceId],
-    )
-    const recipients = rows as Array<{ recipient_user_id: string; id: string; email: string; full_name: string }>
-    const [confRows] = await conn.query('SELECT name, code FROM conferences WHERE id = ? LIMIT 1', [conferenceId])
-    const conference = (confRows as Array<{ name: string; code: string }>)[0]
-    const [templateRows] = await conn.query(
-      `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'certificate_available' LIMIT 1`,
-    )
-    const template = (templateRows as Array<{ subject: string }>)[0]
-    for (const r of recipients) {
-      const data = { full_name: r.full_name, conference_name: conference?.name ?? '', conference_code: conference?.code ?? '' }
-      const subject = template ? renderTemplate(template.subject, data) : 'Your certificate is ready'
-      await queueEmail(conn, {
-        userId: r.recipient_user_id,
-        conferenceId,
-        recipientEmail: r.email,
-        templateKey: 'certificate_available',
-        subject,
-        templateData: data,
-      })
-      await notifyUser(conn, {
-        userId: r.recipient_user_id,
-        conferenceId,
-        type: 'certificate',
-        title: 'Your certificate is ready',
-        body: 'You can now download your certificate.',
-      })
+    const [rows] = await conn.query(`SELECT id FROM certificates WHERE conference_id = ? AND status = 'issued'`, [conferenceId])
+    // Pressing "Release now" again only emails certificates that were never announced.
+    let released = 0
+    for (const { id } of rows as Array<{ id: string }>) {
+      if (await notifyCertificateReady(conn, conferenceId, id)) released += 1
     }
     await insertAuditLog(conn, {
       actorUserId,
       conferenceId,
       action: 'certificates.release_now',
       entityType: 'certificates',
-      newValues: { count: recipients.length },
+      newValues: { count: released },
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
     })
-    return { released: recipients.length }
+    return { released }
   })
 }
+
+export type CertificateFile = { certificateId: string; storagePath: string; filename: string }
 
 export async function downloadCertificate(
   conferenceId: string,
   certificateId: string,
   requestingUserId: string,
   hasManagePermission: boolean,
-): Promise<{ storagePath: string; filename: string }> {
+): Promise<CertificateFile> {
   const [rows] = await pool.query(
     'SELECT id, recipient_user_id, certificate_number, file_path, status FROM certificates WHERE id = ? AND conference_id = ? LIMIT 1',
     [certificateId, conferenceId],
   )
   const cert = (rows as Array<{ id: string; recipient_user_id: string; certificate_number: string; file_path: string | null; status: string }>)[0]
-  if (!cert || !cert.file_path) throw new NotFoundError('This certificate does not exist.')
+  if (!cert) throw new NotFoundError('This certificate does not exist.')
 
   const isOwner = cert.recipient_user_id === requestingUserId
   if (!isOwner && !hasManagePermission) {
@@ -817,7 +867,91 @@ export async function downloadCertificate(
     throw new ForbiddenError('Certificates have not been released yet.')
   }
 
-  return { storagePath: cert.file_path, filename: `${cert.certificate_number}.pdf` }
+  return {
+    certificateId: cert.id,
+    storagePath: cert.file_path ?? `certificates/${conferenceId}/${cert.id}.pdf`,
+    filename: `${cert.certificate_number}.pdf`,
+  }
+}
+
+/**
+ * Rebuilds a certificate's PDF from the database (its template, or the active template for its
+ * type) and stores it again. Used when the stored PDF has been lost, e.g. on a redeploy with
+ * local storage, so a certificate never becomes undownloadable.
+ */
+export async function regenerateCertificatePdf(certificateId: string): Promise<Buffer> {
+  const [rows] = await pool.query(
+    `SELECT c.id, c.conference_id, c.recipient_name, c.certificate_type, c.certificate_number, c.verification_token,
+            c.issued_at, c.template_id, co.name, co.logo_path, co.primary_color
+     FROM certificates c JOIN conferences co ON co.id = c.conference_id
+     WHERE c.id = ? LIMIT 1`,
+    [certificateId],
+  )
+  const row = (
+    rows as Array<{
+      id: string
+      conference_id: string
+      recipient_name: string
+      certificate_type: string
+      certificate_number: string
+      verification_token: string
+      issued_at: Date | string
+      template_id: string | null
+      name: string
+      logo_path: string | null
+      primary_color: string | null
+    }>
+  )[0]
+  if (!row) throw new NotFoundError('This certificate does not exist.')
+
+  let template: TemplateRow | null = null
+  if (row.template_id) {
+    try {
+      template = await getTemplate(row.conference_id, row.template_id)
+    } catch {
+      template = null // the template was deleted later: fall back to the active one
+    }
+  }
+  if (!template) {
+    const conn = await pool.getConnection()
+    try {
+      template = await getActiveTemplate(conn, row.conference_id, row.certificate_type)
+    } finally {
+      conn.release()
+    }
+  }
+
+  const pdf = await renderCertificatePdf(row, template, {
+    recipientName: row.recipient_name,
+    certificateType: row.certificate_type,
+    certificateNumber: row.certificate_number,
+    issuedAt: new Date(row.issued_at),
+    verificationToken: row.verification_token,
+  })
+  const filePath = `certificates/${row.conference_id}/${row.id}.pdf`
+  await savePrivateFile(filePath, pdf)
+  await pool.query('UPDATE certificates SET file_path = ? WHERE id = ?', [filePath, row.id])
+  return pdf
+}
+
+/**
+ * The PDF behind a public verification link. Only a valid (not revoked) certificate whose
+ * conference has released certificates can be downloaded; otherwise the page still shows
+ * the verification result, just without the file.
+ */
+export async function publicCertificateFile(token: string): Promise<CertificateFile> {
+  const [rows] = await pool.query(
+    `SELECT id, conference_id, certificate_number, file_path, status FROM certificates WHERE verification_token = ? LIMIT 1`,
+    [token],
+  )
+  const cert = (rows as Array<{ id: string; conference_id: string; certificate_number: string; file_path: string | null; status: string }>)[0]
+  if (!cert || cert.status !== 'issued') throw new NotFoundError('This certificate is not available for download.')
+  if (!(await isReleased(cert.conference_id))) throw new NotFoundError('This certificate is not available for download.')
+  return {
+    certificateId: cert.id,
+    storagePath: cert.file_path ?? `certificates/${cert.conference_id}/${cert.id}.pdf`,
+    filename: `${cert.certificate_number}.pdf`,
+  }
 }
 
 export async function revokeCertificate(actorUserId: string, conferenceId: string, certificateId: string, reason: string, ctx: AuditContext = {}): Promise<void> {
@@ -852,20 +986,43 @@ export type VerifyResult = {
   status: string
   recipient_name: string
   certificate_type: string
+  certificate_number: string
   conference_name: string
   issued_at: string
+  /** True when the PDF can be downloaded from the public link (valid and released). */
+  downloadable: boolean
 } | null
 
 export async function verifyCertificate(token: string): Promise<VerifyResult> {
   const [rows] = await pool.query(
-    `SELECT c.status, c.recipient_name, c.certificate_type, c.issued_at, co.name AS conference_name
+    `SELECT c.status, c.recipient_name, c.certificate_type, c.certificate_number, c.issued_at, c.conference_id, co.name AS conference_name
      FROM certificates c JOIN conferences co ON co.id = c.conference_id
      WHERE c.verification_token = ? LIMIT 1`,
     [token],
   )
-  const row = (rows as Array<{ status: string; recipient_name: string; certificate_type: string; issued_at: string; conference_name: string }>)[0]
+  const row = (
+    rows as Array<{
+      status: string
+      recipient_name: string
+      certificate_type: string
+      certificate_number: string
+      issued_at: string
+      conference_id: string
+      conference_name: string
+    }>
+  )[0]
   if (!row) return null
-  return { valid: row.status === 'issued', status: row.status, recipient_name: row.recipient_name, certificate_type: row.certificate_type, conference_name: row.conference_name, issued_at: row.issued_at }
+  const valid = row.status === 'issued'
+  return {
+    valid,
+    status: row.status,
+    recipient_name: row.recipient_name,
+    certificate_type: row.certificate_type,
+    certificate_number: row.certificate_number,
+    conference_name: row.conference_name,
+    issued_at: row.issued_at,
+    downloadable: valid && (await isReleased(row.conference_id)),
+  }
 }
 
 export { BACKGROUND_MAX_BYTES }

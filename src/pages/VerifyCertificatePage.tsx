@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { api, ApiError } from '../lib/api'
+import { api, API_BASE, ApiError } from '../lib/api'
 import { formatKathmandu } from '../lib/datetime'
-import { Alert, Card, Spinner } from '../components/ui'
+import { Alert, buttonClasses, Card, Spinner } from '../components/ui'
 
 type VerifyResult = {
   valid: boolean
   status: string
   recipient_name: string
   certificate_type: string
+  certificate_number?: string
   conference_name: string
   issued_at: string
+  /** Older backends leave this out: then no download button is shown. */
+  downloadable?: boolean
 } | null
 
 const TYPE_LABELS: Record<string, string> = {
@@ -82,6 +85,12 @@ export function VerifyCertificatePage() {
                   <dt className="inline font-medium">Type: </dt>
                   <dd className="inline">{TYPE_LABELS[result.certificate_type] ?? result.certificate_type}</dd>
                 </div>
+                {result.certificate_number ? (
+                  <div>
+                    <dt className="inline font-medium">Certificate no.: </dt>
+                    <dd className="inline font-mono">{result.certificate_number}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="inline font-medium">Conference: </dt>
                   <dd className="inline">{result.conference_name}</dd>
@@ -92,6 +101,16 @@ export function VerifyCertificatePage() {
                 </div>
               </dl>
             </Alert>
+            {result.downloadable ? (
+              <a
+                href={`${API_BASE}/verify/${encodeURIComponent(token ?? '')}/pdf`}
+                className={buttonClasses('primary', 'md', 'mt-4 w-full justify-center')}
+              >
+                Download certificate (PDF)
+              </a>
+            ) : result.valid ? (
+              <p className="mt-4 text-sm text-text-muted">The PDF can be downloaded here once the conference releases its certificates.</p>
+            ) : null}
           </div>
         )}
       </Card>

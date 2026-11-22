@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db/pool.js'
+import { storage } from '../src/storage/driver.js'
 import {
   addConferenceMember,
   addSubmissionAuthor,
@@ -267,6 +268,74 @@ describe('certificate download and verification', () => {
     const res = await request(app).get('/api/verify/does-not-exist-00000000000000000000000000')
     expect(res.status).toBe(200)
     expect(res.body.result).toBeNull()
+  })
+
+  it('pressing "Release now" twice emails each recipient once, and a later certificate is announced when issued', async () => {
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId)
+    const { agent: convenorAgent } = await loginAs(conferenceId, 'release-twice-convenor@example.com', 'convenor')
+    const attendee = await createUser({ email: 'release-twice-1@example.com', password: 'Str0ng!Pass' })
+    await issueParticipationCertificate(conferenceId, attendee, convenorAgent)
+
+    const first = await convenorAgent.post(`/api/conferences/${conferenceId}/certificates/release-now`)
+    expect(first.body.released).toBe(1)
+    const second = await convenorAgent.post(`/api/conferences/${conferenceId}/certificates/release-now`)
+    expect(second.status).toBe(200)
+    expect(second.body.released).toBe(0)
+
+    const countEmails = async (userId: string) => {
+      const [rows] = await pool.query(`SELECT COUNT(*) AS n FROM email_logs WHERE user_id = ? AND template_key = 'certificate_available'`, [userId])
+      return Number((rows as Array<{ n: number }>)[0]!.n)
+    }
+    expect(await countEmails(attendee)).toBe(1)
+
+    // Issued after the release: emailed straight away, without pressing "Release now" again.
+    const late = await createUser({ email: 'release-twice-late@example.com', password: 'Str0ng!Pass' })
+    await registerAndCheckIn(conferenceId, late)
+    await convenorAgent.post(`/api/conferences/${conferenceId}/certificates/generate`).send({ certificate_type: 'participation' })
+    expect(await countEmails(late)).toBe(1)
+    expect(await countEmails(attendee)).toBe(1)
+  })
+
+  it('anyone with the verification link can download the PDF once released, never before and never when revoked', async () => {
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId)
+    const { agent: convenorAgent } = await loginAs(conferenceId, 'public-pdf-convenor@example.com', 'convenor')
+    const attendee = await createUser({ email: 'public-pdf-attendee@example.com', password: 'Str0ng!Pass' })
+    const cert = await issueParticipationCertificate(conferenceId, attendee, convenorAgent)
+
+    const before = await request(app).get(`/api/verify/${cert.verification_token}/pdf`)
+    expect(before.status).toBe(404)
+    expect((await request(app).get(`/api/verify/${cert.verification_token}`)).body.result.downloadable).toBe(false)
+
+    await convenorAgent.post(`/api/conferences/${conferenceId}/certificates/release-now`)
+    const verify = await request(app).get(`/api/verify/${cert.verification_token}`)
+    expect(verify.body.result.downloadable).toBe(true)
+    expect(verify.body.result.certificate_number).toMatch(/-C\d{4}$/)
+    const after = await request(app).get(`/api/verify/${cert.verification_token}/pdf`)
+    expect(after.status).toBe(200)
+    expect(after.headers['content-type']).toMatch(/pdf/)
+
+    await convenorAgent.patch(`/api/conferences/${conferenceId}/certificates/${cert.id}/revoke`).send({ reason: 'Issued in error.' })
+    expect((await request(app).get(`/api/verify/${cert.verification_token}/pdf`)).status).toBe(404)
+    expect((await request(app).get('/api/verify/unknown-token-0000000000000000000000/pdf')).status).toBe(404)
+  })
+
+  it('rebuilds a certificate PDF that is missing from storage instead of failing', async () => {
+    const conferenceId = await createConference()
+    await upsertConferenceSettings(conferenceId)
+    const { agent: convenorAgent } = await loginAs(conferenceId, 'regen-convenor@example.com', 'convenor')
+    const attendee = await createUser({ email: 'regen-attendee@example.com', password: 'Str0ng!Pass' })
+    const cert = await issueParticipationCertificate(conferenceId, attendee, convenorAgent)
+    const [rows] = await pool.query('SELECT file_path FROM certificates WHERE id = ?', [cert.id])
+    const filePath = (rows as Array<{ file_path: string }>)[0]!.file_path
+    await storage().delete('private', filePath)
+    expect(await storage().exists('private', filePath)).toBe(false)
+
+    const res = await convenorAgent.get(`/api/conferences/${conferenceId}/certificates/${cert.id}/download`)
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toMatch(/pdf/)
+    expect(await storage().exists('private', filePath)).toBe(true)
   })
 })
 

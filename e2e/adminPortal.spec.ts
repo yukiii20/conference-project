@@ -76,8 +76,10 @@ test('admin creates a conference and invites a convenor for it', async ({ page }
   const stamp = Date.now()
   const name = `E2E New Conference ${stamp}`
   const code = `E2ENEW${stamp}`.toUpperCase().slice(0, 20)
-  const today = new Date().toISOString().slice(0, 10)
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+  // The server checks the start date against today in Nepal time, not UTC.
+  const nepalDate = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kathmandu' }).format(new Date(ms))
+  const today = nepalDate(Date.now())
+  const tomorrow = nepalDate(Date.now() + 86_400_000)
 
   await page.getByRole('button', { name: 'New conference', exact: true }).click()
   await page.locator('#new-name').fill(name)

@@ -50,7 +50,9 @@ describe('members and roles', () => {
     expect(searched.body.members.length).toBe(1)
   })
 
-  it('invites a brand-new user by email and queues an invitation email', async () => {
+  // Inviting creates a PENDING invitation and emails a link; nobody becomes a member (or can
+  // sign in to the conference) until they accept it - see modules/invitations.
+  it('invites a brand-new user by email: pending invitation and an invitation email, no membership yet', async () => {
     const conferenceId = await createConference()
     const { agent } = await loginAsConvenor(conferenceId, 'members-conv2@example.com')
 
@@ -61,7 +63,8 @@ describe('members and roles', () => {
       role_code: 'reviewer',
     })
     expect(res.status).toBe(201)
-    expect(res.body.invited).toBe(true)
+    expect(res.body.new_account).toBe(true)
+    expect(res.body.invitation_id).toBeTruthy()
 
     const [userRows] = await pool.query('SELECT id, password_hash FROM users WHERE email = ?', ['brand-new-reviewer@example.com'])
     const user = (userRows as Array<{ id: string; password_hash: string | null }>)[0]!
@@ -71,15 +74,25 @@ describe('members and roles', () => {
       `SELECT status FROM conference_members WHERE conference_id = ? AND user_id = ? AND role_code = 'reviewer'`,
       [conferenceId, user.id],
     )
-    expect((memberRows as Array<{ status: string }>)[0]?.status).toBe('active')
+    expect(memberRows as unknown[]).toHaveLength(0)
+
+    const [inviteRows] = await pool.query(
+      `SELECT role_code FROM conference_invitations WHERE conference_id = ? AND user_id = ? AND status = 'pending'`,
+      [conferenceId, user.id],
+    )
+    expect((inviteRows as Array<{ role_code: string }>)[0]?.role_code).toBe('reviewer')
 
     const [emailRows] = await pool.query(`SELECT template_key FROM email_logs WHERE recipient_email = ?`, [
       'brand-new-reviewer@example.com',
     ])
-    expect((emailRows as Array<{ template_key: string }>)[0]?.template_key).toBe('invitation')
+    expect((emailRows as Array<{ template_key: string }>)[0]?.template_key).toBe('member_invitation')
+
+    const list = await agent.get(`/api/conferences/${conferenceId}/members/invitations`)
+    expect(list.status).toBe(200)
+    expect(list.body.invitations.map((i: { email: string }) => i.email)).toContain('brand-new-reviewer@example.com')
   })
 
-  it('adds an existing user directly, with an in-app notification instead of an invite email', async () => {
+  it('invites an existing account by email too, without touching the account', async () => {
     const conferenceId = await createConference()
     const { agent } = await loginAsConvenor(conferenceId, 'members-conv3@example.com')
     const existingUserId = await createUser({ email: 'already-has-account@example.com', password: 'Str0ng!Pass' })
@@ -91,30 +104,36 @@ describe('members and roles', () => {
       role_code: 'staff',
     })
     expect(res.status).toBe(201)
-    expect(res.body.invited).toBe(false)
+    expect(res.body.new_account).toBe(false)
 
-    const [notifRows] = await pool.query('SELECT type FROM notifications WHERE user_id = ?', [existingUserId])
-    expect((notifRows as unknown[]).length).toBe(1)
+    const [userRows] = await pool.query('SELECT password_hash FROM users WHERE id = ?', [existingUserId])
+    expect((userRows as Array<{ password_hash: string | null }>)[0]?.password_hash).toBeTruthy()
+    const [memberRows] = await pool.query(`SELECT 1 FROM conference_members WHERE conference_id = ? AND user_id = ? AND role_code = 'staff'`, [
+      conferenceId,
+      existingUserId,
+    ])
+    expect(memberRows as unknown[]).toHaveLength(0)
+    const [emailRows] = await pool.query(`SELECT template_key FROM email_logs WHERE user_id = ?`, [existingUserId])
+    expect((emailRows as Array<{ template_key: string }>).map((r) => r.template_key)).toContain('member_invitation')
   })
 
-  it('rejects inviting someone who already has that role', async () => {
+  it('refuses a second invite for the same pending role (409) and a role the person already has (400)', async () => {
     const conferenceId = await createConference()
     const { agent } = await loginAsConvenor(conferenceId, 'members-conv4@example.com')
     await createUser({ email: 'dup-reviewer@example.com', password: 'Str0ng!Pass' })
-    await agent.post(`/api/conferences/${conferenceId}/members/invite`).send({
-      full_name: 'Dup Reviewer',
-      email: 'dup-reviewer@example.com',
-      phone: '+9779811111197',
-      role_code: 'reviewer',
-    })
+    const body = { full_name: 'Dup Reviewer', email: 'dup-reviewer@example.com', phone: '+9779811111197', role_code: 'reviewer' }
+    expect((await agent.post(`/api/conferences/${conferenceId}/members/invite`).send(body)).status).toBe(201)
 
-    const res = await agent.post(`/api/conferences/${conferenceId}/members/invite`).send({
-      full_name: 'Dup Reviewer',
-      email: 'dup-reviewer@example.com',
-      phone: '+9779811111197',
-      role_code: 'reviewer',
-    })
-    expect(res.status).toBe(400)
+    const repeat = await agent.post(`/api/conferences/${conferenceId}/members/invite`).send(body)
+    expect(repeat.status).toBe(409)
+    expect(repeat.body.error.code).toBe('invitation_pending')
+
+    const memberId = await createUser({ email: 'active-reviewer@example.com', password: 'Str0ng!Pass' })
+    await addConferenceMember(conferenceId, memberId, 'reviewer')
+    const already = await agent
+      .post(`/api/conferences/${conferenceId}/members/invite`)
+      .send({ ...body, email: 'active-reviewer@example.com' })
+    expect(already.status).toBe(400)
   })
 
   it('changes a member role, rejecting a duplicate or the convenor row', async () => {

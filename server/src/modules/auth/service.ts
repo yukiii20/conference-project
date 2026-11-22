@@ -707,6 +707,26 @@ async function createPendingRoleRequest(
     ipAddress: ctx.ipAddress ?? null,
     userAgent: ctx.userAgent ?? null,
   })
+
+  // A brand-new account gets "account created"; an existing account joining another
+  // conference used to get nothing until approval, so confirm the request now.
+  const [userRows] = await conn.query('SELECT email, full_name FROM users WHERE id = ? LIMIT 1', [userId])
+  const user = (userRows as Array<{ email: string; full_name: string }>)[0]
+  if (user) {
+    const [templateRows] = await conn.query(
+      `SELECT subject FROM email_templates WHERE conference_id IS NULL AND template_key = 'role_request_received' LIMIT 1`,
+    )
+    const template = (templateRows as Array<{ subject: string }>)[0]
+    const data = { full_name: user.full_name, role_name: roleLabel(role), conference_name: conference.name }
+    await queueEmail(conn, {
+      userId,
+      conferenceId: conference.id,
+      recipientEmail: user.email,
+      templateKey: 'role_request_received',
+      subject: template ? renderTemplate(template.subject, data) : `We received your ${roleLabel(role)} request`,
+      templateData: data,
+    })
+  }
 }
 
 /**

@@ -360,6 +360,10 @@ describe('requesting a role while signed in at another conference', () => {
     const [rows] = await pool.query('SELECT user_id, conference_id, role_code, status FROM role_requests')
     expect(rows).toEqual([{ user_id: userId, conference_id: b, role_code: 'staff', status: 'pending' }])
 
+    // The person is told their request arrived (they used to hear nothing until approval).
+    const [emailRows] = await pool.query(`SELECT template_key, conference_id FROM email_logs WHERE user_id = ?`, [userId])
+    expect(emailRows).toEqual([{ template_key: 'role_request_received', conference_id: b }])
+
     // The session is still bound to A — no access to B.
     expect((await as(cookie).get(`/api/conferences/${b}/my-agenda`)).status).toBe(403)
 

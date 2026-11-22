@@ -6,6 +6,16 @@ const REPORTS: Array<{ kind: string; label: string; description: string }> = [
   { kind: 'reviews', label: 'Reviews', description: 'Paper, reviewer, scores, recommendation (confidential comments only if you can see all reviews).' },
   { kind: 'members', label: 'Members', description: 'Name, email, role, status, joined date.' },
   { kind: 'committees', label: 'Committees', description: 'Committee, type, member, role, affiliation, country.' },
+  {
+    kind: 'registrations',
+    label: 'Registrations',
+    description: 'Registration number, attendee, email, category, status, amount due, dates, days and sessions attended.',
+  },
+  {
+    kind: 'attendance',
+    label: 'Attendance',
+    description: 'One row per check-in: date, attendee, category, check-in and check-out times, method, checked in by.',
+  },
 ]
 
 export function ReportsTab({ conferenceId }: { conferenceId: string }) {

@@ -222,6 +222,14 @@ export function ConferencesTab({
         />
       </div>
 
+      <DeletedConferences
+        reloadKey={conferences.length}
+        onRestored={async (name) => {
+          setCreateNote(`"${name}" was restored.`)
+          await onReload()
+        }}
+      />
+
       <ConfirmDialog
         open={pendingDelete !== null}
         title="Delete this conference?"
@@ -231,13 +239,123 @@ export function ConferencesTab({
                 pendingDelete.submission_count + pendingDelete.registration_count > 0
                   ? ` (it has ${pendingDelete.submission_count} submission(s) and ${pendingDelete.registration_count} registration(s))`
                   : ''
-              }. Its data is kept and can be restored from the database if needed.`
+              }. Its data is kept, and you can restore it later from "Deleted conferences" below.`
             : ''
         }
         confirmLabel="Delete"
         busy={deleteBusy}
         onConfirm={() => pendingDelete && handleDelete(pendingDelete)}
         onCancel={() => setPendingDelete(null)}
+      />
+    </div>
+  )
+}
+
+type DeletedConferenceRow = ConferenceRow & { deleted_at: string | null }
+
+/**
+ * Deleted (archived) conferences, loaded only when opened. Restoring brings a conference back
+ * with all its data; it fails with a clear message when its slug or code was reused meanwhile.
+ */
+function DeletedConferences({ reloadKey, onRestored }: { reloadKey: number; onRestored: (name: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const [rows, setRows] = useState<DeletedConferenceRow[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [pendingRestore, setPendingRestore] = useState<DeletedConferenceRow | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setError(null)
+    api
+      .get<{ conferences: DeletedConferenceRow[] }>('/admin/conferences?archived=true')
+      .then((data) => {
+        if (!cancelled) setRows(data.conferences)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Could not load deleted conferences.')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, reloadKey])
+
+  async function restore(row: DeletedConferenceRow) {
+    setBusyId(row.id)
+    setError(null)
+    try {
+      await api.post(`/admin/conferences/${row.id}/restore`)
+      setRows((current) => (current ? current.filter((r) => r.id !== row.id) : current))
+      setPendingRestore(null)
+      await onRestored(row.name)
+    } catch (err) {
+      setPendingRestore(null)
+      setError(err instanceof ApiError ? err.message : 'Could not restore this conference.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const columns: Column<DeletedConferenceRow>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: (c) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-text">{c.name}</span>
+          <span className="mt-0.5 text-xs text-text-muted">
+            {c.code} · {c.slug}
+          </span>
+        </div>
+      ),
+    },
+    { key: 'dates', header: 'Dates', render: (c) => <span className="whitespace-nowrap text-sm">{formatDate(c.start_date)} – {formatDate(c.end_date)}</span> },
+    { key: 'deleted', header: 'Deleted', render: (c) => <span className="whitespace-nowrap text-sm">{c.deleted_at ? formatDate(c.deleted_at) : '—'}</span> },
+    {
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (c) => (
+        <Button size="sm" variant="secondary" loading={busyId === c.id} onClick={() => setPendingRestore(c)}>
+          Restore
+        </Button>
+      ),
+    },
+  ]
+
+  return (
+    <div className="mt-8">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="text-sm font-medium text-text-muted underline-offset-4 hover:text-text hover:underline"
+      >
+        {open ? 'Hide deleted conferences' : 'Show deleted conferences'}
+      </button>
+      {open ? (
+        <div className="mt-3 space-y-3">
+          {error ? <Alert variant="danger">{error}</Alert> : null}
+          <Table<DeletedConferenceRow>
+            columns={columns}
+            rows={rows ?? []}
+            rowKey={(c) => c.id}
+            loading={rows === null && !error}
+            emptyTitle="No deleted conferences."
+            minWidth={640}
+          />
+        </div>
+      ) : null}
+      <ConfirmDialog
+        open={pendingRestore !== null}
+        title="Restore this conference?"
+        message={pendingRestore ? `"${pendingRestore.name}" will be back in the list with all its data, in the same status as before it was deleted.` : ''}
+        confirmLabel="Restore"
+        confirmVariant="primary"
+        busy={busyId !== null}
+        onConfirm={() => pendingRestore && restore(pendingRestore)}
+        onCancel={() => setPendingRestore(null)}
       />
     </div>
   )

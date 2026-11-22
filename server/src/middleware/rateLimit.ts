@@ -134,3 +134,16 @@ export const qaVoteRateLimit = rateLimit({
   keyGenerator: (req: Request) => `user:${req.user?.id ?? req.ip ?? 'unknown'}`,
   message: { error: { message: 'Too many votes in a short time. Please wait a few minutes.' } },
 })
+
+/**
+ * Public file downloads that may build a file on request (certificate PDF behind its
+ * verification link). Generous for real people, but stops anyone looping on it.
+ */
+export const publicDownloadRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { error: { message: 'Too many downloads. Please try again in a few minutes.' } },
+})

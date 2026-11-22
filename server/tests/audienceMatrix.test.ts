@@ -36,6 +36,9 @@ const AUDIENCE_PERMISSION_PREFIX = '/api/conferences/:id/audience/'
 
 /** requireAuth-only routes that act on the caller's own account, registration, agenda, ticket, notifications or feedback. */
 const OWN_DATA = new Set([
+  // Payment receipt: always the caller's own latest registration (receipts.ts, user_id = caller).
+  'POST /api/conferences/:id/my-registration/receipt',
+  'GET /api/conferences/:id/my-registration/receipt',
   'GET /api/auth/me',
   'GET /api/auth/my-conferences',
   'PATCH /api/auth/profile',

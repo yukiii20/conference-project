@@ -82,10 +82,14 @@ export function parseMailFrom(raw: string): { name?: string; email: string } {
  * it never knows which transport it's using.
  */
 /** Exported (unlike smtpProvider) so tests can exercise the real HTTP call shape against a mocked fetch. */
+const BREVO_TIMEOUT_MS = 15_000
+
 export const brevoProvider: MailProvider = {
   async sendMail(input) {
     const res = await fetch(BREVO_SEND_URL, {
       method: 'POST',
+      // A hung request would leave the row in 'sending'; give up and let the worker retry.
+      signal: AbortSignal.timeout(BREVO_TIMEOUT_MS),
       headers: {
         'content-type': 'application/json',
         accept: 'application/json',

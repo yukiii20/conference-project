@@ -74,6 +74,7 @@ const PUBLIC_ROUTES = new Set([
   'scheduleRouter GET /:id/sessions/public/programme.pdf',
   'platformSettingsPublicRouter GET /platform-settings',
   'certificatesPublicRouter GET /verify/:token',
+  'certificatesPublicRouter GET /verify/:token/pdf', // released + issued only; token is the key; rate-limited
   'suggestionsPublicRouter POST /suggestions',
   // The secret token in the URL is the credential (calendar apps can't send a session cookie).
   'agendaFeedRouter GET /calendar/:token.ics',

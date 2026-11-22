@@ -185,11 +185,21 @@ export async function recoverStuckSendingRows(): Promise<void> {
 
 let timer: ReturnType<typeof setInterval> | null = null
 
+/** About every 5 minutes with the 10-second poll. */
+const RECOVER_EVERY_TICKS = Math.max(1, Math.round((5 * 60 * 1000) / POLL_INTERVAL_MS))
+
 export function startEmailWorker(): void {
   if (timer) return
   recoverStuckSendingRows().catch((err) => console.error('Email worker: could not recover stuck rows:', err))
+  let ticks = 0
   timer = setInterval(() => {
     runEmailWorkerOnce().catch((err) => console.error('Email worker: batch failed:', err))
+    // Also requeue rows stuck in 'sending' while the process keeps running (not only at
+    // startup), so a hung send never waits for the next restart.
+    ticks += 1
+    if (ticks % RECOVER_EVERY_TICKS === 0) {
+      recoverStuckSendingRows().catch((err) => console.error('Email worker: could not recover stuck rows:', err))
+    }
   }, POLL_INTERVAL_MS)
 }
 

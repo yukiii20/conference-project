@@ -471,7 +471,8 @@ describe('P3-10 archive a conference, recreate with the same name/slug/code', ()
     const [liveRows] = await pool.query('SELECT COUNT(*) AS n FROM conferences WHERE slug = ? AND deleted_at IS NULL', ['reusable-conf'])
     record(P, 'database state after the attempt: exactly one live conference owns the slug', (liveRows as Array<{ n: number }>)[0]!.n === 1, `live rows with slug reusable-conf: ${(liveRows as Array<{ n: number }>)[0]!.n} (0 = the create was rolled back)`)
 
-    const list = await agent.get('/api/admin/conferences')
+    // Deleted conferences have their own list (Conferences tab -> "Show deleted conferences").
+    const list = await agent.get('/api/admin/conferences?archived=true')
     const listText = JSON.stringify(list.body)
     record(P, 'the archived conference is still listed for the admin (so it can be found and restored)', list.status === 200 && listText.includes(oldId), `${list.status}; list contains the archived id: ${listText.includes(oldId)}; keys of a row: ${Object.keys(list.body.conferences?.[0] ?? {}).join(',')}`)
 

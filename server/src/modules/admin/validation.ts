@@ -1,9 +1,17 @@
 import { z } from 'zod'
+import { localDateKey, PLATFORM_TIMEZONE } from '../../utils/timezone.js'
 import { emailSchema, nameSchema, phoneSchema } from '../auth/validation.js'
 
-function todayDateString(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+/**
+ * Today's date in the conference's own time zone (Nepal by default), not the server's clock:
+ * Render runs in UTC, so between 00:00 and 05:45 in Nepal the server's "today" is yesterday.
+ */
+function todayDateString(timeZone: string): string {
+  try {
+    return localDateKey(timeZone)
+  } catch {
+    return localDateKey(PLATFORM_TIMEZONE) // unknown zone name: fall back to the platform's
+  }
 }
 
 export const createConferenceSchema = z
@@ -25,7 +33,7 @@ export const createConferenceSchema = z
     timezone: z.string().trim().min(1).max(60).default('Asia/Kathmandu'),
   })
   .superRefine((data, ctx) => {
-    if (data.start_date < todayDateString()) {
+    if (data.start_date < todayDateString(data.timezone)) {
       ctx.addIssue({ code: 'custom', message: 'Start date cannot be before today.', path: ['start_date'] })
     }
     if (data.end_date < data.start_date) {
@@ -80,6 +88,8 @@ export const listConferencesQuerySchema = z.object({
       'closed',
     ])
     .optional(),
+  /** 'true' lists deleted (archived) conferences instead, so they can be restored. */
+  archived: z.enum(['true', 'false']).optional(),
 })
 export type ListConferencesQuery = z.infer<typeof listConferencesQuerySchema>
 

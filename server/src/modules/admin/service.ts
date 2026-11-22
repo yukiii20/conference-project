@@ -5,7 +5,7 @@ import { issuePasswordReset, isSuperAdmin, superAdminsExist } from '../auth/serv
 import { insertAuditLog, type AuditContext } from '../../utils/audit.js'
 import { generateToken, sha256 } from '../../utils/crypto.js'
 import { queueEmail, renderTemplate } from '../../utils/email.js'
-import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
+import { AppError, BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors.js'
 import { env } from '../../config/env.js'
 import { setPasswordUrl } from '../../utils/conferenceLinks.js'
 import { pingDatabase, getStorageDiskSpace, getEmailQueueCounts } from '../../utils/health.js'
@@ -38,7 +38,7 @@ const DEFAULT_DEADLINE_OFFSETS: Array<{ deadline_type: string; closes_in_days: n
 const INVITATION_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 export async function listAdminConferences(filters: ListConferencesQuery = {}) {
-  const conditions: string[] = ['c.deleted_at IS NULL']
+  const conditions: string[] = [filters.archived === 'true' ? 'c.deleted_at IS NOT NULL' : 'c.deleted_at IS NULL']
   const params: unknown[] = []
 
   if (filters.query) {
@@ -58,7 +58,7 @@ export async function listAdminConferences(filters: ListConferencesQuery = {}) {
   // one of submissions/registrations.
   const [[rows], [submissionCountRows], [registrationCountRows]] = await Promise.all([
     pool.query(
-      `SELECT c.id, c.name, c.code, c.slug, c.short_name, c.start_date, c.end_date, c.status,
+      `SELECT c.id, c.name, c.code, c.slug, c.short_name, c.start_date, c.end_date, c.status, c.deleted_at,
               u.id AS convenor_id, u.full_name AS convenor_name, u.email AS convenor_email
        FROM conferences c
        LEFT JOIN conference_members cm ON cm.conference_id = c.id AND cm.role_code = 'convenor' AND cm.status = 'active'
@@ -908,10 +908,22 @@ export async function restoreConference(
   ctx: AuditContext = {},
 ): Promise<void> {
   await withTransaction(actorUserId, async (conn) => {
-    const [result] = await conn.query(
-      'UPDATE conferences SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL',
-      [conferenceId],
-    )
+    let result: unknown
+    try {
+      ;[result] = await conn.query('UPDATE conferences SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL', [conferenceId])
+    } catch (err) {
+      // slug_live / code_live are unique only among live conferences: a new conference has
+      // taken this one's web address or code since it was deleted.
+      if (err && typeof err === 'object' && (err as { code?: string }).code === 'ER_DUP_ENTRY') {
+        throw new AppError(
+          409,
+          'Another conference now uses this web address (slug) or code, so this one cannot be restored as it is. Delete or rename the other conference first.',
+          undefined,
+          'conference_slug_taken',
+        )
+      }
+      throw err
+    }
     if ((result as { affectedRows: number }).affectedRows === 0) {
       throw new NotFoundError('This conference does not exist or is not archived.')
     }

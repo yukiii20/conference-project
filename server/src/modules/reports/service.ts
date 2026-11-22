@@ -161,7 +161,143 @@ async function loadCommitteesReport(conferenceId: string): Promise<{ header: str
   return { header, rows: data }
 }
 
-export type ReportKind = 'submissions' | 'reviews' | 'members' | 'committees'
+async function conferenceTimezone(conferenceId: string): Promise<string> {
+  const [rows] = await pool.query('SELECT timezone FROM conferences WHERE id = ?', [conferenceId])
+  return (rows as Array<{ timezone: string }>)[0]?.timezone ?? 'UTC'
+}
+
+/** "2026-11-22 14:05" in the conference's own timezone, or '' when there is no time. */
+function localDateTime(value: Date | string | null, timeZone: string): string {
+  if (!value) return ''
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(date)
+      .map((p) => [p.type, p.value]),
+  )
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
+}
+
+async function loadRegistrationsReport(conferenceId: string): Promise<{ header: string[]; rows: unknown[][] }> {
+  const timeZone = await conferenceTimezone(conferenceId)
+  const [rows] = await pool.query(
+    `SELECT r.registration_number, u.full_name, u.email, rc.name AS category_name, r.status,
+            r.amount_due, r.currency, r.registered_at, r.confirmed_at, r.cancelled_at,
+            (SELECT COUNT(*) FROM conference_attendance ca WHERE ca.registration_id = r.id) AS days_attended,
+            (SELECT COUNT(*) FROM session_attendance sa WHERE sa.registration_id = r.id) AS sessions_attended
+     FROM registrations r
+     JOIN users u ON u.id = r.user_id
+     JOIN registration_categories rc ON rc.id = r.category_id
+     WHERE r.conference_id = ?
+     ORDER BY r.registered_at`,
+    [conferenceId],
+  )
+  const header = [
+    'Registration no.',
+    'Name',
+    'Email',
+    'Category',
+    'Status',
+    'Amount due',
+    'Currency',
+    'Registered',
+    'Confirmed',
+    'Cancelled',
+    'Days attended',
+    'Sessions attended',
+  ]
+  const data = (
+    rows as Array<{
+      registration_number: string
+      full_name: string
+      email: string
+      category_name: string
+      status: string
+      amount_due: string | number
+      currency: string
+      registered_at: Date | null
+      confirmed_at: Date | null
+      cancelled_at: Date | null
+      days_attended: number
+      sessions_attended: number
+    }>
+  ).map((r) => [
+    r.registration_number,
+    r.full_name,
+    r.email,
+    r.category_name,
+    r.status,
+    Number(r.amount_due),
+    r.currency,
+    localDateTime(r.registered_at, timeZone),
+    localDateTime(r.confirmed_at, timeZone),
+    localDateTime(r.cancelled_at, timeZone),
+    Number(r.days_attended),
+    Number(r.sessions_attended),
+  ])
+  return { header, rows: data }
+}
+
+async function loadAttendanceReport(conferenceId: string): Promise<{ header: string[]; rows: unknown[][] }> {
+  const timeZone = await conferenceTimezone(conferenceId)
+  const [rows] = await pool.query(
+    `SELECT ca.attendance_date, r.registration_number, u.full_name, u.email, rc.name AS category_name,
+            ca.checked_in_at, ca.checked_out_at, ca.method, staff.full_name AS checked_in_by
+     FROM conference_attendance ca
+     JOIN registrations r ON r.id = ca.registration_id
+     JOIN users u ON u.id = ca.user_id
+     JOIN registration_categories rc ON rc.id = r.category_id
+     LEFT JOIN users staff ON staff.id = ca.checked_in_by
+     WHERE ca.conference_id = ?
+     ORDER BY ca.attendance_date, ca.checked_in_at`,
+    [conferenceId],
+  )
+  const header = ['Date', 'Registration no.', 'Name', 'Email', 'Category', 'Checked in', 'Checked out', 'Method', 'Checked in by']
+  const data = (
+    rows as Array<{
+      attendance_date: string
+      registration_number: string
+      full_name: string
+      email: string
+      category_name: string
+      checked_in_at: Date
+      checked_out_at: Date | null
+      method: string
+      checked_in_by: string | null
+    }>
+  ).map((r) => [
+    r.attendance_date,
+    r.registration_number,
+    r.full_name,
+    r.email,
+    r.category_name,
+    localDateTime(r.checked_in_at, timeZone),
+    localDateTime(r.checked_out_at, timeZone),
+    r.method === 'qr' ? 'QR scan' : 'Manual',
+    r.checked_in_by ?? '',
+  ])
+  return { header, rows: data }
+}
+
+export type ReportKind = 'submissions' | 'reviews' | 'members' | 'committees' | 'registrations' | 'attendance'
+
+/** Reports that list attendees' personal details: they also need the registration-desk permission. */
+export const REGISTRATION_REPORT_KINDS: ReadonlySet<ReportKind> = new Set(['registrations', 'attendance'])
+
+export async function canReadRegistrations(userId: string, conferenceId: string): Promise<boolean> {
+  if (await isPlatformAdmin(userId)) return true
+  const permissions = await getConferencePermissions(userId, conferenceId)
+  return permissions.has('registration.read_all')
+}
 
 async function loadReport(
   kind: ReportKind,
@@ -177,6 +313,10 @@ async function loadReport(
       return loadMembersReport(conferenceId)
     case 'committees':
       return loadCommitteesReport(conferenceId)
+    case 'registrations':
+      return loadRegistrationsReport(conferenceId)
+    case 'attendance':
+      return loadAttendanceReport(conferenceId)
   }
 }
 

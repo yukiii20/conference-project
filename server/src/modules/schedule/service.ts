@@ -877,6 +877,14 @@ export async function addPaperPresentation(
     if (!(SCHEDULABLE_STATUSES as readonly string[]).includes(submission.status)) {
       throw new BadRequestError('This paper is not accepted yet, or has already been scheduled.')
     }
+    // These two are listed so the convenor can plan around them, but the status rules
+    // (database trigger) only allow scheduling once the full paper is approved.
+    if (submission.status === 'full_paper_pending') {
+      throw new BadRequestError('This paper is waiting for its full paper. Schedule it once the full paper is submitted and approved.')
+    }
+    if (submission.status === 'full_paper_submitted') {
+      throw new BadRequestError('This paper\'s full paper still needs a decision. Approve it on the Submissions tab, then schedule it.')
+    }
 
     const author = await correspondingAuthor(conn, input.submission_id)
     const { order, startsAt } = await nextPresentationSlot(conn, sessionId)

@@ -1,8 +1,8 @@
-import { sendPrivateFile } from '../../storage/send.js'
-import { Router } from 'express'
+import { FileMissingError, sendBuffer, sendPrivateFile } from '../../storage/send.js'
+import { Router, type Response } from 'express'
 import { requireAuth, requireConferencePermission, assertConferencePermission } from '../../middleware/auth.js'
 import { validateBody } from '../../middleware/validate.js'
-import { uploadRateLimit } from '../../middleware/rateLimit.js'
+import { publicDownloadRateLimit, uploadRateLimit } from '../../middleware/rateLimit.js'
 import { imageUpload, processImage } from '../../storage/imageUpload.js'
 import { auditContextFrom } from '../../utils/audit.js'
 import { BadRequestError } from '../../utils/errors.js'
@@ -26,6 +26,9 @@ import {
   updateTemplate,
   createTemplate,
   verifyCertificate,
+  publicCertificateFile,
+  regenerateCertificatePdf,
+  type CertificateFile,
 } from './service.js'
 import {
   certificateTemplateSchema,
@@ -279,14 +282,39 @@ certificatesRouter.get('/:id/certificates/:certificateId/download', requireAuth,
     } catch {
       hasManagePermission = false
     }
-    const { storagePath, filename } = await downloadCertificate(req.params.id!, req.params.certificateId!, req.user!.id, hasManagePermission)
-    await sendPrivateFile(res, storagePath, filename)
+    const file = await downloadCertificate(req.params.id!, req.params.certificateId!, req.user!.id, hasManagePermission)
+    await sendCertificate(res, file)
   } catch (err) {
     next(err)
   }
 })
 
+/**
+ * Sends the stored certificate PDF. When the stored copy is gone (lost on a redeploy with local
+ * storage), the PDF is rebuilt from the database and stored again, instead of a 404.
+ */
+async function sendCertificate(res: Response, file: CertificateFile): Promise<void> {
+  try {
+    await sendPrivateFile(res, file.storagePath, file.filename, 'application/pdf')
+  } catch (err) {
+    if (!(err instanceof FileMissingError)) throw err
+    const pdf = await regenerateCertificatePdf(file.certificateId)
+    sendBuffer(res, pdf, { filename: file.filename, contentType: 'application/pdf' })
+  }
+}
+
 export const certificatesPublicRouter = Router()
+
+// Anyone holding the verification link (printed on the certificate) can download it once
+// certificates are released. The 32-character token is the only key.
+certificatesPublicRouter.get('/verify/:token/pdf', publicDownloadRateLimit, async (req, res, next) => {
+  try {
+    const file = await publicCertificateFile(req.params.token!)
+    await sendCertificate(res, file)
+  } catch (err) {
+    next(err)
+  }
+})
 
 certificatesPublicRouter.get('/verify/:token', async (req, res, next) => {
   try {
