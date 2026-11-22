@@ -74,6 +74,7 @@ export function ConferencePage() {
   const [committees, setCommittees] = useState<Committee[]>([])
   const [speakers, setSpeakers] = useState<Speaker[]>([])
   const [announcements, setAnnouncements] = useState<ConferenceAnnouncement[]>([])
+  const [publicAbstractsEnabled, setPublicAbstractsEnabled] = useState(false)
   const [schedule, setSchedule] = useState<ScheduleRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -106,6 +107,8 @@ export function ConferencePage() {
             committees: Committee[]
             speakers: Speaker[]
             announcements: ConferenceAnnouncement[]
+            /** Absent from an older backend: then the section probes as before. */
+            public_abstracts_enabled?: boolean
           }
         | null = null
       try {
@@ -130,6 +133,7 @@ export function ConferencePage() {
       setCommittees(result.committees)
       setSpeakers(result.speakers)
       setAnnouncements(result.announcements)
+      setPublicAbstractsEnabled(result.public_abstracts_enabled !== false)
 
       const scheduleData = await api
         .get<{ schedule: ScheduleRow[] }>(`/conferences/${result.conference.id}/sessions/public`)
@@ -733,7 +737,7 @@ export function ConferencePage() {
         )}
       </section>
 
-      <PublicAcceptedAbstracts conferenceId={conference.id} style={sectionStyle} />
+      {publicAbstractsEnabled ? <PublicAcceptedAbstracts conferenceId={conference.id} style={sectionStyle} /> : null}
 
       <PublicationSection conferenceId={conference.id} style={sectionStyle} />
 

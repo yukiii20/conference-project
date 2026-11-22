@@ -108,7 +108,9 @@ export async function createConference(
       ],
     )
 
-    const [rows] = await conn.query('SELECT id FROM conferences WHERE slug = ? LIMIT 1', [input.slug])
+    // deleted_at IS NULL: an archived conference may keep the same slug (slug_live is what's
+    // unique), and picking up its id here would give the new conference the old one's settings row.
+    const [rows] = await conn.query('SELECT id FROM conferences WHERE slug = ? AND deleted_at IS NULL LIMIT 1', [input.slug])
     const conferenceId = (rows as Array<{ id: string }>)[0]?.id
     if (!conferenceId) throw new Error('Could not create the conference.')
 

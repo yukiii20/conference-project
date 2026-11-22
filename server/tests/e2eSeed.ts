@@ -69,6 +69,19 @@ async function main() {
       `DELETE sc FROM session_chairs sc JOIN conference_sessions cs ON cs.id = sc.session_id WHERE cs.conference_id = ?`,
       [existingConferenceId],
     )
+    // Rows the Audience / feedback / certificate features hang off a session (FK to
+    // conference_sessions) - without this a second seed run fails once a spec has created them.
+    await pool.query(
+      `DELETE v FROM session_question_votes v JOIN session_questions q ON q.id = v.question_id
+       JOIN conference_sessions cs ON cs.id = q.session_id WHERE cs.conference_id = ?`,
+      [existingConferenceId],
+    )
+    for (const table of ['session_questions', 'session_ratings', 'schedule_changes', 'session_attendance', 'agenda_items', 'feedback_answers', 'certificates']) {
+      await pool.query(
+        `DELETE x FROM ${table} x JOIN conference_sessions cs ON cs.id = x.session_id WHERE cs.conference_id = ?`,
+        [existingConferenceId],
+      )
+    }
     await pool.query('DELETE FROM conference_sessions WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM schedule_slots WHERE conference_id = ?', [existingConferenceId])
     await pool.query('DELETE FROM rooms WHERE conference_id = ?', [existingConferenceId])

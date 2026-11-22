@@ -60,7 +60,7 @@ export function AuthShell({
         <p className="relative text-sm text-on-brand/50">© {new Date().getFullYear()} {SITE.name}</p>
       </aside>
 
-      <main className="flex flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between px-4 py-4 sm:px-8">
           <Link to="/" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-text-muted hover:bg-surface-muted/50 hover:text-text">
             <ArrowLeft size={16} aria-hidden="true" />

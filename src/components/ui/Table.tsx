@@ -18,7 +18,7 @@ export interface Column<T> {
  */
 export function TableContainer({ children, minWidth = 640 }: { children: ReactNode; minWidth?: number }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-border-soft bg-surface shadow-card">
+    <div className="relative overflow-x-auto rounded-xl border border-border-soft bg-surface shadow-card">
       <table className="w-full text-left text-sm" style={{ minWidth }}>
         {children}
       </table>

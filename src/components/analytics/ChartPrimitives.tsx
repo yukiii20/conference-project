@@ -42,7 +42,7 @@ export function ChartCard({
 }) {
   const [showTable, setShowTable] = useState(false)
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="flex flex-col rounded-lg border border-border bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-text">{title}</h3>
@@ -54,9 +54,10 @@ export function ChartCard({
           </Button>
         ) : null}
       </div>
-      <div className="mt-3">
+      <div className="mt-3 flex flex-1 flex-col">
         {empty ? (
-          <p className="rounded-md border border-dashed border-border bg-page-bg px-4 py-6 text-center text-sm text-text-muted">
+          // Fills the card, so an empty chart next to a full one doesn't leave a blank block below.
+          <p className="flex flex-1 items-center justify-center rounded-md border border-dashed border-border bg-page-bg px-4 py-6 text-center text-sm text-text-muted">
             No data yet for this range.
           </p>
         ) : showTable ? (

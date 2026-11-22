@@ -323,7 +323,7 @@ export function DataTable<T>({
           </button>
         </div>
       ) : isDesktop ? (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto" /* relative: keeps the sr-only "Actions" header inside this scroller instead of widening the page on phones */>
           <table className="w-full border-collapse text-left text-sm">
             <caption className="sr-only">{label}</caption>
             <thead>

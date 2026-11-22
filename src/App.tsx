@@ -59,6 +59,11 @@ const ResetPasswordPage = lazy(() =>
     default: m.ResetPasswordPage,
   })),
 );
+const AcceptInvitationPage = lazy(() =>
+  import("./pages/AcceptInvitationPage").then((m) => ({
+    default: m.AcceptInvitationPage,
+  })),
+);
 const ChangePasswordPage = lazy(() =>
   import("./pages/ChangePasswordPage").then((m) => ({
     default: m.ChangePasswordPage,
@@ -167,6 +172,8 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              {/* Link in a conference invitation email (server/src/modules/invitations). */}
+              <Route path="/invitations/accept" element={<AcceptInvitationPage />} />
               <Route path="/change-password" element={<ChangePasswordPage />} />
               <Route path="/set-password" element={<SetPasswordPage />} />
               <Route path="/profile" element={<ProfilePage />} />

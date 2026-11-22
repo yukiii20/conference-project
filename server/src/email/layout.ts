@@ -41,6 +41,12 @@ export function htmlToText(html: string): string {
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|tr|table|h[1-6])>/gi, '\n')
+    // Keep link targets: "View and accept the invitation (https://...)". Without this the
+    // plain-text part (and EMAIL_MODE=console output) loses every reset/invitation link.
+    .replace(/<a\b[^>]*?\bhref\s*=\s*(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi, (_m, _q, href: string, label: string) => {
+      const text = label.replace(/<[^>]+>/g, '').trim()
+      return !text || text === href ? href : `${text} (${href})`
+    })
     .replace(/<[^>]+>/g, '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')

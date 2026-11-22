@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Save, Send } from 'lucide-react'
+import { RotateCw, Save, Send, X } from 'lucide-react'
 import { api, ApiError } from '../../lib/api'
 import { ASSIGNABLE_MEMBER_ROLES, inviteMemberSchema, type InviteMemberInput } from '../../lib/validation'
-import { Alert, Button, Checkbox, EmptyState, Input, Select, Spinner, StatusChip } from '../../components/ui'
+import { Alert, Button, Checkbox, ConfirmDialog, EmptyState, Input, Select, Spinner, StatusChip } from '../../components/ui'
 import { Icon } from '../../components/ui/Icon'
 import { TableContainer } from '../../components/ui/Table'
 import { formatKathmandu } from '../../lib/datetime'
@@ -19,6 +19,31 @@ type Member = {
 }
 
 type Track = { id: string; name: string }
+
+/** GET /conferences/:id/members/invitations (server/src/modules/invitations/service.ts InvitationRow). */
+type Invitation = {
+  id: string
+  email: string
+  full_name: string
+  role_code: string
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled'
+  expired: boolean
+  expires_at: string
+  created_at: string
+  email_status: string | null
+  email_error: string | null
+}
+
+/** POST .../members/invite and .../invitations/:id/resend: how the email went out. */
+type EmailOutcome = { status: 'sent' | 'failed' | 'queued'; error_message: string | null; warning: string | null }
+
+function emailNote(email: EmailOutcome | undefined): string {
+  if (!email) return ''
+  if (email.warning) return ` ${email.warning}`
+  if (email.status === 'failed') return ` The email could not be sent${email.error_message ? ` (${email.error_message})` : ''}. Use Resend to try again.`
+  if (email.status === 'queued') return ' The email is queued and will go out shortly.'
+  return ''
+}
 
 const ROLE_LABELS: Record<string, string> = {
   convenor: 'Convenor',
@@ -47,6 +72,12 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviting, setInviting] = useState(false)
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
+
+  const [invitations, setInvitations] = useState<Invitation[]>([])
+  const [invitationBusyId, setInvitationBusyId] = useState<string | null>(null)
+  const [invitationMessage, setInvitationMessage] = useState<{ variant: 'success' | 'danger'; text: string } | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<Member | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState<Invitation | null>(null)
 
   const [tracksUserId, setTracksUserId] = useState<string | null>(null)
   const [allTracks, setAllTracks] = useState<Track[]>([])
@@ -79,6 +110,49 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
     load()
   }, [load])
 
+  // Pending invitations are not members until accepted, so they are listed separately.
+  const loadInvitations = useCallback(async () => {
+    try {
+      const data = await api.get<{ invitations: Invitation[] }>(`/conferences/${conferenceId}/members/invitations`)
+      setInvitations(data.invitations.filter((i) => i.status === 'pending'))
+    } catch {
+      setInvitations([])
+    }
+  }, [conferenceId])
+
+  useEffect(() => {
+    loadInvitations()
+  }, [loadInvitations])
+
+  async function handleResend(invitation: Invitation) {
+    setInvitationBusyId(invitation.id)
+    setInvitationMessage(null)
+    try {
+      const res = await api.post<{ email: EmailOutcome }>(`/conferences/${conferenceId}/members/invitations/${invitation.id}/resend`)
+      setInvitationMessage({ variant: 'success', text: `A new invitation link was sent to ${invitation.email}.${emailNote(res.email)}` })
+      await loadInvitations()
+    } catch (err) {
+      setInvitationMessage({ variant: 'danger', text: err instanceof ApiError ? err.message : 'Could not resend this invitation.' })
+    } finally {
+      setInvitationBusyId(null)
+    }
+  }
+
+  async function handleCancelInvitation(invitation: Invitation) {
+    setInvitationBusyId(invitation.id)
+    setInvitationMessage(null)
+    try {
+      await api.del(`/conferences/${conferenceId}/members/invitations/${invitation.id}`)
+      setInvitationMessage({ variant: 'success', text: `The invitation for ${invitation.email} was cancelled. Its link no longer works.` })
+      await loadInvitations()
+    } catch (err) {
+      setInvitationMessage({ variant: 'danger', text: err instanceof ApiError ? err.message : 'Could not cancel this invitation.' })
+    } finally {
+      setInvitationBusyId(null)
+      setConfirmCancel(null)
+    }
+  }
+
   async function handleRoleChange(member: Member, newRole: string) {
     setBusyId(member.id)
     setRowErrors((prev) => ({ ...prev, [member.id]: '' }))
@@ -102,6 +176,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
       setRowErrors((prev) => ({ ...prev, [member.id]: err instanceof ApiError ? err.message : 'Could not remove this member.' }))
     } finally {
       setBusyId(null)
+      setConfirmRemove(null)
     }
   }
 
@@ -129,10 +204,16 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
     }
     setInviting(true)
     try {
-      const res = await api.post<{ invited: boolean }>(`/conferences/${conferenceId}/members/invite`, parsed.data)
-      setInviteSuccess(res.invited ? 'Invitation email sent.' : 'Added — they already had an account.')
+      const res = await api.post<{ new_account: boolean; email?: EmailOutcome }>(`/conferences/${conferenceId}/members/invite`, parsed.data)
+      setInviteSuccess(
+        `Invitation email sent. ${
+          res.new_account
+            ? 'They choose a password from the link in the email.'
+            : 'They already have an account and join as soon as they accept.'
+        } The link is valid for 7 days.${emailNote(res.email)}`,
+      )
       setInvite(EMPTY_INVITE)
-      await load()
+      await Promise.all([load(), loadInvitations()])
     } catch (err) {
       setInviteError(err instanceof ApiError ? err.message : 'Could not send this invitation.')
     } finally {
@@ -276,7 +357,7 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
                       {m.role_code !== 'convenor' && m.status === 'active' ? (
                         <button
                           type="button"
-                          onClick={() => handleRemove(m)}
+                          onClick={() => setConfirmRemove(m)}
                           disabled={busyId === m.id}
                           className="text-xs font-medium text-danger hover:underline disabled:opacity-50"
                         >
@@ -326,10 +407,108 @@ export function MembersTab({ conferenceId }: { conferenceId: string }) {
         </div>
       ) : null}
 
+      {invitations.length > 0 || invitationMessage ? (
+        <section aria-labelledby="pending-invitations-heading">
+          <h3 id="pending-invitations-heading" className="font-medium text-text">
+            Pending invitations{invitations.length > 0 ? ` (${invitations.length})` : ''}
+          </h3>
+          <p className="mt-1 text-xs text-text-muted">Invited, but not accepted yet. They get access once they accept.</p>
+          {invitationMessage ? (
+            <div className="mt-2">
+              <Alert variant={invitationMessage.variant}>{invitationMessage.text}</Alert>
+            </div>
+          ) : null}
+          {invitations.length > 0 ? (
+            <div className="mt-3">
+              <TableContainer minWidth={600}>
+                <thead>
+                  <tr className="border-b border-border bg-surface-muted text-text-muted">
+                    <th className="px-3 py-2 font-medium">Name</th>
+                    <th className="px-3 py-2 font-medium">Email</th>
+                    <th className="px-3 py-2 font-medium">Role</th>
+                    <th className="px-3 py-2 font-medium">Expires</th>
+                    {/* aria-label, not an sr-only span: an absolutely positioned span inside this
+                        horizontally scrolling table escapes it and widens the page on phones. */}
+                    <th className="px-3 py-2 font-medium" aria-label="Actions"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {invitations.map((inv) => (
+                    <tr key={inv.id}>
+                      <td className="px-3 py-2">{inv.full_name}</td>
+                      <td className="px-3 py-2">
+                        {inv.email}
+                        {inv.email_status === 'failed' ? <p className="mt-1 text-xs text-danger">Email not delivered. Resend it.</p> : null}
+                      </td>
+                      <td className="px-3 py-2">{ROLE_LABELS[inv.role_code] ?? inv.role_code}</td>
+                      <td className="px-3 py-2 text-text-muted">
+                        {inv.expired ? <span className="text-danger">Expired</span> : formatKathmandu(inv.expires_at, { dateOnly: true })}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResend(inv)}
+                            disabled={invitationBusyId !== null}
+                            loading={invitationBusyId === inv.id && !confirmCancel}
+                            iconLeft={<Icon icon={RotateCw} size={14} />}
+                          >
+                            Resend
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setConfirmCancel(inv)}
+                            disabled={invitationBusyId !== null}
+                            iconLeft={<Icon icon={X} size={14} />}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </TableContainer>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        title="Remove this member?"
+        message={
+          confirmRemove ? (
+            <>
+              {confirmRemove.full_name} ({confirmRemove.email}) loses the {ROLE_LABELS[confirmRemove.role_code]?.toLowerCase() ?? 'member'} role at
+              this conference. Their account and past work are kept, and you can invite them again later.
+            </>
+          ) : null
+        }
+        confirmLabel="Remove member"
+        busy={confirmRemove !== null && busyId === confirmRemove.id}
+        onConfirm={() => confirmRemove && handleRemove(confirmRemove)}
+        onCancel={() => setConfirmRemove(null)}
+      />
+      <ConfirmDialog
+        open={confirmCancel !== null}
+        title="Cancel this invitation?"
+        message={confirmCancel ? <>The link sent to {confirmCancel.email} stops working. You can invite them again later.</> : null}
+        confirmLabel="Cancel invitation"
+        cancelLabel="Keep it"
+        busy={confirmCancel !== null && invitationBusyId === confirmCancel.id}
+        onConfirm={() => confirmCancel && handleCancelInvitation(confirmCancel)}
+        onCancel={() => setConfirmCancel(null)}
+      />
+
       <form onSubmit={handleInvite} className="rounded-lg border border-dashed border-border bg-surface p-4">
         <p className="font-medium text-text">Invite by email</p>
         <p className="mt-1 text-xs text-text-muted">
-          An existing account is added directly; a new email gets an invitation with a link to set a password.
+          Everyone gets an email with a link to accept. A new email address sets a password from that link; an existing account signs in to accept.
         </p>
         {inviteError ? (
           <div className="mt-2">

@@ -119,7 +119,7 @@ export function ProfilePage() {
   return (
     <div className="min-h-screen bg-page-bg">
       <PortalHeader roleLabel="Account" />
-      <div className="mx-auto max-w-2xl px-4 py-10">
+      <main className="mx-auto max-w-2xl px-4 py-10">
         <Link to="/portal" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-text-muted hover:text-button">
           <ChevronLeft size={16} aria-hidden="true" />
           My portal
@@ -253,7 +253,7 @@ export function ProfilePage() {
             keep the information used at the time you submitted, as the record of record.
           </p>
         </Card>
-      </div>
+      </main>
     </div>
   )
 }

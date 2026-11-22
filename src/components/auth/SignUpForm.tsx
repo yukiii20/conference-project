@@ -356,13 +356,18 @@ export function SignUpForm({
                 key={code}
                 type="button"
                 aria-pressed={role === code}
+                // Accessible name is just the role ("Author"); the hint is read as its description.
+                aria-label={getRoleDefinition(code)?.label}
+                aria-describedby={`su-role-hint-${code}`}
                 onClick={() => setRole(code)}
                 className={`min-h-12 rounded-lg border p-3 text-left text-sm ${
                   role === code ? 'border-button ring-2 ring-button/30' : 'border-border hover:border-button/50'
                 } ${code === AUDIENCE_ROLE ? 'sm:col-span-2' : ''}`}
               >
                 <span className="block font-medium text-text">{getRoleDefinition(code)?.label}</span>
-                <span className="mt-0.5 block text-xs text-text-muted">{SIGNUP_ROLE_HINTS[code]}</span>
+                <span id={`su-role-hint-${code}`} className="mt-0.5 block text-xs text-text-muted">
+                  {SIGNUP_ROLE_HINTS[code]}
+                </span>
               </button>
             ))}
           </div>

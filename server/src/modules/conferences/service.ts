@@ -30,7 +30,7 @@ export async function getPublicConferenceBySlug(slug: string) {
   // Six independent reads (none depends on another's result) - run them
   // concurrently instead of paying six sequential round trips on every public
   // conference page view.
-  const [[tracks], [deadlines], [supporters], [committeeRows], [speakers], [announcements]] = await Promise.all([
+  const [[tracks], [deadlines], [supporters], [committeeRows], [speakers], [announcements], [settingsRows]] = await Promise.all([
     pool.query(
       `SELECT id, name, description FROM conference_tracks
        WHERE conference_id = ? AND is_active = TRUE ORDER BY display_order`,
@@ -64,7 +64,10 @@ export async function getPublicConferenceBySlug(slug: string) {
        ORDER BY COALESCE(publish_at, created_at) DESC LIMIT 10`,
       [conferenceId],
     ),
+    // Lets the page skip GET .../abstracts/public (a 404 while off) when the section is switched off.
+    pool.query(`SELECT public_abstracts_enabled FROM conference_settings WHERE conference_id = ? LIMIT 1`, [conferenceId]),
   ])
+  const publicAbstractsEnabled = Boolean((settingsRows as Array<{ public_abstracts_enabled: number | boolean }>)[0]?.public_abstracts_enabled)
 
   // Depends on committeeRows, so it has to run after the batch above.
   const committees = committeeRows as Array<{ id: string; name: string; committee_type: string; description: string | null; display_order: number }>
@@ -88,5 +91,14 @@ export async function getPublicConferenceBySlug(slug: string) {
       .map(({ committee_id: _committee_id, ...rest }) => rest),
   }))
 
-  return { conference, tracks, deadlines, supporters, committees: committeesWithMembers, speakers, announcements }
+  return {
+    conference,
+    tracks,
+    deadlines,
+    supporters,
+    committees: committeesWithMembers,
+    speakers,
+    announcements,
+    public_abstracts_enabled: publicAbstractsEnabled,
+  }
 }

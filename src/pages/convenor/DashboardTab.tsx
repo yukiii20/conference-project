@@ -545,7 +545,7 @@ function QuickActions({ base }: { base: string }) {
               className="flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-text transition-colors hover:bg-page-bg"
             >
               <Icon icon={a.icon} size={16} className="shrink-0 text-button" />
-              <span className="truncate">{a.label}</span>
+              <span className="min-w-0 leading-snug">{a.label}</span>
             </Link>
           </li>
         ))}
