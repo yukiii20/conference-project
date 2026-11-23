@@ -18,7 +18,12 @@ final class TransformSchema extends Schema
 
     protected function parseType(Payload $p): Payload
     {
-        $p->value = ($this->fn)($p->value, $p);
+        $p->issuesContinue = false;
+        try {
+            $p->value = ($this->fn)($p->value, $p);
+        } finally {
+            $p->issuesContinue = true;
+        }
         return $p;
     }
 }

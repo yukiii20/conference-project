@@ -14,12 +14,31 @@ final class Res
     /** Marks a response whose body went through res.send() (gets an ETag, may become a 304). */
     public const SENT_HEADER = 'X-Internal-Res-Send';
 
+    /** @var \WeakMap<Response, string>|null Cache-Control exactly as written (Symfony rewrites it). */
+    private static ?\WeakMap $cacheControl = null;
+
+    private static function remember(Response $r, array $headers): Response
+    {
+        foreach ($headers as $k => $v) {
+            if (strtolower((string) $k) === 'cache-control') {
+                self::$cacheControl ??= new \WeakMap();
+                self::$cacheControl[$r] = (string) $v;
+            }
+        }
+        return $r;
+    }
+
+    public static function rawCacheControl(Response $r): ?string
+    {
+        return self::$cacheControl[$r] ?? null;
+    }
+
     /** res.status(s).json(data) */
     public static function json(mixed $data, int $status = 200, array $headers = []): Response
     {
         $r = new Response(Json::encode($data), $status, $headers + ['Content-Type' => 'application/json; charset=utf-8']);
         $r->headers->set(self::SENT_HEADER, '1');
-        return $r;
+        return self::remember($r, $headers);
     }
 
     /** res.send(string): text/html unless a Content-Type is given. */
@@ -27,31 +46,34 @@ final class Res
     {
         $r = new Response($body, $status, $headers + ['Content-Type' => 'text/html; charset=utf-8']);
         $r->headers->set(self::SENT_HEADER, '1');
-        return $r;
+        return self::remember($r, $headers);
     }
 
     /** res.status(s).end(): no body, no Content-Type. */
     public static function end(int $status = 200, array $headers = []): Response
     {
-        return new Response('', $status, $headers);
+        return self::remember(new Response('', $status, $headers), $headers);
     }
 
     /** sendBuffer() from storage/send.ts. */
     public static function buffer(string $body, string $filename, string $contentType, string $disposition = 'attachment'): Response
     {
-        return new Response($body, 200, [
+        $headers = [
             'Content-Type' => $contentType,
             'Content-Disposition' => self::contentDisposition($disposition, $filename),
             'Content-Length' => (string) strlen($body),
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
-        ]);
+        ];
+        return self::remember(new Response($body, 200, $headers), $headers);
     }
 
     /** A streamed body (pipe(res)); headers are sent first, then $writer echoes chunks. */
     public static function stream(callable $writer, int $status = 200, array $headers = []): StreamedResponse
     {
-        return new StreamedResponse($writer, $status, $headers);
+        $r = new StreamedResponse($writer, $status, $headers);
+        self::remember($r, $headers);
+        return $r;
     }
 
     /** `attachment; filename="<ascii>"; filename*=UTF-8''<encoded>` exactly as storage/send.ts built it. */

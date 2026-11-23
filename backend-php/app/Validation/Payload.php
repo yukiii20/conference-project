@@ -12,6 +12,9 @@ final class Payload
 
     public bool $aborted = false;
 
+    /** False while a transform runs: zod leaves `continue` unset there, so its issues abort. */
+    public bool $issuesContinue = true;
+
     public function __construct(public mixed $value)
     {
     }
@@ -41,7 +44,9 @@ final class Payload
         if (!empty($issue['fatal'])) {
             $issue['continue'] = false;
         }
-        $issue['continue'] ??= true;
+        if ($this->issuesContinue) {
+            $issue['continue'] ??= true;
+        }
         $this->issues[] = $issue;
     }
 }

@@ -53,7 +53,7 @@ final class Req
         public readonly array $postFields = [],
     ) {
         $this->query = QueryString::parse($rawQuery);
-        $this->body = [];
+        $this->body = new JsonObject();
         $this->parseJsonBody();
     }
 
@@ -103,7 +103,7 @@ final class Req
     private function parseJsonBody(): void
     {
         $type = strtolower(trim(explode(';', $this->headers['content-type'] ?? '')[0]));
-        $isJson = $type === 'application/json' || (str_starts_with($type, 'application/') && str_ends_with($type, '+json'));
+        $isJson = $type === 'application/json'; // type-is: express.json() only matches application/json
         if (!$isJson) {
             return;
         }
