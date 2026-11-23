@@ -1,0 +1,14 @@
+{
+  "auth.registerSchema": [{"full_name":"Asha Rai","email":" Asha@Example.COM ","phone":"98-1234 5678","password":"Str0ng!Pass1","requested_role":"author","conference_id":"0f4c2c8e-5b1a-11ef-8f3e-0242ac120002"},
+                          {"full_name":"Asha Rai","email":"a@b.co","phone":"+9779812345678","password":"Str0ng!Pass1","requested_role":"attendee","conference_id":"0f4c2c8e-5b1a-11ef-8f3e-0242ac120002","category_id":"0f4c2c8e-5b1a-11ef-8f3e-0242ac120003"}],
+  "auth.loginSchema": [{"email":"x@y.com","password":"p","role":"author","conference":"e2e-conf"},{"email":"x@y.com","password":"p","role":"convenor","remember_me":false,"conference":"  e2e-conf  "}],
+  "auth.joinConferenceSchema": [{"email":"x@y.com","password":"p","requested_role":"reviewer","conference":"e2e-conf"}],
+  "auth.requestRoleSchema": [{"requested_role":"attendee","conference":"e2e-conf"}],
+  "auth.switchConferenceSchema": [{"conference_id":"0f4c2c8e-5b1a-11ef-8f3e-0242ac120002"}],
+  "auth.adminLoginSchema": [{"email":"x@y.com","password":"p"}],
+  "auth.changePasswordSchema": [{"current_password":"a","new_password":"Abcdefg1!"}],
+  "auth.forgotPasswordSchema": [{"email":"x@y.com"},{"email":"x@y.com","conference":"e2e-conf"}],
+  "auth.resetPasswordSchema": [{"token":"abc","password":"short"}],
+  "auth.acceptInvitationSchema": [{"token":"abc","password":"Abcdefg1!","conference":"x"}],
+  "auth.updateProfileSchema": [{"full_name":"Abc Def"},{"country":" np ","orcid":"0000-0002-1825-0097","bio":"","institution":null,"photo_path":"  p.png "},{"country":"Nepal","orcid":"x"}]
+}
